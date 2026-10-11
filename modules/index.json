@@ -1,0 +1,26 @@
+{
+  "modules": [
+    {
+      "key": "dev",
+      "file": "it-scrum.json",
+      "name": "IT & Scrum",
+      "short": "IT & Scrum",
+      "icon": "💻",
+      "ls": "devvokabeln.progress.v1",
+      "doc": "progress",
+      "accent": "#a5243a",
+      "board": "#0d0305"
+    },
+    {
+      "key": "ftth",
+      "file": "glasfaser.json",
+      "name": "Glasfaser & FTTH",
+      "short": "Glasfaser",
+      "icon": "🔦",
+      "ls": "devvokabeln.progress.ftth",
+      "doc": "progress-ftth",
+      "accent": "#2a7f52",
+      "board": "#030a06"
+    }
+  ]
+}

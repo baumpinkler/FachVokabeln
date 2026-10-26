@@ -60,7 +60,11 @@ async function loadIndex(){
 async function ensureModule(key){
   const m = MODULES[key];
   if (!m) throw new Error("Unbekanntes Modul: " + key);
-  if (!m.raw) { const r = await fetch("modules/" + m.file); Object.assign(m, await r.json()); }
+  if (!m.raw) {
+    m.loading = m.loading || fetch("modules/" + m.file).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(d => Object.assign(m, d)).catch(e => { m.loading = null; throw e; });
+    await m.loading;
+  }
   return m;
 }
 function applyTheme(t){
@@ -80,13 +84,97 @@ function loadModule(key){
   try { localStorage.setItem(MODULE_KEY, MODKEY); } catch(e) {}
   cloudRef = cloudBase ? cloudBase.db.doc("data/users/" + cloudBase.id + "/" + MOD.doc) : null;
 }
-async function switchModule(key){
-  if (key === MODKEY) return;
-  clearTimeout(saveTimer); pushCloud();
-  try { await ensureModule(key); } catch (e) { toast("Modul konnte nicht geladen werden. Bist du offline?"); return; }
-  loadModule(key); renderTop(); renderHome(); window.scrollTo(0,0);
-  syncCloud();
+async function switchModule(key){ return swipeTo(key); }
+
+/* ---------- Modulwechsel: Wischen auf der Übersicht und Schiebe-Animation ---------- */
+let swiping = false;
+const SWIPE_HINT = "lernapp.swipehint";
+const modIdx = () => MODULE_ORDER.indexOf(MODKEY);
+const dragFade = (dx, w) => 1 - Math.min(1, Math.abs(dx) / w) * .5;
+function settleAnim(el){ el.getAnimations().forEach(a => a.cancel()); el.style.transform = ""; el.style.opacity = ""; }
+function slide(el, from, to, ms, ease){
+  return el.animate([from, to], {duration:ms, easing:ease, fill:"forwards"}).finished.catch(() => {});
 }
+async function swipeTo(key, fromDx = 0){
+  const pager = $("#pager"), bar = $("#modbar");
+  if (!MODULES[key] || key === MODKEY || swiping) { snapBack(fromDx); return; }
+  swiping = true;
+  const w = pager.offsetWidth, dir = MODULE_ORDER.indexOf(key) > modIdx() ? 1 : -1, still = reduced();
+  bar.classList.remove("drag"); bar.style.setProperty("--pos", MODULE_ORDER.indexOf(key));
+  const loading = ensureModule(key);
+  pager.style.transform = ""; pager.style.opacity = "";
+  if (!still) await slide(pager, {transform:`translateX(${fromDx}px)`, opacity:dragFade(fromDx, w)},
+    {transform:`translateX(${-dir * w * .45}px)`, opacity:0}, 170, "cubic-bezier(.4,0,1,1)");
+  try { await loading; }
+  catch (e) { toast("Modul konnte nicht geladen werden. Bist du offline?"); settleAnim(pager); renderModbar(); swiping = false; return; }
+  clearTimeout(saveTimer); pushCloud();
+  loadModule(key); renderHome(); window.scrollTo(0, 0);
+  syncCloud();
+  if (!still) await slide(pager, {transform:`translateX(${dir * w * .35}px)`, opacity:0},
+    {transform:"none", opacity:1}, 320, "cubic-bezier(.2,.8,.2,1)");
+  settleAnim(pager);
+  swiping = false;
+}
+function snapBack(dx){
+  const pager = $("#pager"), bar = $("#modbar");
+  bar.classList.remove("drag"); bar.style.setProperty("--pos", modIdx());
+  pager.style.transform = ""; pager.style.opacity = "";
+  if (!dx || reduced()) return settleAnim(pager);
+  slide(pager, {transform:`translateX(${dx}px)`, opacity:dragFade(dx, pager.offsetWidth)}, {transform:"none", opacity:1}, 280, "cubic-bezier(.2,.8,.2,1)")
+    .then(() => settleAnim(pager));
+}
+/* Wischgeste: nur auf der Übersicht, nur Finger/Stift. Senkrechtes Scrollen bleibt beim Browser (touch-action: pan-y). */
+function initSwipe(){
+  const pager = $("#pager"), bar = $("#modbar");
+  let g = null, block = false;
+  pager.addEventListener("pointerdown", e => {
+    if (screen !== "home" || swiping || MODULE_ORDER.length < 2 || !e.isPrimary || e.pointerType === "mouse") return;
+    if (e.target.closest("input, textarea, select")) return;
+    g = {x:e.clientX, y:e.clientY, id:e.pointerId, lock:null, dx:0, v:0, px:e.clientX, pt:performance.now(), w:pager.offsetWidth, i:modIdx()};
+  });
+  pager.addEventListener("pointermove", e => {
+    if (!g || e.pointerId !== g.id) return;
+    const mx = e.clientX - g.x, my = e.clientY - g.y;
+    if (!g.lock) {
+      if (Math.hypot(mx, my) < 10) return;
+      g.lock = Math.abs(mx) > Math.abs(my) * 1.3 ? "x" : "y";
+      if (g.lock === "y") { g = null; return; }
+      try { pager.setPointerCapture(g.id); } catch (_) {}
+      bar.classList.add("drag");
+    }
+    const now = performance.now(), n = MODULE_ORDER.length;
+    g.v = .7 * ((e.clientX - g.px) / Math.max(1, now - g.pt)) + .3 * g.v; g.px = e.clientX; g.pt = now;
+    let dx = mx;
+    if ((dx > 0 && g.i === 0) || (dx < 0 && g.i === n - 1)) dx = dx / 3.5;   /* am Rand: Gummiband */
+    g.dx = dx;
+    pager.style.transform = `translateX(${dx}px)`; pager.style.opacity = dragFade(dx, g.w);
+    bar.style.setProperty("--pos", Math.min(n - 1, Math.max(0, g.i - dx / g.w)));
+  });
+  const end = e => {
+    if (!g || e.pointerId !== g.id) return;
+    const s = g; g = null;
+    if (s.lock !== "x") return;
+    block = true; setTimeout(() => block = false, 80);
+    const target = s.i + (s.dx < 0 ? 1 : -1);
+    const far = Math.abs(s.dx) > s.w * .25 || (Math.abs(s.v) > .45 && Math.abs(s.dx) > 30 && Math.sign(s.v) === Math.sign(s.dx));
+    if (e.type !== "pointercancel" && far && target >= 0 && target < MODULE_ORDER.length) {
+      try { localStorage.setItem(SWIPE_HINT, "1"); } catch (_) {}
+      swipeTo(MODULE_ORDER[target], s.dx);
+    } else snapBack(s.dx);
+  };
+  pager.addEventListener("pointerup", end);
+  pager.addEventListener("pointercancel", end);
+  /* Nach dem Wischen kein versehentlicher Tipp auf eine Kachel */
+  pager.addEventListener("click", e => { if (block) { e.preventDefault(); e.stopPropagation(); } }, true);
+}
+
+/* ---------- Übergänge zwischen den Bereichen (View Transitions, wo verfügbar) ---------- */
+function transit(fn, dir){
+  if (!document.startViewTransition || reduced() || document.hidden || swiping) { fn(); return; }
+  document.documentElement.dataset.dir = dir || "fwd";
+  try { document.startViewTransition(fn); } catch (e) { fn(); }
+}
+const goHome = () => transit(() => renderHome(), "back");
 /* ---------- Zusatzinhalte: modules/extra/<modul>/<kategorie>.json ----------
    Werden beim Quizstart nur für aktive Kategorien geladen und pro Modul im Speicher gehalten.
    Fehlende Dateien (404) werden still ignoriert und nicht erneut angefragt. */
@@ -544,11 +632,11 @@ const speakBtn = (text, label, lang) => canSpeak ? `<button class="speak" data-s
 document.addEventListener("click", e => { const b = e.target.closest("[data-speak]"); if (b) { e.stopPropagation(); speak(b.dataset.speak, b.dataset.lang); } });
 
 /* ---------- UI-Effekte ---------- */
-function toast(msg){
+function toast(msg, ms = 2400){
   if (!msg) return;
   const old = document.querySelector(".toast"); if (old) old.remove();
   const d = document.createElement("div"); d.className = "toast"; d.textContent = msg; document.body.appendChild(d);
-  setTimeout(() => d.remove(), 2400);
+  setTimeout(() => d.classList.add("out"), ms); setTimeout(() => d.remove(), ms + 300);
 }
 function confetti(){
   if (reduced()) return;
@@ -568,11 +656,8 @@ function renderTop(){
   const L = levelInfo(P.xp);
   const dayXp = P.day === today() ? P.dayXp : 0;
   const qd = quizzesToday(), pct = Math.min(100, Math.round(qd / QUIZ_GOAL * 100));
+  renderModbar();
   $("#top").innerHTML = `
-    ${MODULE_ORDER.length <= 3
-      ? `<div class="modswitch" role="tablist" aria-label="Lernmodul wählen" style="grid-template-columns:repeat(${MODULE_ORDER.length},1fr)">${MODULE_ORDER.map(k => { const m = MODULES[k];
-          return `<button role="tab" aria-selected="${k === MODKEY}" data-mod="${k}"><span aria-hidden="true">${m.icon}</span> ${esc(m.short)}</button>`; }).join("")}</div>`
-      : `<button class="modpick" id="modPick" aria-haspopup="dialog"><span aria-hidden="true">${MOD.icon}</span> ${esc(MOD.name)} <span class="rank-more" aria-hidden="true">▾</span></button>`}
     <button class="help-btn" id="helpBtn" aria-haspopup="dialog" aria-label="So funktioniert das Punkte-System" title="So funktioniert das Punkte-System">?</button>
     <button class="rank" id="rankBtn" aria-haspopup="dialog" title="Alle Ränge anzeigen">
       <div class="rank-name">${esc(L.name)} <span class="rank-more" aria-hidden="true">›</span></div>
@@ -580,11 +665,37 @@ function renderTop(){
       <div class="xp-text">${num(P.xp)} XP${L.next ? " · noch " + num(L.next - P.xp) + " bis " + esc(levels()[L.i + 1][1]) : " · höchster Rang"}</div>
     </button>
     <button class="badge" id="calBtn" aria-haspopup="dialog" title="Kalender öffnen · Tagespflicht: ${QUIZ_GOAL} Quiz, sonst −${QUIZ_PENALTY} XP"><div class="ring" style="--p:${pct}"><span>${Math.min(qd, 99)}/${QUIZ_GOAL}</span></div>Quiz heute</button>`;
-  $("#top").querySelectorAll("[data-mod]").forEach(b => b.onclick = () => switchModule(b.dataset.mod));
-  const mp = $("#modPick"); if (mp) mp.onclick = showModulePicker;
   $("#rankBtn").onclick = showLevels;
   $("#helpBtn").onclick = showHelp;
   $("#calBtn").onclick = () => showCalendar();
+}
+
+/* Modulleiste über der Übersicht: bleibt beim Wischen stehen, der Marker wandert mit dem Finger mit.
+   Ab 4 Modulen wird daraus ein Auswahlknopf. */
+function renderModbar(){
+  const bar = $("#modbar"), n = MODULE_ORDER.length;
+  if (n < 2) { bar.hidden = true; return; }
+  bar.hidden = false;
+  if (n > 3) {
+    bar.className = "modbar pick";
+    bar.innerHTML = `<button class="modpick" id="modPick" aria-haspopup="dialog"><span aria-hidden="true">${MOD.icon}</span> ${esc(MOD.name)} <span class="rank-more" aria-hidden="true">▾</span></button>`;
+    $("#modPick").onclick = showModulePicker; return;
+  }
+  if (bar.dataset.built !== MODULE_ORDER.join()) {
+    bar.dataset.built = MODULE_ORDER.join(); bar.className = "modbar";
+    bar.setAttribute("role", "tablist"); bar.setAttribute("aria-label", "Lernmodul wählen");
+    bar.style.setProperty("--n", n);
+    bar.innerHTML = `<span class="ind" aria-hidden="true"></span>` + MODULE_ORDER.map(k => { const m = MODULES[k];
+      return `<button role="tab" data-mod="${k}"><span aria-hidden="true">${m.icon}</span> ${esc(m.short)}</button>`; }).join("");
+    bar.querySelectorAll("[data-mod]").forEach(b => b.onclick = () => swipeTo(b.dataset.mod));
+    bar.addEventListener("keydown", e => {
+      const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0, k = MODULE_ORDER[modIdx() + d];
+      if (d && k) { e.preventDefault(); swipeTo(k).then(() => { const b = bar.querySelector(`[data-mod="${k}"]`); if (b) b.focus(); }); }
+    });
+  }
+  bar.querySelectorAll("[data-mod]").forEach(b => { const on = b.dataset.mod === MODKEY;
+    b.setAttribute("aria-selected", on); b.tabIndex = on ? 0 : -1; });
+  if (!bar.classList.contains("drag")) bar.style.setProperty("--pos", modIdx());
 }
 
 /* ---------- Startseite ---------- */
@@ -604,7 +715,7 @@ window.addEventListener("popstate", () => {
   if (ignorePop > 0) { ignorePop--; return; }
   const open = [...document.querySelectorAll("dialog[open]")];
   if (open.length) { open.forEach(d => { d.dataset.popClose = "1"; d.close(); }); return; }
-  if (screen !== "home") renderHome(true);
+  if (screen !== "home") transit(() => renderHome(true), "back");
 });
 function renderHome(fromPop){
   if (fromPop !== true && history.state && history.state.nav === "screen") { ignorePop++; try { history.back(); } catch (e) { ignorePop--; } }
@@ -634,9 +745,9 @@ function renderHome(fromPop){
     </div>
     ${P.penalty && P.penalty.on === today() ? `<div class="penalty" role="status">⚠️ ${esc(P.penalty.text)}</div>` : ""}
     <div class="modes">
-      <button class="note mode" style="--c:var(--m2);--r:.9deg" data-go="quiz"><span class="emoji" aria-hidden="true">⚡</span><h2>Quiz</h2><p>10 Fragen mit je 5 Antworten, meist zuerst nur die Anfangsbuchstaben.</p></button>
-      <button class="note mode" style="--c:var(--m1);--r:-1.2deg" data-go="cards"><span class="emoji" aria-hidden="true">🗂️</span><h2>Karteikarten</h2><p>Begriff ansehen, umdrehen, ehrlich einschätzen. Zum Üben, ohne XP.</p></button>
-      <button class="note mode" style="--c:var(--m3);--r:-.6deg" data-go="lex"><span class="emoji" aria-hidden="true">📖</span><h2>Nachschlagen</h2><p>Alle ${num(all)} Begriffe mit Artikel, Erklärung und Beispielsätzen.</p></button>
+      <button class="note mode mode-main" style="--c:var(--m2)" data-go="quiz"><span class="emoji" aria-hidden="true">⚡</span><h2>Quiz</h2><p>10 Fragen mit je 5 Antworten, meist zuerst nur die Anfangsbuchstaben.</p></button>
+      <button class="note mode" style="--c:var(--m1)" data-go="cards"><span class="emoji" aria-hidden="true">🗂️</span><h2>Karteikarten</h2><p>Umdrehen und selbst einschätzen, ohne XP.</p></button>
+      <button class="note mode" style="--c:var(--m3)" data-go="lex"><span class="emoji" aria-hidden="true">📖</span><h2>Nachschlagen</h2><p>Alle ${num(all)} Begriffe mit Beispielen.</p></button>
     </div>
     <div class="sec-head"><div class="section-title">Themen</div>
       <button class="chip-all" id="allcats">${allOn ? "Nur eines wählen" : "Alle auswählen"}</button></div>
@@ -647,7 +758,10 @@ function renderHome(fromPop){
     <p class="foot">${cloud ? "Dein Fortschritt wird in deinem Konto gespeichert." : "Dein Fortschritt wird auf diesem Gerät gespeichert."} Der Export enthält alle Module.</p>`;
   $("#expBtn").onclick = showExport;
   $("#impBtn").onclick = showImport;
-  app.querySelectorAll("[data-go]").forEach(b => b.onclick = () => ({cards:startCards, quiz:startQuiz, lex:renderLex})[b.dataset.go]());
+  app.querySelectorAll("[data-go]").forEach(b => b.onclick = () => {
+    const go = b.dataset.go;
+    if (go === "quiz") startQuiz(); else transit(go === "cards" ? startCards : renderLex, "fwd");
+  });
   app.querySelectorAll("[data-cat]").forEach(b => b.onclick = () => {
     const k = b.dataset.cat, on = P.cats.includes(k);
     if (on && P.cats.length === 1) { toast("Mindestens ein Thema muss aktiv bleiben."); return; }
@@ -697,18 +811,28 @@ function renderCard(){
   };
   $("#card").onclick = e => { if (!e.target.closest("[data-speak]")) flip(); };
   $("#card").onkeydown = e => { if (e.target.id === "card" && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); flip(); } };
-  if ($("#knew")) $("#knew").onclick = () => {
+  /* Antwort: Karte fliegt weg (gewusst nach rechts, nochmal nach links), dann kommt die nächste */
+  const advance = (dir, fn) => {
+    if (F.busy) return; F.busy = true;
+    const done = () => { F.busy = false; fn(); F.flipped = false; save(); F.anim = reduced() ? "" : "card-in"; renderCard(); };
+    const el = $("#card");
+    if (reduced() || !el) return done();
+    app.querySelectorAll(".actions .btn").forEach(b => b.disabled = true);
+    el.animate([{transform:"none", opacity:1}, {transform:`translateX(${dir * 115}%) rotate(${dir * 9}deg)`, opacity:0}],
+      {duration:230, easing:"cubic-bezier(.4,0,1,1)", fill:"forwards"}).finished.then(done, done);
+  };
+  if ($("#knew")) $("#knew").onclick = () => advance(1, () => {
     const first = !F.again.has(t.id);
     if (!seen(t)) setBox(t, 0); if (first) F.known++;
-    F.queue.shift(); F.done++; F.flipped = false; save(); renderCard();
-  };
-  if ($("#again")) $("#again").onclick = () => {
+    F.queue.shift(); F.done++;
+  });
+  if ($("#again")) $("#again").onclick = () => advance(-1, () => {
     if (!seen(t)) setBox(t, 0); setFlag(t, true);
     F.queue.shift();
     if (!F.again.has(t.id)) { F.again.add(t.id); F.total++; F.queue.push(t); }
-    F.done++; F.flipped = false; save(); renderCard();
-  };
-  app.querySelector("[data-home]").onclick = renderHome;
+    F.done++;
+  });
+  app.querySelector("[data-home]").onclick = goHome;
 }
 function renderCardsDone(){
   const missed = TERMS.filter(t => F.again.has(t.id));
@@ -717,7 +841,7 @@ function renderCardsDone(){
     <div class="note" style="--c:var(--m1);--r:-1deg"><div class="big-num">${F.known}</div><div>Begriffe auf Anhieb gewusst</div></div>
     ${missed.length ? `<div class="missed"><strong>Fürs nächste Quiz vorgemerkt 📌</strong><p style="margin:4px 0 6px;font-size:.9rem">Sie kommen dort bevorzugt dran, bis du sie richtig beantwortest.</p><ul>${missed.map(t => `<li><b>${esc(t.en)}</b> = ${esc(t.de)}</li>`).join("")}</ul></div>` : ""}
     <div class="stack"><button class="btn primary wide" id="more">Neuen Stapel ziehen</button><button class="btn wide" data-home>Zur Übersicht</button></div></div>`;
-  $("#more").onclick = startCards; app.querySelector("[data-home]").onclick = renderHome; window.scrollTo(0,0);
+  $("#more").onclick = () => transit(startCards, "fwd"); app.querySelector("[data-home]").onclick = goHome; window.scrollTo(0,0);
 }
 
 /* ---------- Quiz ---------- */
@@ -809,7 +933,7 @@ async function startQuiz(){
   if (ts.length < 5) { toast("Wähle Themen mit mindestens 5 Begriffen."); return; }
   P.round = (P.round || 0) + 1; save();
   Q = {items:ts.map(makeQuestion), i:0, combo:0, best:0, xp:0, right:0, missed:[], answered:null, hint:false, revealed:false, counted:false};
-  screen = "quiz"; setFocus(true); navEnterScreen(); renderQuiz(); window.scrollTo(0,0);
+  transit(() => { screen = "quiz"; setFocus(true); navEnterScreen(); renderQuiz(); window.scrollTo(0,0); }, "fwd");
 }
 /* Beispielsatz mit markiertem Begriff (Standard- oder Zusatzsatz) */
 const markTerm = (t, en) => esc(en).replace(termRe(t), "$1<mark>$2</mark>");
@@ -889,7 +1013,7 @@ function renderQuiz(){
     </div>
     ${!a && !Q.revealed && !q.full ? `<div class="reveal-row"><button class="btn" id="reveal">Ganz anzeigen <span class="cost">−1 XP</span></button></div>` : ""}
     ${input}${opts ? `<div class="opts${q.type === "tf" ? " tf" : ""}">${opts}</div>` : ""}${fb}`;
-  app.querySelector("[data-home]").onclick = () => { if (Q.xp || Q.i) save(); renderHome(); };
+  app.querySelector("[data-home]").onclick = () => { if (Q.xp || Q.i) save(); stopListen(); goHome(); };
   const h = $("#hint"); if (h) h.onclick = () => { Q.hint = true; renderQuiz(); };
   const rv = $("#reveal"); if (rv) rv.onclick = () => { Q.revealed = true; Q.xp -= 1; addXP(-1); save(); renderQuiz(); };
   if (!a) {
@@ -972,8 +1096,8 @@ function settle(ok, info){
 }
 function nextQuestion(){
   stopListen();
-  if (Q.i === Q.items.length - 1) return renderQuizDone();
-  Q.i++; Q.answered = null; Q.hint = false; Q.revealed = false; renderQuiz(); window.scrollTo(0,0);
+  if (Q.i === Q.items.length - 1) return transit(renderQuizDone, "fwd");
+  transit(() => { Q.i++; Q.answered = null; Q.hint = false; Q.revealed = false; renderQuiz(); window.scrollTo(0,0); }, "fwd");
 }
 function renderQuizDone(){
   const asked = Q.i + 1, perfect = Q.right === Q.items.length;
@@ -999,7 +1123,7 @@ function renderQuizDone(){
       ${nb ? `<div>Nächste Runde bringt +${nb} XP Tagesbonus.</div>` : ""}</div>
     ${Q.missed.length ? `<div class="missed"><strong>Diese Begriffe kommen bald wieder:</strong><ul>${Q.missed.map(t => `<li><b>${esc(t.en)}</b> = ${esc(t.de)}</li>`).join("")}</ul></div>` : ""}
     <div class="stack"><button class="btn primary wide" id="more">Noch eine Runde</button><button class="btn wide" data-home>Zur Übersicht</button></div></div>`;
-  $("#more").onclick = startQuiz; app.querySelector("[data-home]").onclick = renderHome; window.scrollTo(0,0);
+  $("#more").onclick = startQuiz; app.querySelector("[data-home]").onclick = goHome; window.scrollTo(0,0);
 }
 
 /* ---------- Nachschlagen ---------- */
@@ -1019,7 +1143,7 @@ function renderLex(){
     <div class="bar"><button class="back" aria-label="Zurück zur Übersicht" data-home>✕</button><h2 style="font-size:1.4rem">Nachschlagen</h2></div>
     <input class="search" id="q" type="search" placeholder="Suchen, englisch oder deutsch" aria-label="Begriffe durchsuchen">
     <div id="lexlist"></div>`;
-  app.querySelector("[data-home]").onclick = renderHome;
+  app.querySelector("[data-home]").onclick = goHome;
   const draw = () => {
     const s = $("#q").value.trim().toLowerCase();
     let html;
@@ -1050,7 +1174,13 @@ async function boot(){
     try { const s = localStorage.getItem(MODULE_KEY); if (s && MODULES[s]) startKey = s; } catch (e) {}
     await ensureModule(startKey);
     loadModule(startKey);
-    renderTop(); renderHome();
+    renderTop(); renderHome(); initSwipe();
+    /* Die anderen Module im Hintergrund laden, damit das Wischen sofort reagiert */
+    setTimeout(() => MODULE_ORDER.forEach(k => ensureModule(k).catch(() => {})), 1500);
+    let hinted = true; try { hinted = !!localStorage.getItem(SWIPE_HINT); } catch (e) {}
+    if (!hinted && MODULE_ORDER.length > 1) setTimeout(() => {
+      if (screen === "home") { toast("Tipp: Wisch nach links oder rechts, um das Modul zu wechseln.", 4200); try { localStorage.setItem(SWIPE_HINT, "1"); } catch (e) {} }
+    }, 1200);
   } catch (e) {
     $("#app").innerHTML = `<div class="boot-error"><h1>Laden fehlgeschlagen</h1><p>Die Lerndaten konnten nicht geladen werden. Prüfe die Internetverbindung und öffne die App erneut. Beim allerersten Start ist eine Verbindung nötig, danach funktioniert sie auch offline.</p></div>`;
     console.error(e);

@@ -4,7 +4,7 @@
    Wer eine Änderung sofort erzwingen will, erhöht die VERSION.
    Wichtig: GitHub Pages lässt Dateien 10 Minuten im Browser-Zwischenspeicher liegen.
    Deshalb wird hier immer mit cache:"reload" bzw. "no-cache" geladen, sonst landen alte Dateien im neuen Cache. */
-const VERSION = "v6";
+const VERSION = "v7";
 const CACHE = "fach-vokabeln-" + VERSION;
 const CORE = [
   "./", "index.html", "style.css", "app.js", "manifest.json",

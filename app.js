@@ -378,7 +378,7 @@ function showHelp(){
       ${row("Stimmt das?", "Aussage prüfen")}
       ${row("Lückensatz", "mit neuem Beispielsatz")}
       ${row("Erklärung → Begriff", "mit Verwechslungs-Begriffen")}
-      <p class="hp-note">Ab Profi gibt es nur noch diese Fragen. Beim Eintippen sind Groß- und Kleinschreibung, ein „to“ am Anfang, Bindestriche und Leerzeichen egal, und ein Tippfehler je angefangene 6 Buchstaben zählt noch als richtig. Begriffe, die du verwechselt hast, tauchen später als falsche Antworten auf. Situationen, Unterschiede und Aussagen gibt es nur für Begriffe, für die schon Zusatzinhalte da sind.</p></section>
+      <p class="hp-note">Ab Profi gibt es nur noch diese Fragen. Beim Eintippen sind Groß- und Kleinschreibung, ein „to“ am Anfang, Bindestriche und Leerzeichen egal, und ein Tippfehler je angefangene 6 Buchstaben zählt noch als richtig. Begriffe, die du verwechselt hast, tauchen später als falsche Antworten auf. Situationen, Unterschiede und Aussagen gibt es nur für Begriffe, für die schon Zusatzinhalte da sind. Statt zu tippen kannst du mit 🎤 den Begriff auch auf Englisch sagen; das zählt genauso (braucht Internet).</p></section>
     <section class="hp"><h3>Pro Tag</h3>
       ${row(`Tagespflicht: mindestens ${QUIZ_GOAL} abgeschlossene Quiz`, "sonst −" + QUIZ_PENALTY + " XP", "minus")}
       ${row("4. bis 9. Quiz des Tages", "je +25 XP", "plus")}
@@ -518,6 +518,24 @@ function distractors(t, field){
 
 /* ---------- Sprachausgabe ---------- */
 const canSpeak = "speechSynthesis" in window;
+/* Spracheingabe (Chrome: webkitSpeechRecognition). Liefert mehrere Varianten; ohne Unterstützung kein Mikrofon-Knopf */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let REC = null;
+function listen(lang, onText, onState){
+  if (!SR) return;
+  if (REC) { try { REC.abort(); } catch(e) {} REC = null; onState(false); return; }
+  const r = new SR(); REC = r;
+  r.lang = lang; r.maxAlternatives = 5; r.interimResults = false; r.continuous = false;
+  let got = false;
+  r.onresult = e => { got = true; const res = e.results[0]; onText(Array.from(res, a => a.transcript.trim()).filter(Boolean)); };
+  r.onerror = e => { got = true;
+    toast(e.error === "not-allowed" || e.error === "service-not-allowed" ? "Mikrofon ist blockiert. Bitte in den Chrome-Einstellungen erlauben."
+      : e.error === "network" ? "Spracheingabe braucht Internet. Bitte eintippen."
+      : e.error === "no-speech" ? "Nichts gehört. Nochmal probieren?" : e.error === "aborted" ? "" : "Spracheingabe hat nicht geklappt."); };
+  r.onend = () => { if (REC === r) REC = null; onState(false); if (!got) toast("Nichts gehört. Nochmal probieren?"); };
+  try { r.start(); onState(true); } catch(e) { REC = null; onState(false); }
+}
+const stopListen = () => { if (REC) { try { REC.abort(); } catch(e) {} REC = null; } };
 function speak(text, lang){
   if (!canSpeak) return;
   try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = lang || "en-US"; u.rate = .9; speechSynthesis.speak(u); } catch(e) {}
@@ -527,6 +545,7 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-spea
 
 /* ---------- UI-Effekte ---------- */
 function toast(msg){
+  if (!msg) return;
   const old = document.querySelector(".toast"); if (old) old.remove();
   const d = document.createElement("div"); d.className = "toast"; d.textContent = msg; document.body.appendChild(d);
   setTimeout(() => d.remove(), 2400);
@@ -842,8 +861,8 @@ function renderQuiz(){
   }).join("");
   let input = "";
   if (q.type === "type") input = a
-    ? `<div class="typed" style="--fb:var(${a.ok ? "--ok" : "--bad"})">${a.typed === null ? "Weiß ich nicht" : `Deine Antwort: <b>${esc(a.typed)}</b>`}${a.ok && !a.near ? "" : `<br>Richtig: <b>${esc(t.en)}</b>`}</div>`
-    : `<input class="type-in" id="typed" type="text" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="done" placeholder="Englischer Begriff" aria-label="Englischen Begriff eintippen">
+    ? `<div class="typed" style="--fb:var(${a.ok ? "--ok" : "--bad"})">${a.typed === null ? "Weiß ich nicht" : `Deine Antwort${a.spoken ? " (gesprochen)" : ""}: <b>${esc(a.typed)}</b>`}${a.ok && !a.near ? "" : `<br>Richtig: <b>${esc(t.en)}</b>`}</div>`
+    : `<div class="type-row"><input class="type-in" id="typed" type="text" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="done" placeholder="Englischer Begriff" aria-label="Englischen Begriff eintippen">${SR ? `<button class="btn mic" id="mic" aria-label="Englischen Begriff sprechen" aria-pressed="false">🎤</button>` : ""}</div>
        <div class="type-btns"><button class="btn" id="dunno">Weiß ich nicht</button><button class="btn primary" id="check">Prüfen</button></div>`;
   const last = Q.i === Q.items.length - 1;
   const showExpl = q.type === "def2en" || q.type === "en2def" || (q.type === "type" && !q.byDe) ? q.expl : t.expl;
@@ -880,7 +899,10 @@ function renderQuiz(){
       const go = () => { if (inp.value.trim()) answerTyped(inp.value); else inp.focus(); };
       inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); go(); } });
       $("#check").onclick = go;
-      $("#dunno").onclick = () => answerTyped(null);
+      $("#dunno").onclick = () => { stopListen(); answerTyped(null); };
+      const mic = $("#mic");
+      if (mic) mic.onclick = () => listen("en-US", alts => answerSpoken(alts),
+        on => { mic.classList.toggle("on", on); mic.setAttribute("aria-pressed", on); inp.placeholder = on ? "Ich höre zu …" : "Englischer Begriff"; });
       inp.focus({preventScroll:true});
     }
   }
@@ -906,11 +928,19 @@ function answerTyped(text){
   if (!r) return;
   settle(r.ok, {typed:text.trim(), near:!!r.near, wrongId:r.other || null});
 }
+/* Gesprochen: alle Varianten prüfen; richtig vor fast richtig vor Verwechslung vor falsch */
+function answerSpoken(alts){
+  if (!alts.length) return;
+  const t = Q.items[Q.i].t, rs = alts.map(x => ({x, r:checkTyped(t, x)})).filter(o => o.r);
+  if (!rs.length) return;
+  const best = rs.find(o => o.r.ok && !o.r.near) || rs.find(o => o.r.ok) || rs.find(o => o.r.other) || rs[0];
+  settle(best.r.ok, {typed:best.x, spoken:true, near:!!best.r.near, wrongId:best.r.other || null});
+}
 function settle(ok, info){
   const q = Q.items[Q.i], t = q.t, wasPro = isPro(t), wasMaster = isMaster(t);
   P.last = P.last || {}; P.last[t.id] = P.round || 0;
   P.hard = P.hard || {};
-  let gain, note = info.near ? `Fast richtig: „${info.typed}“, richtig geschrieben „${t.en}“.` : "";
+  let gain, note = info.near ? (info.spoken ? `Fast richtig: verstanden habe ich „${info.typed}“, gemeint ist „${t.en}“.` : `Fast richtig: „${info.typed}“, richtig geschrieben „${t.en}“.`) : "";
   const add = s => { note = note ? note + " " + s : s; };
   if (ok) {
     Q.combo++; Q.best = Math.max(Q.best, Q.combo); Q.right++; setFlag(t, false);
@@ -938,9 +968,10 @@ function settle(ok, info){
     if (!Q.revealed && !q.full) { gain -= 2; add("Inklusive −2 XP, weil ohne „Ganz anzeigen“ geantwortet."); }
   }
   Q.xp += gain; addXP(gain);
-  Q.answered = {pick:info.pick, typed:info.typed, near:info.near, ok, gain, note, wasPro, wasMaster, at:Date.now()}; save(); renderQuiz();
+  Q.answered = {pick:info.pick, typed:info.typed, spoken:!!info.spoken, near:info.near, ok, gain, note, wasPro, wasMaster, at:Date.now()}; save(); renderQuiz();
 }
 function nextQuestion(){
+  stopListen();
   if (Q.i === Q.items.length - 1) return renderQuizDone();
   Q.i++; Q.answered = null; Q.hint = false; Q.revealed = false; renderQuiz(); window.scrollTo(0,0);
 }

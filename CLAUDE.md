@@ -13,8 +13,9 @@ Bereiche: Quiz, Karteikarten, Nachschlagen. Dazu Ränge, Kalender, Punkte-Erklä
 
 ## Hosting und Updates
 
-- GitHub-Repository **`pwa`** (öffentlich), GitHub Pages aus Branch `main`, Ordner `/ (root)`.
-- Adresse: `https://<benutzername>.github.io/pwa/`
+- GitHub-Repository **`baumpinkler/FachVokabeln`** (öffentlich), GitHub Pages aus Branch `main`, Ordner `/ (root)`.
+- Adresse: `https://baumpinkler.github.io/FachVokabeln/`
+- Claude kann das Repo selbst klonen (`git clone https://github.com/baumpinkler/FachVokabeln.git`); der Nutzer muss dafür nichts hochladen.
 - Update = geänderte Dateien im Repository hochladen („Add file → Upload files“).
 - `sw.js` → `VERSION` bei jeder Auslieferung erhöhen (`"v2"` → `"v3"` …), damit Handys die Änderung sofort übernehmen.
 - Alle Pfade sind relativ. Keine Build-Tools, keine Bibliotheken, kein Framework.
@@ -121,6 +122,71 @@ Weitere Schlüssel: `devvokabeln.module` (zuletzt offenes Modul), `lernapp.theme
 - Texte auf Deutsch (Österreich: Lehrling, Gehsteig, Stiegenhaus, Krankenstand), Gendern mit `:in`.
 - Fenster immer über `sheet(id)` + `openDialog(dlg)` öffnen, damit die Zurück-Taste funktioniert.
 - Testen: lokal mit `python3 -m http.server` im Projektordner und Playwright; `file://` funktioniert wegen `fetch` nicht.
+
+## Ausbau „Verstehen statt Auswendiglernen“ (in Arbeit)
+
+Ziel: Profi-Begriffe nicht mehr an immer denselben Texten wiedererkennen, sondern anwenden und abgrenzen. Umsetzung in **getrennten Chats**: zuerst ein Code-Chat, dann ein Chat pro Kategorie für die Inhalte. Jeder Chat klont das Repo, liest diese Datei und hakt seinen Schritt unten im Status ab.
+
+### Schritt 1: Code-Chat (wirkt für alle Module)
+
+Dateien: `app.js`, `style.css`, `sw.js`. Moduldateien nie komplett lesen.
+
+1. **Schwierigkeit nach Lernstand** (`makeQuestion`): Box 0–4 wie bisher. Ab Box 5 (Profi) nur noch schwere Fragearten: `type` (eintippen), `sit`, `conf`, `tf`, `cloze` mit Zusatzsatz, `def2en` mit Verwechslungs-Ablenkern. Fehlen für einen Begriff Zusatzinhalte, nur die vorhandenen schweren Arten verwenden.
+2. **Eintippen** (`type`): Erklärung oder deutsches Wort wird gezeigt, englischer Begriff wird eingetippt. Toleranz: Groß/Klein, führendes „to “, Bindestrich/Leerzeichen egal; Levenshtein-Abstand ≤ 1 je angefangene 6 Buchstaben zählt als richtig (Hinweis „fast richtig: …“). Eingabefeld mit `autocapitalize="off" autocorrect="off" spellcheck="false"`, Enter bestätigt. Button „Weiß ich nicht“ = falsch.
+3. **Ablenker aus eigenen Fehlern**: bei falscher Antwort Paar speichern in `P.mix = {id: {andereId: anzahl}}`. `distractors` nimmt für Profi-Begriffe zuerst diese, dann `conf`-Partner aus der Zusatzdatei, dann wie bisher.
+4. **Meister-Regel**: Box 15 nur, wenn seit dem letzten Fehler mindestens 3 richtige Antworten aus `type`, `sit` oder `conf` dabei waren (`P.hard = {id: anzahl}`, wird bei Fehler auf 0 gesetzt). Sonst bleibt der Begriff auf Box 14, bis das erfüllt ist.
+5. **Neue Fragearten anzeigen**: `sit` (Situation → welcher Begriff? 5 Antworten), `conf` („Was unterscheidet A von B?“ → richtige Unterschied-Aussage gegen 3 falsche aus anderen Paaren), `tf` (Aussage → „Stimmt“ / „Stimmt nicht“, danach Begründung). Nach jeder Antwort wie bisher Erklärung und Beispielsatz zeigen.
+6. **Punkte**: wie bisher (+5 / −2 / Profi −10). Ausnahme `tf`: richtig +3, falsch −2 (Raten bringt sonst zu viel). Hilfe-Fenster (`showHelp`) um die neuen Fragearten und die Meister-Regel ergänzen.
+7. **Zusatzdateien laden**: Pfad `modules/extra/<modul-key>/<kategorie-key>.json`, beim Quizstart nur für aktive Kategorien per `fetch`, fehlende Dateien (404) still ignorieren. Im Speicher pro Modul zwischenhalten. `sw.js`: nichts vorab laden, der Fetch-Handler cacht sie beim ersten Abruf.
+8. Testdaten für 3–5 Begriffe nur lokal anlegen, **nicht** ausliefern. `VERSION` erhöhen, Änderungsprotokoll ergänzen.
+
+### Schritt 2: Inhalte-Chats (nur IT & Scrum, ein Chat pro Kategorie)
+
+Ablauf: Repo klonen, per Skript nur die Begriffe der Kategorie auslesen (Index 1, 2, 3, 6, 7 – Begriff, Deutsch, Erklärungen), Inhalte in Blöcken von ca. 25 Begriffen schreiben, Datei per Skript prüfen (siehe unten), nur `modules/extra/dev/<kategorie>.json` und diese Datei (Status abhaken) ausliefern. **Keine** `VERSION`-Erhöhung nötig.
+
+**Dateiformat** `modules/extra/dev/<kategorie>.json`:
+```json
+{"format":"fachvokabeln-extra","version":1,"module":"dev","cat":"net",
+ "terms":{
+  "latency":{
+   "ex":[["High latency made every video call stutter.","Durch die hohe Latenz hat jeder Videocall geruckelt."],["…","…"]],
+   "sit":["Situation 1","Situation 2","Situation 3"],
+   "conf":[["bandwidth","Latenz ist die Verzögerung pro Paket, Bandbreite die Datenmenge pro Sekunde."]],
+   "tf":[[false,"Mehr Bandbreite senkt automatisch die Latenz.","Die Leitung kann breit und trotzdem langsam im Antworten sein."],[true,"…","…"]]
+  }}}
+```
+Schlüssel in `terms` = Begriffs-ID wie in `buildTerms` (Kleinbuchstaben, Sonderzeichen → `-`).
+
+**Regeln für die Inhalte**
+- `ex`: genau 2 neue Satzpaare (englisch, deutsch). Englischer Satz enthält den Begriff wörtlich (ohne „to “), anders als der vorhandene Beispielsatz. Deutsch: österreichischer Arbeitsalltag.
+- `sit`: genau 3 Situationen auf Deutsch, je 2–3 Sätze, aus dem österreichischen Arbeitsalltag (Lehrling, Kolleg:in, Kund:in, Daily, Krankenstand …). Enthalten **weder** den englischen Begriff **noch** die deutsche Übersetzung oder deren Wortstamm. Keine Frage am Ende (die App fragt „Welcher Begriff passt?“). Die Situation muss eindeutig sein, auch gegenüber naheliegenden Begriffen derselben Kategorie. Die drei Situationen zeigen verschiedene Blickwinkel (Ursache, Folge, Einsatz).
+- `conf`: 1–2 Verwechslungspartner (ID muss im Modul existieren, darf aus anderer Kategorie sein) mit **einem** Satz zum Unterschied, in dem beide Begriffe vorkommen dürfen. Gibt es keinen sinnvollen Partner, leeres Array.
+- `tf`: genau 2 Aussagen auf Deutsch, eine wahr, eine falsch. Die falsche greift eine **typische Fehlvorstellung** auf, nicht etwas offensichtlich Absurdes. Begründung ein Satz. Hier darf der Begriff vorkommen.
+- Gendern mit `:in`, österreichische Wörter, fachlich korrekt und passend zu den vorhandenen Erklärungen.
+
+**Prüfskript vor der Auslieferung** (muss ohne Fehler laufen): jede Begriffs-ID der Kategorie vorhanden; `ex` = 2 Paare und englischer Satz enthält den Begriff; `sit` = 3 und keine enthält Begriff oder deutsche Übersetzung (ohne Artikel, Groß/Klein egal); `conf`-IDs existieren im Modul; `tf` = 2 mit genau einem `true`; gültiges JSON.
+
+### Status
+
+| Schritt | Begriffe | Erledigt |
+|---|---|---|
+| Code-Chat | – | ☐ |
+| `code` Programmiergrundlagen | 122 | ☐ |
+| `oop` Objektorientierung & Muster | 84 | ☐ |
+| `algo` Algorithmen & Datenstrukturen | 74 | ☐ |
+| `web` Web, UI & Apps | 105 | ☐ |
+| `arch` Architektur & APIs | 103 | ☐ |
+| `data` Datenbanken & Daten | 90 | ☐ |
+| `net` Netzwerk | 80 | ☐ |
+| `sec` IT-Sicherheit | 92 | ☐ |
+| `ops` Betrieb, Cloud & DevOps | 104 | ☐ |
+| `git` Git & Werkzeuge | 76 | ☐ |
+| `test` Testen & Qualität | 81 | ☐ |
+| `ai` KI & Machine Learning | 66 | ☐ |
+| `scrum` Scrum & Agile | 96 | ☐ |
+| `pm` Projektmanagement | 104 | ☐ |
+| `talk` Kommunikation im Job | 125 | ☐ |
+| `it` IT-Alltag & Hardware | 105 | ☐ |
 
 ## Änderungsprotokoll
 

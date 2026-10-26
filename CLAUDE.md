@@ -191,7 +191,7 @@ Schlüssel in `terms` = Begriffs-ID wie in `buildTerms` (Kleinbuchstaben, Sonder
 | `ai` KI & Machine Learning | 66 | ☐ |
 | `scrum` Scrum & Agile | 96 | ☐ |
 | `pm` Projektmanagement | 104 | ☐ |
-| `talk` Kommunikation im Job | 125 | ☐ |
+| `talk` Kommunikation im Job | 125 | ☑ |
 | `it` IT-Alltag & Hardware | 105 | ☐ |
 
 ## Änderungsprotokoll

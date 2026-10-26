@@ -2,7 +2,7 @@
    Strategie: Antwort sofort aus dem Speicher, im Hintergrund aktualisieren.
    Nach einem Upload neuer Dateien sieht man die Änderungen beim übernächsten Öffnen.
    Wer eine Änderung sofort erzwingen will, erhöht die VERSION. */
-const VERSION = "v2";
+const VERSION = "v3";
 const CACHE = "fach-vokabeln-" + VERSION;
 const CORE = [
   "./", "index.html", "style.css", "app.js", "manifest.json",

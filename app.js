@@ -472,6 +472,8 @@ function confetti(){
 }
 
 /* ---------- Kopfzeile ---------- */
+/* Zahlen mit Tausenderpunkt, z. B. 1.507 */
+function num(n){ return Number(n).toLocaleString("de-DE"); }
 function renderTop(){
   const L = levelInfo(P.xp);
   const dayXp = P.day === today() ? P.dayXp : 0;
@@ -485,7 +487,7 @@ function renderTop(){
     <button class="rank" id="rankBtn" aria-haspopup="dialog" title="Alle Ränge anzeigen">
       <div class="rank-name">${esc(L.name)} <span class="rank-more" aria-hidden="true">›</span></div>
       <div class="xpbar" role="progressbar" aria-valuenow="${Math.round(L.pct)}" aria-valuemin="0" aria-valuemax="100" aria-label="Fortschritt zum nächsten Level"><i style="width:${L.pct}%"></i></div>
-      <div class="xp-text">${P.xp} XP${L.next ? " · noch " + (L.next - P.xp) + " bis zum nächsten Level" : " · Höchstes Level erreicht"}</div>
+      <div class="xp-text">${num(P.xp)} XP${L.next ? " · noch " + num(L.next - P.xp) + " bis " + esc(levels()[L.i + 1][1]) : " · höchster Rang"}</div>
     </button>
     <button class="badge" id="calBtn" aria-haspopup="dialog" title="Kalender öffnen · Tagespflicht: ${QUIZ_GOAL} Quiz, sonst −${QUIZ_PENALTY} XP"><div class="ring" style="--p:${pct}"><span>${Math.min(qd, 99)}/${QUIZ_GOAL}</span></div>Quiz heute</button>`;
   $("#top").querySelectorAll("[data-mod]").forEach(b => b.onclick = () => switchModule(b.dataset.mod));
@@ -519,25 +521,37 @@ function renderHome(fromPop){
   screen = "home";
   setFocus(false); dailyCheck(); renderTop();
   const all = TERMS.length, known = TERMS.filter(isPro).length, masters = TERMS.filter(isMaster).length, started = TERMS.filter(seen).length;
+  const pc = n => (n / all * 100).toFixed(2) + "%";
+  const active = TERMS.filter(t => P.cats.includes(t.cat)).length;
   const rows = Object.entries(CATS).map(([k,c]) => {
-    const ts = TERMS.filter(t => t.cat === k), m = ts.filter(isPro).length;
-    return `<div class="mrow" style="--c:${c.c}"><div>${esc(c.name)}<div class="mbar"><i style="width:${m/ts.length*100}%"></i></div></div><div class="mnum">${m} / ${ts.length}</div></div>`;
+    const ts = TERMS.filter(t => t.cat === k), m = ts.filter(isPro).length, on = P.cats.includes(k);
+    return `<button class="trow" style="--c:${c.c}" aria-pressed="${on}" data-cat="${k}">
+      <span class="tbox" aria-hidden="true"></span>
+      <span class="tname">${esc(c.name)}</span>
+      <span class="tnum">${m} / ${ts.length}</span>
+      <span class="tbar" aria-hidden="true"><i style="width:${m/ts.length*100}%"></i></span></button>`;
   }).join("");
   const allOn = P.cats.length === Object.keys(CATS).length;
   app.innerHTML = `
     <h1>${esc(MOD.name)}</h1>
-    <p class="lead">${known} von ${all} Begriffen sitzen, davon ${masters} als gemeisterte Profi-Begriffe. ${started} hast du schon gesehen. Ein Begriff sitzt, wenn du ihn im Quiz fünfmal richtig hattest. Dann wird er zum Profi-Begriff und braucht zehn richtige Antworten in Folge; ein Fehler setzt diesen Fortschritt auf null.</p>
+    <div class="stand" role="img" aria-label="${num(known)} von ${num(all)} Begriffen sitzen, ${num(masters)} davon gemeistert, ${num(started)} gesehen">
+      <div class="stand-bar"><i class="sb-master" style="width:${pc(masters)}"></i><i class="sb-pro" style="width:${pc(known - masters)}"></i><i class="sb-seen" style="width:${pc(started - known)}"></i></div>
+      <div class="stand-legend" aria-hidden="true">
+        <span><i class="sb-pro"></i><b>${num(known)}</b> von ${num(all)} sitzen</span>
+        <span><i class="sb-master"></i><b>${num(masters)}</b> gemeistert</span>
+        <span><i class="sb-seen"></i><b>${num(started)}</b> gesehen</span>
+      </div>
+    </div>
     ${P.penalty && P.penalty.on === today() ? `<div class="penalty" role="status">⚠️ ${esc(P.penalty.text)}</div>` : ""}
     <div class="modes">
       <button class="note mode" style="--c:var(--m2);--r:.9deg" data-go="quiz"><span class="emoji" aria-hidden="true">⚡</span><h2>Quiz</h2><p>10 Fragen mit je 5 Antworten, meist zuerst nur die Anfangsbuchstaben.</p></button>
       <button class="note mode" style="--c:var(--m1);--r:-1.2deg" data-go="cards"><span class="emoji" aria-hidden="true">🗂️</span><h2>Karteikarten</h2><p>Begriff ansehen, umdrehen, ehrlich einschätzen. Zum Üben, ohne XP.</p></button>
-      <button class="note mode" style="--c:var(--m3);--r:-.6deg" data-go="lex"><span class="emoji" aria-hidden="true">📖</span><h2>Nachschlagen</h2><p>Alle ${all} Begriffe mit Artikel, Erklärung und Beispielsätzen.</p></button>
+      <button class="note mode" style="--c:var(--m3);--r:-.6deg" data-go="lex"><span class="emoji" aria-hidden="true">📖</span><h2>Nachschlagen</h2><p>Alle ${num(all)} Begriffe mit Artikel, Erklärung und Beispielsätzen.</p></button>
     </div>
-    <div class="section-title">Themen zum Üben</div>
-    <div class="chips">${Object.entries(CATS).map(([k,c]) => `<button class="chip" style="--c:${c.c}" aria-pressed="${P.cats.includes(k)}" data-cat="${k}"><span class="dot"></span>${esc(c.name)}</button>`).join("")}
+    <div class="sec-head"><div class="section-title">Themen</div>
       <button class="chip-all" id="allcats">${allOn ? "Nur eines wählen" : "Alle auswählen"}</button></div>
-    <div class="section-title">Was schon sitzt</div>
-    <div class="mastery">${rows}</div>
+    <p class="sec-sub">Angehakte Themen kommen in Quiz und Karteikarten dran (${num(active)} Begriffe). Die Zahl zeigt, wie viele schon sitzen.</p>
+    <div class="topics">${rows}</div>
     <div class="section-title">Fortschritt sichern</div>
     <div class="backup-row"><button class="btn" id="expBtn">⬇️ Exportieren</button><button class="btn" id="impBtn">⬆️ Importieren</button></div>
     <p class="foot">${cloud ? "Dein Fortschritt wird in deinem Konto gespeichert." : "Dein Fortschritt wird auf diesem Gerät gespeichert."} Der Export enthält alle Module.</p>`;

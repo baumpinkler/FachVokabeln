@@ -128,3 +128,4 @@ Weitere Schlüssel: `devvokabeln.module` (zuletzt offenes Modul), `lernapp.theme
 |---|---|
 | v1 | Umbau zur PWA: Module als JSON, Service Worker, Manifest, Icons, Modulauswahl |
 | v2 | IT & Scrum mit violettem Farbschema |
+| v3 | Startseite: Lernstand als ein Balken statt Erklärtext; „Themen zum Üben“ und „Was schon sitzt“ zu einer Themenliste mit Häkchen und Fortschritt zusammengelegt; Kopf zeigt „noch X bis <nächster Rang>“; Zahlen mit Tausenderpunkt (`num`) |

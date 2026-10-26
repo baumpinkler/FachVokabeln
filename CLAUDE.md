@@ -179,7 +179,7 @@ Schlüssel in `terms` = Begriffs-ID wie in `buildTerms` (Kleinbuchstaben, Sonder
 | `code` Programmiergrundlagen | 122 | ☑ |
 | `oop` Objektorientierung & Muster | 84 | ☐ |
 | `algo` Algorithmen & Datenstrukturen | 74 | ☐ |
-| `web` Web, UI & Apps | 105 | ☐ |
+| `web` Web, UI & Apps | 105 | ☑ |
 | `arch` Architektur & APIs | 103 | ☐ |
 | `data` Datenbanken & Daten | 90 | ☐ |
 | `net` Netzwerk | 80 | ☐ |

@@ -1,8 +1,10 @@
 /* Service Worker: macht die App offline-fähig.
    Strategie: Antwort sofort aus dem Speicher, im Hintergrund aktualisieren.
    Nach einem Upload neuer Dateien sieht man die Änderungen beim übernächsten Öffnen.
-   Wer eine Änderung sofort erzwingen will, erhöht die VERSION. */
-const VERSION = "v3";
+   Wer eine Änderung sofort erzwingen will, erhöht die VERSION.
+   Wichtig: GitHub Pages lässt Dateien 10 Minuten im Browser-Zwischenspeicher liegen.
+   Deshalb wird hier immer mit cache:"reload" bzw. "no-cache" geladen, sonst landen alte Dateien im neuen Cache. */
+const VERSION = "v4";
 const CACHE = "fach-vokabeln-" + VERSION;
 const CORE = [
   "./", "index.html", "style.css", "app.js", "manifest.json",
@@ -13,11 +15,11 @@ const CORE = [
 self.addEventListener("install", event => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    await cache.addAll(CORE);
+    await cache.addAll(CORE.map(u => new Request(u, {cache: "reload"})));
     /* Alle Module gleich mitladen, damit sie auch offline verfügbar sind */
     try {
-      const idx = await (await fetch("modules/index.json", {cache: "no-cache"})).json();
-      await cache.addAll(idx.modules.map(m => "modules/" + m.file));
+      const idx = await (await fetch("modules/index.json", {cache: "reload"})).json();
+      await cache.addAll(idx.modules.map(m => new Request("modules/" + m.file, {cache: "reload"})));
     } catch (e) {}
     await self.skipWaiting();
   })());
@@ -40,7 +42,7 @@ self.addEventListener("fetch", event => {
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
     const cached = await cache.match(req, {ignoreSearch: sameOrigin});
-    const network = fetch(req).then(res => {
+    const network = fetch(req, sameOrigin ? {cache: "no-cache"} : undefined).then(res => {
       if (res && (res.ok || res.type === "opaque")) cache.put(req, res.clone());
       return res;
     }).catch(() => null);

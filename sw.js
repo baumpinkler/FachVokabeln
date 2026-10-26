@@ -4,7 +4,7 @@
    Wer eine Änderung sofort erzwingen will, erhöht die VERSION.
    Wichtig: GitHub Pages lässt Dateien 10 Minuten im Browser-Zwischenspeicher liegen.
    Deshalb wird hier immer mit cache:"reload" bzw. "no-cache" geladen, sonst landen alte Dateien im neuen Cache. */
-const VERSION = "v5";
+const VERSION = "v6";
 const CACHE = "fach-vokabeln-" + VERSION;
 const CORE = [
   "./", "index.html", "style.css", "app.js", "manifest.json",
@@ -32,6 +32,8 @@ self.addEventListener("activate", event => {
   })());
 });
 
+/* Zusatzdateien (modules/extra/…) werden nicht vorab geladen: der Fetch-Handler cacht sie beim ersten Abruf.
+   Fehlende Dateien (404) landen nicht im Cache, die App ignoriert sie still. */
 self.addEventListener("fetch", event => {
   const req = event.request;
   if (req.method !== "GET") return;

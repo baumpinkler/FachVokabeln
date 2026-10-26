@@ -14,7 +14,7 @@ function buildTerms(raw){
     return t;
   });
 }
-let MODKEY = "dev", MOD, CATS, TERMS;
+let MODKEY = "dev", MOD, CATS, TERMS, BYID = {};
 
 const levels = () => MOD.levels;
 const DAILY_GOAL = 50;
@@ -45,7 +45,7 @@ const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ---------- Fortschritt (pro Modul getrennt) ---------- */
 const MODULE_KEY = "devvokabeln.module";
-function freshProgress(){ return {xp:0, boxes:{}, streak:0, lastDay:null, day:null, dayXp:0, cats:Object.keys(CATS), flags:{}, quizLog:{}, xpLog:{}, penaltyLog:{}, checkedUntil:null, updatedAt:0}; }
+function freshProgress(){ return {xp:0, boxes:{}, streak:0, lastDay:null, day:null, dayXp:0, cats:Object.keys(CATS), flags:{}, quizLog:{}, xpLog:{}, penaltyLog:{}, checkedUntil:null, updatedAt:0, mix:{}, hard:{}}; }
 function fixCats(){ P.cats = (P.cats || []).filter(k => CATS[k]); if (!P.cats.length) P.cats = Object.keys(CATS); }
 let P;
 let cloudBase = null, cloudRef = null, saveTimer = null, cloud = false;
@@ -73,6 +73,7 @@ function loadModule(key){
   MODKEY = MODULES[key] && MODULES[key].raw ? key : MODULE_ORDER.find(k => MODULES[k].raw); MOD = MODULES[MODKEY]; CATS = MOD.cats;
   document.documentElement.dataset.mod = MODKEY; applyTheme(MOD.theme);
   TERMS = MOD.terms || (MOD.terms = buildTerms(MOD.raw));
+  BYID = MOD.byId || (MOD.byId = Object.fromEntries(TERMS.map(t => [t.id, t])));
   P = freshProgress();
   try { const s = localStorage.getItem(MOD.ls); if (s) P = Object.assign(freshProgress(), JSON.parse(s)); } catch(e) {}
   fixCats();
@@ -85,6 +86,55 @@ async function switchModule(key){
   try { await ensureModule(key); } catch (e) { toast("Modul konnte nicht geladen werden. Bist du offline?"); return; }
   loadModule(key); renderTop(); renderHome(); window.scrollTo(0,0);
   syncCloud();
+}
+/* ---------- Zusatzinhalte: modules/extra/<modul>/<kategorie>.json ----------
+   Werden beim Quizstart nur für aktive Kategorien geladen und pro Modul im Speicher gehalten.
+   Fehlende Dateien (404) werden still ignoriert und nicht erneut angefragt. */
+async function loadExtras(){
+  const m = MOD, key = MODKEY;
+  m.extra = m.extra || {}; m.extraDone = m.extraDone || {};
+  const todo = P.cats.filter(c => !m.extraDone[c]);
+  if (!todo.length) return;
+  const one = async c => {
+    try {
+      const r = await fetch("modules/extra/" + key + "/" + c + ".json");
+      if (r.status === 404) { m.extraDone[c] = true; return; }
+      if (!r.ok) return;
+      const d = await r.json();
+      if (d && d.terms && typeof d.terms === "object") Object.assign(m.extra, d.terms);
+      m.extraDone[c] = true;
+    } catch (e) {}                                   /* offline und nicht im Cache: beim nächsten Quiz wieder versuchen */
+  };
+  /* Nicht länger als 2,5 s warten; was später eintrifft, gilt ab dem nächsten Quiz */
+  await Promise.race([Promise.all(todo.map(one)), new Promise(res => setTimeout(res, 2500))]);
+}
+const arr = a => Array.isArray(a) ? a : [];
+/* Geprüfte Zusatzinhalte eines Begriffs (fehlerhafte Einträge fallen still weg) */
+function extraOf(t){
+  const x = (MOD.extra && MOD.extra[t.id]) || {};
+  return {
+    ex:   arr(x.ex).filter(e => Array.isArray(e) && typeof e[0] === "string" && typeof e[1] === "string" && termRe(t).test(e[0])),
+    sit:  arr(x.sit).filter(v => typeof v === "string" && v.trim()),
+    conf: arr(x.conf).filter(c => Array.isArray(c) && BYID[c[0]] && c[0] !== t.id && typeof c[1] === "string" && c[1].trim()),
+    tf:   arr(x.tf).filter(f => Array.isArray(f) && typeof f[0] === "boolean" && typeof f[1] === "string" && f[1].trim())
+  };
+}
+/* Schreibweisen eines Begriffs (englisch und deutsche Hauptwörter ohne Artikel) zum Ausblenden */
+const LTR = "A-Za-zÄÖÜäöüß0-9";
+function nameVariants(t){
+  const v = [t.en.replace(/^to /, "")];
+  for (let d of t.de.split(/\s+\/\s+/)) {
+    d = d.replace(/\([^)]*\)/g, "").replace(/^(der|die|das)([\/:](der|die|das))?\s+/i, "").replace(/:in(nen)?$/, "").trim();
+    if (d.length >= 3) v.push(d);
+  }
+  return v;
+}
+function maskNames(text, pairs){
+  const list = [];
+  for (const [t, rep] of pairs) for (const v of nameVariants(t)) list.push([v, rep]);
+  list.sort((a, b) => b[0].length - a[0].length);
+  for (const [v, rep] of list) text = text.replace(new RegExp("(^|[^" + LTR + "])(" + escRe(v) + ")(:innen|:in|es|en|s|n|e)?(?![" + LTR + "])", "gi"), "$1" + rep);
+  return text;
 }
 function save(){
   P.updatedAt = Date.now();
@@ -316,9 +366,19 @@ function showHelp(){
       ${row("Richtige Antwort", "+5 XP", "plus")}
       ${row("Falsche Antwort", "−2 XP", "minus")}
       ${row("Falsche Antwort bei einem Profi-Begriff ⭐", "−10 XP", "minus")}
+      ${row("„Stimmt das?“ richtig", "+3 XP", "plus")}
+      ${row("„Stimmt das?“ falsch (auch bei Profi-Begriffen)", "−2 XP", "minus")}
       ${row("„Ganz anzeigen“ antippen", "−1 XP", "minus")}
       ${row("Falsch, ohne vorher „Ganz anzeigen“ zu nutzen", "zusätzlich −2 XP", "minus")}
-      <p class="hp-note">Bei „Welche Erklärung passt?“ sind die Antworten immer ganz sichtbar, daher gibt es dort keinen Zusatzabzug.</p></section>
+      <p class="hp-note">Bei „Welche Erklärung passt?“, „Was unterscheidet A von B?“, „Stimmt das?“ und beim Eintippen sind die Antworten immer ganz sichtbar, daher gibt es dort keinen Zusatzabzug.</p></section>
+    <section class="hp"><h3>Schwere Fragen für Profi-Begriffe ⭐</h3>
+      ${row("Eintippen", "Begriff selbst schreiben")}
+      ${row("Situation", "welcher Begriff passt?")}
+      ${row("Unterschied", "A und B auseinanderhalten")}
+      ${row("Stimmt das?", "Aussage prüfen")}
+      ${row("Lückensatz", "mit neuem Beispielsatz")}
+      ${row("Erklärung → Begriff", "mit Verwechslungs-Begriffen")}
+      <p class="hp-note">Ab Profi gibt es nur noch diese Fragen. Beim Eintippen sind Groß- und Kleinschreibung, ein „to“ am Anfang, Bindestriche und Leerzeichen egal, und ein Tippfehler je angefangene 6 Buchstaben zählt noch als richtig. Begriffe, die du verwechselt hast, tauchen später als falsche Antworten auf. Situationen, Unterschiede und Aussagen gibt es nur für Begriffe, für die schon Zusatzinhalte da sind.</p></section>
     <section class="hp"><h3>Pro Tag</h3>
       ${row(`Tagespflicht: mindestens ${QUIZ_GOAL} abgeschlossene Quiz`, "sonst −" + QUIZ_PENALTY + " XP", "minus")}
       ${row("4. bis 9. Quiz des Tages", "je +25 XP", "plus")}
@@ -328,8 +388,10 @@ function showHelp(){
     <section class="hp"><h3>Lernstand eines Begriffs</h3>
       ${row("Fünfmal richtig beantwortet", "sitzt → Profi-Begriff ⭐")}
       ${row("Profi-Begriff zehnmal in Folge richtig", "gemeistert 🏆")}
+      ${row("Für 🏆 außerdem", "3 richtige schwere Antworten")}
       ${row("Fehler bei einem Profi-Begriff", "Profi-Fortschritt auf 0")}
-      <p class="hp-note">Karteikarten bringen keine XP und ändern den Lernstand nicht. Mit „Nochmal üben 📌“ kommt ein Begriff im nächsten Quiz bevorzugt dran.</p></section>
+      <p class="hp-note">Karteikarten bringen keine XP und ändern den Lernstand nicht. Mit „Nochmal üben 📌“ kommt ein Begriff im nächsten Quiz bevorzugt dran.</p>
+      <p class="hp-note">Meister-Regel: Seit dem letzten Fehler müssen mindestens 3 richtige Antworten beim Eintippen, bei einer Situation oder beim Unterschied dabei sein. Bis dahin bleibt der Begriff bei 9 / 10 stehen.</p></section>
     <section class="hp"><h3>Ränge</h3>
       ${row("Anzahl Ränge", "20")}
       ${row("Höchster Rang", "ab 50.000 XP")}
@@ -436,10 +498,19 @@ function distractors(t, field){
   const same = shuffle(TERMS.filter(c => c.cat === t.cat));
   const other = shuffle(TERMS.filter(c => c.cat !== t.cat));
   const out = [], used = new Set([keyLetter(t[field])]);
-  for (const c of same.concat(other)) {
+  let first = [];
+  if (isPro(t)) {
+    const m = (P.mix && P.mix[t.id]) || {};
+    const mixIds = Object.keys(m).sort((a, b) => m[b] - m[a]);
+    const confIds = extraOf(t).conf.map(c => c[0]);
+    /* auch Begriffe, die ihrerseits diesen Begriff als Verwechslungspartner nennen */
+    for (const [id, x] of Object.entries(MOD.extra || {})) if (arr(x && x.conf).some(c => Array.isArray(c) && c[0] === t.id)) confIds.push(id);
+    first = mixIds.concat(shuffle(confIds)).map(id => BYID[id]).filter(Boolean);
+  }
+  for (const c of first.concat(same, other)) {
     if (out.length >= 4) break;
     const k = keyLetter(c[field]);
-    if (c.id === t.id || clash(c) || used.has(k) || c[field] === t[field] || out.some(o => o[field] === c[field])) continue;
+    if (c.id === t.id || out.includes(c) || clash(c) || used.has(k) || c[field] === t[field] || out.some(o => o[field] === c[field])) continue;
     out.push(c); used.add(k);
   }
   return out;
@@ -631,27 +702,122 @@ function renderCardsDone(){
 }
 
 /* ---------- Quiz ---------- */
-let Q = null;
-function makeQuestion(t){
+let Q = null, quizBusy = false;
+const pickOne = a => a[Math.floor(Math.random() * a.length)];
+/* Meister-Regel: für 🏆 braucht es seit dem letzten Fehler mindestens HARD_NEED richtige Antworten aus diesen Fragearten */
+const HARD = ["type", "sit", "conf"], HARD_NEED = 3;
+const hardCount = t => (P.hard && +P.hard[t.id]) || 0;
+const termOpts = t => shuffle([t].concat(distractors(t, "en"))).map(o => ({id:o.id, label:o.en}));
+
+/* Lernstand 0–4: wie bisher */
+function easyQuestion(t){
   const types = ["def2en", "en2def"];
   if (!t.giveaway) types.push("en2de","de2en");
   if (cloze(t)) types.push("cloze","cloze");
-  const type = types[Math.floor(Math.random() * types.length)];
+  const type = pickOne(types);
   const field = type === "en2de" ? "de" : "en";
-  const pick = o => o.expls[Math.floor(Math.random() * o.expls.length)];
+  const pick = o => pickOne(o.expls);
   const expl = pick(t);
   /* en2def: Begriff wird gezeigt, die passende Erklärung ist zu wählen – Antworten sind immer vollständig sichtbar */
   if (type === "en2def") return {t, type, expl, full:true,
     opts:shuffle([t].concat(distractors(t, "en"))).map(o => ({id:o.id, label:o.id === t.id ? expl : pick(o)})), answer:t.id};
   return {t, type, expl, opts:shuffle([t].concat(distractors(t, field))).map(o => ({id:o.id, label:o[field]})), answer:t.id};
 }
-function startQuiz(){
+/* Unterschied-Aussagen anderer Paare (gleiche Kategorie zuerst) als falsche Antworten */
+function otherConfs(t, p){
+  const out = [], seenPair = new Set();
+  for (const [id, x] of Object.entries(MOD.extra || {})) {
+    const a = BYID[id]; if (!a || a === t || a === p) continue;
+    for (const c of arr(x && x.conf)) {
+      const b = Array.isArray(c) && BYID[c[0]];
+      if (!b || b === t || b === p || b === a || typeof c[1] !== "string") continue;
+      const k = [a.id, b.id].sort().join("|"); if (seenPair.has(k)) continue; seenPair.add(k);
+      out.push({a, b, text:c[1], same:a.cat === t.cat});
+    }
+  }
+  const s = shuffle(out); return s.filter(o => o.same).concat(s.filter(o => !o.same));
+}
+/* Schwere Fragearten ab Lernstand 5 (Profi); fehlen Zusatzinhalte, bleiben Eintippen und Erklärung mit Verwechslungs-Ablenkern */
+function hardQuestion(t, type){
+  const x = extraOf(t);
+  if (type === "type") {
+    const byDe = !t.giveaway && Math.random() < .5;
+    return {t, type, full:true, byDe, expl:pickOne(t.expls)};
+  }
+  if (type === "def2en") return {t, type, expl:pickOne(t.expls), opts:termOpts(t), answer:t.id};
+  if (type === "sit" && x.sit.length) return {t, type, sit:pickOne(x.sit), opts:termOpts(t), answer:t.id};
+  if (type === "cloze" && x.ex.length) return {t, type, ex:pickOne(x.ex), opts:termOpts(t), answer:t.id};
+  if (type === "tf" && x.tf.length) { const f = pickOne(x.tf);
+    return {t, type, tf:f, full:true, opts:[{id:"true", label:"Stimmt"}, {id:"false", label:"Stimmt nicht"}], answer:String(f[0])}; }
+  if (type === "conf" && x.conf.length) {
+    const [pid, text] = pickOne(x.conf), p = BYID[pid];
+    const wrong = [], labels = new Set([maskNames(text, [[t, "A"], [p, "B"]])]);
+    for (const o of otherConfs(t, p)) { if (wrong.length >= 3) break;
+      const l = maskNames(o.text, [[o.a, "A"], [o.b, "B"]]); if (labels.has(l)) continue; labels.add(l); wrong.push(l); }
+    if (wrong.length < 3) return null;
+    return {t, type, partner:p, conf:text, full:true, answer:"ok",
+      opts:shuffle([{id:"ok", label:[...labels][0]}].concat(wrong.map((l, i) => ({id:"x" + i, label:l}))))};
+  }
+  return null;
+}
+function hardTypes(t){
+  const x = extraOf(t), types = ["type", "type", "def2en"];
+  if (x.sit.length) types.push("sit", "sit");
+  if (x.conf.length) types.push("conf");
+  if (x.tf.length) types.push("tf");
+  if (x.ex.length) types.push("cloze");
+  /* Kurz vor 🏆 und Meister-Regel noch offen: nur Fragearten, die dafür zählen */
+  if (box(t) >= MAX_BOX - 1 && hardCount(t) < HARD_NEED) return types.filter(k => HARD.includes(k));
+  return types;
+}
+function makeQuestion(t){
+  if (!isPro(t)) return easyQuestion(t);
+  let types = hardTypes(t);
+  while (types.length) {
+    const type = pickOne(types), q = hardQuestion(t, type);
+    if (q) return q;
+    types = types.filter(k => k !== type);
+  }
+  return hardQuestion(t, "type");
+}
+async function startQuiz(){
+  if (quizBusy) return;
+  const key = MODKEY;
+  quizBusy = true;
+  try { await loadExtras(); } finally { quizBusy = false; }
+  if (key !== MODKEY) return;
   const ts = pickQuizTerms(10);
   if (ts.length < 5) { toast("Wähle Themen mit mindestens 5 Begriffen."); return; }
   P.round = (P.round || 0) + 1; save();
   Q = {items:ts.map(makeQuestion), i:0, combo:0, best:0, xp:0, right:0, missed:[], answered:null, hint:false, revealed:false, counted:false};
   screen = "quiz"; setFocus(true); navEnterScreen(); renderQuiz(); window.scrollTo(0,0);
 }
+/* Beispielsatz mit markiertem Begriff (Standard- oder Zusatzsatz) */
+const markTerm = (t, en) => esc(en).replace(termRe(t), "$1<mark>$2</mark>");
+
+/* ---------- Eintippen ---------- */
+const typeNorm = s => String(s).toLowerCase().normalize("NFKC").replace(/[’‘`´]/g, "'").trim().replace(/^to\s+/, "").replace(/[\s\-‐‑–—_]+/g, "");
+function lev(a, b){
+  if (a === b) return 0;
+  let prev = Array.from({length:b.length + 1}, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
+}
+/* Toleranz: Groß/Klein, „to “, Bindestrich/Leerzeichen egal; ≤ 1 Tippfehler je angefangene 6 Buchstaben */
+function checkTyped(t, text){
+  const got = typeNorm(text), want = typeNorm(t.en);
+  if (!got) return null;
+  if (got === want) return {ok:true};
+  const other = TERMS.find(c => c !== t && typeNorm(c.en) === got);
+  if (other) return {ok:false, other:other.id};     /* anderer echter Begriff = Verwechslung, nicht Tippfehler */
+  if (lev(got, want) <= Math.ceil(want.length / 6)) return {ok:true, near:true};
+  return {ok:false};
+}
+
 function renderQuiz(){
   const q = Q.items[Q.i], t = q.t, c = CATS[t.cat];
   let ask, body;
@@ -659,22 +825,38 @@ function renderQuiz(){
   else if (q.type === "de2en") { ask = "Wie heißt das auf Englisch?"; body = `<div class="q-big">${esc(t.de)}</div>`; }
   else if (q.type === "def2en") { ask = "Welcher Begriff ist gemeint?"; body = `<div class="q-mid">${esc(q.expl)}</div>`; }
   else if (q.type === "en2def") { ask = "Welche Erklärung passt?"; body = `<div class="q-big">${esc(t.en)}</div>${speakBtn(t.en)}`; }
-  else { ask = "Welches Wort fehlt im Satz?"; body = `<div class="q-mid">${esc(cloze(t))}</div><div class="q-hint">${Q.hint ? esc(clozeDe(t)) : `<button id="hint">Deutschen Satz zeigen</button>`}</div>`; }
+  else if (q.type === "type") { ask = q.byDe ? "Wie heißt das auf Englisch? Tipp es ein." : "Welcher Begriff ist gemeint? Tipp ihn ein.";
+    body = q.byDe ? `<div class="q-big">${esc(t.de)}</div>` : `<div class="q-mid">${esc(q.expl)}</div>`; }
+  else if (q.type === "sit") { ask = "Welcher Begriff passt?"; body = `<div class="q-mid">${esc(q.sit)}</div>`; }
+  else if (q.type === "tf") { ask = `Stimmt das? <span class="q-term">${esc(t.en)}</span>`; body = `<div class="q-mid">${esc(q.tf[1])}</div>`; }
+  else if (q.type === "conf") { ask = "Was unterscheidet A von B?";
+    body = `<div class="conf-pair"><div><b class="ab">A</b><span>${esc(t.en)}</span></div><div><b class="ab">B</b><span>${esc(q.partner.en)}</span></div></div>`; }
+  else { const en = q.ex ? q.ex[0] : t.exEn, de = q.ex ? maskNames(q.ex[1], [[t, "_____"]]) : clozeDe(t);
+    ask = "Welches Wort fehlt im Satz?"; body = `<div class="q-mid">${esc(en.replace(termRe(t), "$1_____"))}</div><div class="q-hint">${Q.hint ? esc(de) : `<button id="hint">Deutschen Satz zeigen</button>`}</div>`; }
   const a = Q.answered;
-  const opts = q.opts.map((o, k) => {
+  const opts = (q.opts || []).map((o, k) => {
     let cls = "opt";
     if (a) { if (o.id === q.answer) cls += " right"; else if (a.pick === k) cls += " wrong"; else cls += " dim"; }
     const full = a || Q.revealed || q.full;
-    return `<button class="${cls}${full ? "" : " short"}${q.full ? " long" : ""}" data-k="${k}" ${a ? 'aria-disabled="true"' : ""} aria-label="${esc(full ? o.label : "Antwort mit " + shortLabel(o.label))}">${esc(full ? o.label : shortLabel(o.label))}</button>`;
+    return `<button class="${cls}${full ? "" : " short"}${q.full && q.type !== "tf" ? " long" : ""}" data-k="${k}" ${a ? 'aria-disabled="true"' : ""} aria-label="${esc(full ? o.label : "Antwort mit " + shortLabel(o.label))}">${esc(full ? o.label : shortLabel(o.label))}</button>`;
   }).join("");
+  let input = "";
+  if (q.type === "type") input = a
+    ? `<div class="typed" style="--fb:var(${a.ok ? "--ok" : "--bad"})">${a.typed === null ? "Weiß ich nicht" : `Deine Antwort: <b>${esc(a.typed)}</b>`}${a.ok && !a.near ? "" : `<br>Richtig: <b>${esc(t.en)}</b>`}</div>`
+    : `<input class="type-in" id="typed" type="text" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="done" placeholder="Englischer Begriff" aria-label="Englischen Begriff eintippen">
+       <div class="type-btns"><button class="btn" id="dunno">Weiß ich nicht</button><button class="btn primary" id="check">Prüfen</button></div>`;
   const last = Q.i === Q.items.length - 1;
+  const showExpl = q.type === "def2en" || q.type === "en2def" || (q.type === "type" && !q.byDe) ? q.expl : t.expl;
+  const exEn = q.ex ? q.ex[0] : t.exEn, exDe = q.ex ? q.ex[1] : t.exDe;
   const fb = a ? `<div class="feedback tap-next" id="fbox" style="--fb:var(${a.ok ? "--ok" : "--bad"})">
       <h3>${a.ok ? `Richtig! +${a.gain} XP` : `Leider nicht. −${-a.gain} XP`}</h3>
       ${a.note ? `<p><b>${esc(a.note)}</b></p>` : ""}
+      ${q.type === "tf" ? `<p><b>Die Aussage ${q.tf[0] ? "stimmt" : "stimmt nicht"}.</b> ${esc(q.tf[2] || "")}</p>` : ""}
+      ${q.type === "conf" ? `<p><b>Unterschied:</b> ${esc(q.conf)}</p><p><b>${esc(q.partner.en)}</b> = ${esc(q.partner.de)}</p>` : ""}
       <p><b>${esc(t.en)}</b> = ${esc(t.de)}</p>
-      <p>${esc(q.type === "def2en" || q.type === "en2def" ? q.expl : t.expl)}</p>
-      <p class="fb-ex"><i>${highlight(t)}</i><br>${esc(t.exDe)}</p>
-      <div>${speakBtn(t.exEn, "Englisch")} ${speakBtn(t.exDe, "Deutsch", "de-DE")}</div>
+      <p>${esc(showExpl)}</p>
+      <p class="fb-ex"><i>${markTerm(t, exEn)}</i><br>${esc(exDe)}</p>
+      <div>${speakBtn(exEn, "Englisch")} ${speakBtn(exDe, "Deutsch", "de-DE")}</div>
     </div>
     <button class="btn primary wide" id="next">${last ? "Ergebnis ansehen" : "Weiter"}</button>` : "";
   app.innerHTML = `
@@ -687,12 +869,21 @@ function renderQuiz(){
       <div class="q-ask">${ask}</div>${body}
     </div>
     ${!a && !Q.revealed && !q.full ? `<div class="reveal-row"><button class="btn" id="reveal">Ganz anzeigen <span class="cost">−1 XP</span></button></div>` : ""}
-    <div class="opts">${opts}</div>${fb}`;
+    ${input}${opts ? `<div class="opts${q.type === "tf" ? " tf" : ""}">${opts}</div>` : ""}${fb}`;
   app.querySelector("[data-home]").onclick = () => { if (Q.xp || Q.i) save(); renderHome(); };
   const h = $("#hint"); if (h) h.onclick = () => { Q.hint = true; renderQuiz(); };
   const rv = $("#reveal"); if (rv) rv.onclick = () => { Q.revealed = true; Q.xp -= 1; addXP(-1); save(); renderQuiz(); };
-  if (!a) app.querySelectorAll(".opt").forEach(b => b.onclick = () => answer(+b.dataset.k));
-
+  if (!a) {
+    app.querySelectorAll(".opt").forEach(b => b.onclick = () => answer(+b.dataset.k));
+    const inp = $("#typed");
+    if (inp) {
+      const go = () => { if (inp.value.trim()) answerTyped(inp.value); else inp.focus(); };
+      inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); go(); } });
+      $("#check").onclick = go;
+      $("#dunno").onclick = () => answerTyped(null);
+      inp.focus({preventScroll:true});
+    }
+  }
   else {
     const n = $("#next"); n.onclick = nextQuestion; n.focus({preventScroll:true});
     /* Klick auf die Quizkarte = Weiter; Knöpfe in der Karte (Deutschen Satz zeigen, Anhören) behalten ihre Funktion */
@@ -704,27 +895,50 @@ function renderQuiz(){
   }
 }
 function answer(k){
-  const q = Q.items[Q.i], ok = q.opts[k].id === q.answer;
-  const t = q.t, wasPro = isPro(t), wasMaster = isMaster(t);
+  const q = Q.items[Q.i], o = q.opts[k], ok = o.id === q.answer;
+  /* Verwechslung merken: gewählter falscher Begriff, bei „Unterschied“ der Partner */
+  const wrongId = ok ? null : BYID[o.id] ? o.id : q.type === "conf" ? q.partner.id : null;
+  settle(ok, {pick:k, wrongId});
+}
+function answerTyped(text){
+  if (text === null) return settle(false, {typed:null});
+  const r = checkTyped(Q.items[Q.i].t, text);
+  if (!r) return;
+  settle(r.ok, {typed:text.trim(), near:!!r.near, wrongId:r.other || null});
+}
+function settle(ok, info){
+  const q = Q.items[Q.i], t = q.t, wasPro = isPro(t), wasMaster = isMaster(t);
   P.last = P.last || {}; P.last[t.id] = P.round || 0;
-  let gain, note = "";
+  P.hard = P.hard || {};
+  let gain, note = info.near ? `Fast richtig: „${info.typed}“, richtig geschrieben „${t.en}“.` : "";
+  const add = s => { note = note ? note + " " + s : s; };
   if (ok) {
     Q.combo++; Q.best = Math.max(Q.best, Q.combo); Q.right++; setFlag(t, false);
-    gain = 5;
+    gain = q.type === "tf" ? 3 : 5;
+    if (HARD.includes(q.type)) P.hard[t.id] = hardCount(t) + 1;
     if (!seen(t)) setBox(t, 0);
-    if (!isMaster(t)) setBox(t, box(t) + 1);
-    if (!wasPro && isPro(t)) { note = "Der Begriff sitzt und ist jetzt ein Profi-Begriff ⭐"; toast("Neuer Profi-Begriff ⭐"); }
-    else if (wasPro && !wasMaster && isMaster(t)) { note = "Profi-Begriff gemeistert! 🏆"; confetti(); }
-    else if (wasPro && !isMaster(t)) note = `Profi-Fortschritt: ${proProg(t)} / ${PRO_GOAL}`;
-    else if (!wasPro) note = `Lernstand: ${box(t)} / ${SIT}`;
+    let blocked = false;
+    if (!isMaster(t)) {
+      let nb = box(t) + 1;
+      if (nb >= MAX_BOX && hardCount(t) < HARD_NEED) { nb = MAX_BOX - 1; blocked = true; }
+      setBox(t, nb);
+    }
+    if (!wasPro && isPro(t)) { add("Der Begriff sitzt und ist jetzt ein Profi-Begriff ⭐"); toast("Neuer Profi-Begriff ⭐"); }
+    else if (wasPro && !wasMaster && isMaster(t)) { add("Profi-Begriff gemeistert! 🏆"); confetti(); }
+    else if (blocked) { const n = HARD_NEED - hardCount(t);
+      add(`Profi-Fortschritt: ${proProg(t)} / ${PRO_GOAL}. Für 🏆 fehl${n === 1 ? "t" : "en"} noch ${n} richtige ${n === 1 ? "schwere Antwort" : "schwere Antworten"} (Eintippen, Situation, Unterschied).`); }
+    else if (wasPro && !isMaster(t)) add(`Profi-Fortschritt: ${proProg(t)} / ${PRO_GOAL}`);
+    else if (!wasPro) add(`Lernstand: ${box(t)} / ${SIT}`);
   } else {
     Q.combo = 0; Q.missed.push(t);
-    if (wasPro) { gain = -10; setBox(t, SIT); note = `Profi-Fortschritt zurück auf 0 / ${PRO_GOAL}.`; }
+    P.hard[t.id] = 0;
+    if (info.wrongId) { P.mix = P.mix || {}; const m = P.mix[t.id] = P.mix[t.id] || {}; m[info.wrongId] = (m[info.wrongId] || 0) + 1; }
+    if (wasPro) { gain = q.type === "tf" ? -2 : -10; setBox(t, SIT); add(`Profi-Fortschritt zurück auf 0 / ${PRO_GOAL}.`); }
     else { gain = -2; if (!seen(t)) setBox(t, 0); }
-    if (!Q.revealed && !q.full) { gain -= 2; note = (note ? note + " " : "") + "Inklusive −2 XP, weil ohne „Ganz anzeigen“ geantwortet."; }
+    if (!Q.revealed && !q.full) { gain -= 2; add("Inklusive −2 XP, weil ohne „Ganz anzeigen“ geantwortet."); }
   }
   Q.xp += gain; addXP(gain);
-  Q.answered = {pick:k, ok, gain, note, wasPro, wasMaster, at:Date.now()}; save(); renderQuiz();
+  Q.answered = {pick:info.pick, typed:info.typed, near:info.near, ok, gain, note, wasPro, wasMaster, at:Date.now()}; save(); renderQuiz();
 }
 function nextQuestion(){
   if (Q.i === Q.items.length - 1) return renderQuizDone();

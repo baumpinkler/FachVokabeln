@@ -176,7 +176,7 @@ Schlüssel in `terms` = Begriffs-ID wie in `buildTerms` (Kleinbuchstaben, Sonder
 | Schritt | Begriffe | Erledigt |
 |---|---|---|
 | Code-Chat | – | ☑ (v6) |
-| `code` Programmiergrundlagen | 122 | ☐ |
+| `code` Programmiergrundlagen | 122 | ☑ |
 | `oop` Objektorientierung & Muster | 84 | ☐ |
 | `algo` Algorithmen & Datenstrukturen | 74 | ☐ |
 | `web` Web, UI & Apps | 105 | ☐ |

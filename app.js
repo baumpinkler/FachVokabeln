@@ -277,6 +277,7 @@ function dailyCheck(){
   const y = yesterday();
   if (!P.checkedUntil) { P.checkedUntil = y; save(); return; }
   if (P.checkedUntil === y || parseDay(P.checkedUntil) >= parseDay(y)) return;
+  if (allMastered()) { P.checkedUntil = y; save(); return; }   /* nichts mehr zu lernen: keine Tagespflicht */
   const d = parseDay(P.checkedUntil); d.setDate(d.getDate() + 1);
   const missed = [];
   for (let n = 0; n < 400 && d <= parseDay(y); n++, d.setDate(d.getDate() + 1)) {
@@ -480,6 +481,14 @@ function showHelp(){
       ${row("Fehler bei einem Profi-Begriff", "Profi-Fortschritt auf 0")}
       <p class="hp-note">Karteikarten bringen keine XP und ändern den Lernstand nicht. Mit „Nochmal üben 📌“ kommt ein Begriff im nächsten Quiz bevorzugt dran.</p>
       <p class="hp-note">Meister-Regel: Seit dem letzten Fehler müssen mindestens 3 richtige Antworten beim Eintippen, bei einer Situation oder beim Unterschied dabei sein. Bis dahin bleibt der Begriff bei 9 / 10 stehen.</p></section>
+    <section class="hp"><h3>Meisterrunde 🏆</h3>
+      ${row("Gemeisterte Begriffe", "kommen im Quiz nicht mehr dran")}
+      ${row("Weniger als 3 offene Begriffe", "werden bis 10 Fragen wiederholt")}
+      ${row("Ganzes Thema gemeistert", "nur noch als Meisterrunde")}
+      ${row("Zeit", MASTER_SEC + " Sekunden pro Begriff")}
+      ${row("Ein Fehler oder Zeit um", "neu starten")}
+      ${row("Erste geschaffte Meisterrunde", "+" + MASTER_XP + " XP pro Begriff", "plus")}
+      <p class="hp-note">In der Meisterrunde kommt jeder Begriff des Themas einmal dran, die Antworten sind ganz sichtbar, und nach einer richtigen Antwort geht es sofort weiter. Es gibt keine XP pro Antwort und der Lernstand ändert sich nicht. Wer sie schafft, krönt das Thema: Es bekommt ein eigenes Design, und jedes Thema hat ein anderes. Ist das ganze Modul gemeistert, entfällt die Tagespflicht.</p></section>
     <section class="hp"><h3>Ränge</h3>
       ${row("Anzahl Ränge", "20")}
       ${row("Höchster Rang", "ab 50.000 XP")}
@@ -523,9 +532,40 @@ const SIT = 5, PRO_GOAL = 10, MAX_BOX = SIT + PRO_GOAL;
 const isPro = t => box(t) >= SIT;
 const proProg = t => Math.max(0, box(t) - SIT);
 const isMaster = t => box(t) >= MAX_BOX;
+/* Gemeisterte Begriffe kommen im normalen Quiz nicht mehr dran. Ein Thema, dessen Begriffe alle gemeistert sind,
+   gibt es nur noch als Meisterrunde: jeder Begriff einmal, 20 s pro Begriff, ein Fehler = neu starten. */
+const QUIZ_LEN = 10, MASTER_SEC = 20, MASTER_XP = 5;
+const catTerms = k => TERMS.filter(t => t.cat === k);
+const catMastered = k => { const ts = catTerms(k); return ts.length > 0 && ts.every(isMaster); };
+const crowned = k => !!(P.crowns && own(P.crowns, k));
+const allMastered = () => TERMS.length > 0 && TERMS.every(isMaster);
+/* Gekrönte Themen: jedes hat ein eigenes Design (CSS: .crown[data-crown=…]). Unbekannte Themen bekommen eines der allgemeinen. */
+const CROWN_DESIGNS = {code:["Terminal","💻"], oop:["Baukasten","🧩"], algo:["Sortierwerk","📊"], web:["Neonlicht","🌐"], arch:["Blaupause","📐"],
+  data:["Datenstrom","🗄️"], net:["Lichtnetz","🛰️"], sec:["Tresor","🛡️"], ops:["Wolkenmeer","☁️"], git:["Verzweigung","🌿"], test:["Prüfsiegel","✅"],
+  ai:["Synapsen","🧠"], scrum:["Sprint","🏃"], pm:["Meilenstein","🏁"], talk:["Funkwelle","📡"], it:["Schaltkreis","🔌"],
+  fgrund:["Lichtleiter","✨"], fnetz:["Splitterbaum","🌳"], fbau:["Erdschichten","⛏️"], fspleiss:["Lichtbogen","⚡"], fmess:["Messkurve","📈"],
+  fhaus:["Fensterlicht","🏠"], fplan:["Ausbaukarte","🗺️"]};
+const CROWN_GENERIC = [["Goldfolie","🥇"], ["Polarlicht","🌌"], ["Holografie","💿"], ["Sternenhimmel","🌠"], ["Marmor","🏛️"], ["Glut","🔥"]];
+function crownOf(k){
+  if (CROWN_DESIGNS[k]) return {id:k, name:CROWN_DESIGNS[k][0], icon:CROWN_DESIGNS[k][1]};
+  const i = Math.max(0, Object.keys(CATS).indexOf(k)) % CROWN_GENERIC.length;
+  return {id:"g" + i, name:CROWN_GENERIC[i][0], icon:CROWN_GENERIC[i][1]};
+}
+const clock = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
 function setFocus(on){ document.body.classList.toggle("focus", on); }
 
 function pool(){ return TERMS.filter(t => P.cats.includes(t.cat)); }
+function quizPool(){ return pool().filter(t => !isMaster(t)); }
+/* Wenige offene Begriffe: so oft wiederholen, bis n Fragen zusammen sind; derselbe nie direkt hintereinander, wenn es anders geht */
+function repeatFill(list, n, prev){
+  const out = []; let last = prev || null;
+  while (out.length < n && list.length) {
+    const round = shuffle(list.slice());
+    if (round.length > 1 && round[0] === last) round.push(round.shift());
+    for (const t of round) { if (out.length >= n) break; out.push(t); last = t; }
+  }
+  return out;
+}
 function weighted(list, weight, n){
   let cand = list.map(t => ({t, w:weight(t)})); const out = [];
   while (out.length < n && cand.length) {
@@ -549,7 +589,7 @@ function gapFor(t){
 }
 const isDue = t => sinceAsked(t) >= gapFor(t);
 function pickQuizTerms(n){
-  const p = pool(), out = [];
+  const p = quizPool(), out = [];
   const take = (list, k) => { for (const t of list) { if (k <= 0 || out.length >= n) break; if (!out.includes(t)) { out.push(t); k--; } } };
   const oldestFirst = list => shuffle(list).sort((a, b) => sinceAsked(b) - sinceAsked(a));
   const fresh = shuffle(p.filter(t => lastRound(t) === null && !isFlagged(t)));
@@ -559,10 +599,8 @@ function pickQuizTerms(n){
   takeCapped(shuffle(p.filter(isFlagged)), 3);
   takeCapped(oldestFirst(p.filter(t => lastRound(t) !== null && !isPro(t) && isDue(t))), 4);
   takeCapped(oldestFirst(p.filter(t => isPro(t) && !isMaster(t) && isDue(t))), 2);
-  takeCapped(oldestFirst(p.filter(t => isMaster(t) && isDue(t))), 1);
   take(fresh, n - out.length);
   take(oldestFirst(p.filter(t => !isMaster(t) && isDue(t))), n - out.length);
-  take(oldestFirst(p.filter(t => !isMaster(t))), n - out.length);
   take(oldestFirst(p), n - out.length);
   return shuffle(out);
 }
@@ -655,7 +693,7 @@ function num(n){ return Number(n).toLocaleString("de-DE"); }
 function renderTop(){
   const L = levelInfo(P.xp);
   const dayXp = P.day === today() ? P.dayXp : 0;
-  const qd = quizzesToday(), pct = Math.min(100, Math.round(qd / QUIZ_GOAL * 100));
+  const qd = quizzesToday(), done = allMastered(), pct = done ? 100 : Math.min(100, Math.round(qd / QUIZ_GOAL * 100));
   renderModbar();
   $("#top").innerHTML = `
     <button class="help-btn" id="helpBtn" aria-haspopup="dialog" aria-label="So funktioniert das Punkte-System" title="So funktioniert das Punkte-System">?</button>
@@ -664,7 +702,7 @@ function renderTop(){
       <div class="xpbar" role="progressbar" aria-valuenow="${Math.round(L.pct)}" aria-valuemin="0" aria-valuemax="100" aria-label="Fortschritt zum nächsten Level"><i style="width:${L.pct}%"></i></div>
       <div class="xp-text">${num(P.xp)} XP${L.next ? " · noch " + num(L.next - P.xp) + " bis " + esc(levels()[L.i + 1][1]) : " · höchster Rang"}</div>
     </button>
-    <button class="badge" id="calBtn" aria-haspopup="dialog" title="Kalender öffnen · Tagespflicht: ${QUIZ_GOAL} Quiz, sonst −${QUIZ_PENALTY} XP"><div class="ring" style="--p:${pct}"><span>${Math.min(qd, 99)}/${QUIZ_GOAL}</span></div>Quiz heute</button>`;
+    <button class="badge" id="calBtn" aria-haspopup="dialog" title="Kalender öffnen · Tagespflicht: ${QUIZ_GOAL} Quiz, sonst −${QUIZ_PENALTY} XP"><div class="ring" style="--p:${pct}"><span>${done ? "🏆" : Math.min(qd, 99) + "/" + QUIZ_GOAL}</span></div>${done ? "Alles gemeistert" : "Quiz heute"}</button>`;
   $("#rankBtn").onclick = showLevels;
   $("#helpBtn").onclick = showHelp;
   $("#calBtn").onclick = () => showCalendar();
@@ -726,11 +764,16 @@ function renderHome(fromPop){
   const active = TERMS.filter(t => P.cats.includes(t.cat)).length;
   const rows = Object.entries(CATS).map(([k,c]) => {
     const ts = TERMS.filter(t => t.cat === k), m = ts.filter(isPro).length, on = P.cats.includes(k);
-    return `<button class="trow" style="--c:${c.c}" aria-pressed="${on}" data-cat="${k}">
+    const done = catMastered(k), cr = crowned(k) ? crownOf(k) : null;
+    const row = `<button class="trow${cr ? " crown" : ""}"${cr ? ` data-crown="${cr.id}"` : ""} style="--c:${c.c}" aria-pressed="${on}" data-cat="${k}">
       <span class="tbox" aria-hidden="true"></span>
       <span class="tname">${esc(c.name)}</span>
-      <span class="tnum">${m} / ${ts.length}</span>
-      <span class="tbar" aria-hidden="true"><i style="width:${m/ts.length*100}%"></i></span></button>`;
+      <span class="tnum">${done ? "🏆 " + ts.length : m} / ${ts.length}</span>
+      ${cr ? `<span class="tcrown">${cr.icon} ${esc(cr.name)} · gekrönt</span>` : `<span class="tbar" aria-hidden="true"><i style="width:${m/ts.length*100}%"></i></span>`}</button>`;
+    if (!done) return row;
+    const best = cr && P.crowns[k].best ? ` · Bestzeit ${clock(P.crowns[k].best)}` : "";
+    return `<div class="tgroup">${row}<button class="master-btn" data-master="${k}"><b>🏆 Meisterrunde${cr ? "" : " starten"}</b>
+      <small>${ts.length} Begriffe in ${clock(ts.length * MASTER_SEC * 1000)} Min., kein Fehler erlaubt${cr ? best : " · schaltet ein geheimes Design frei"}</small></button></div>`;
   }).join("");
   const allOn = P.cats.length === Object.keys(CATS).length;
   app.innerHTML = `
@@ -751,7 +794,7 @@ function renderHome(fromPop){
     </div>
     <div class="sec-head"><div class="section-title">Themen</div>
       <button class="chip-all" id="allcats">${allOn ? "Nur eines wählen" : "Alle auswählen"}</button></div>
-    <p class="sec-sub">Angehakte Themen kommen in Quiz und Karteikarten dran (${num(active)} Begriffe). Die Zahl zeigt, wie viele schon sitzen.</p>
+    <p class="sec-sub">Angehakte Themen kommen in Quiz und Karteikarten dran (${num(active)} Begriffe). Die Zahl zeigt, wie viele schon sitzen. Gemeisterte Begriffe kommen im Quiz nicht mehr dran; ist ein ganzes Thema gemeistert 🏆, gibt es dafür die Meisterrunde.</p>
     <div class="topics">${rows}</div>
     <div class="section-title">Fortschritt sichern</div>
     <div class="backup-row"><button class="btn" id="expBtn">⬇️ Exportieren</button><button class="btn" id="impBtn">⬆️ Importieren</button></div>
@@ -762,6 +805,7 @@ function renderHome(fromPop){
     const go = b.dataset.go;
     if (go === "quiz") startQuiz(); else transit(go === "cards" ? startCards : renderLex, "fwd");
   });
+  app.querySelectorAll("[data-master]").forEach(b => b.onclick = () => startMaster(b.dataset.master));
   app.querySelectorAll("[data-cat]").forEach(b => b.onclick = () => {
     const k = b.dataset.cat, on = P.cats.includes(k);
     if (on && P.cats.length === 1) { toast("Mindestens ein Thema muss aktiv bleiben."); return; }
@@ -929,12 +973,98 @@ async function startQuiz(){
   quizBusy = true;
   try { await loadExtras(); } finally { quizBusy = false; }
   if (key !== MODKEY) return;
-  const ts = pickQuizTerms(10);
-  if (ts.length < 5) { toast("Wähle Themen mit mindestens 5 Begriffen."); return; }
+  const qp = quizPool();
+  if (!qp.length) { toast(pool().length ? "Alle gewählten Themen sind gemeistert 🏆 Wähl weitere Themen oder starte eine Meisterrunde." : "Wähle mindestens ein Thema.", 4000); return; }
+  /* Unter 3 offenen Begriffen: diese wiederholen, bis 10 Fragen zusammen sind */
+  const few = qp.length < 3, ts = few ? repeatFill(qp, QUIZ_LEN) : pickQuizTerms(QUIZ_LEN);
   P.round = (P.round || 0) + 1; save();
-  Q = {items:ts.map(makeQuestion), i:0, combo:0, best:0, xp:0, right:0, missed:[], answered:null, hint:false, revealed:false, counted:false};
+  stopMaster();
+  Q = {items:ts.map(t => ({t})), terms:[...new Set(ts)], repeat:few, total:ts.length, i:0, combo:0, best:0, xp:0, right:0, missed:[], answered:null, hint:false, revealed:false, counted:false};
+  Q.items[0] = makeQuestion(ts[0]);
   transit(() => { screen = "quiz"; setFocus(true); navEnterScreen(); renderQuiz(); window.scrollTo(0,0); }, "fwd");
 }
+/* ---------- Meisterrunde ---------- */
+function masterQ(t){ const q = makeQuestion(t); q.full = true; return q; }   /* alle Antworten ganz sichtbar, keine XP */
+async function startMaster(k){
+  if (quizBusy) return;
+  const key = MODKEY;
+  quizBusy = true;
+  try { await loadExtras(); } finally { quizBusy = false; }
+  if (key !== MODKEY || !catMastered(k)) return;
+  const ts = shuffle(catTerms(k));
+  stopMaster();
+  Q = {master:k, items:ts.map(t => ({t})), terms:ts, total:ts.length, i:0, combo:0, best:0, xp:0, right:0, missed:[], answered:null,
+       hint:false, revealed:false, counted:true, limit:ts.length * MASTER_SEC * 1000};
+  Q.items[0] = masterQ(ts[0]);
+  transit(() => {
+    screen = "quiz"; setFocus(true); navEnterScreen();
+    Q.started = Date.now(); Q.deadline = Q.started + Q.limit;
+    renderQuiz(); window.scrollTo(0,0);
+    Q.tick = setInterval(masterTick, 250);
+  }, "fwd");
+}
+function stopMaster(){ if (Q && Q.tick) { clearInterval(Q.tick); Q.tick = null; } }
+function masterTick(){
+  if (!Q || !Q.master || Q.over || screen !== "quiz") { if (Q && Q.master && screen !== "quiz") Q.over = true; return stopMaster(); }
+  const left = Q.deadline - Date.now(), el = $("#mtime");
+  if (el) { el.textContent = "⏱ " + clock(left); el.classList.toggle("low", left < Math.min(60000, Q.limit * .2)); }
+  if (left <= 0) masterEnd(false, "time");
+}
+function settleMaster(ok, info){
+  if (Q.over || Q.answered) return;
+  Q.answered = {pick:info.pick, typed:info.typed, spoken:!!info.spoken, near:info.near, ok, gain:0, note:"", wasPro:true, wasMaster:true, at:Date.now()};
+  renderQuiz();
+  if (!ok) { stopMaster(); Q.failAt = Q.i; setTimeout(() => masterEnd(false, "wrong"), 1100); return; }
+  Q.right++;
+  setTimeout(() => { if (Q && Q.master && !Q.over && screen === "quiz" && Q.answered) nextQuestion(); }, 550);
+}
+function masterEnd(win, why){
+  if (!Q || Q.over || screen !== "quiz") return;
+  Q.over = true; stopMaster(); stopListen();
+  const k = Q.master, used = Math.min(Q.limit, Date.now() - Q.started);
+  const r = {win, why, used, first:false, bonus:0, best:false};
+  if (win) {
+    P.crowns = P.crowns || {};
+    const prev = P.crowns[k];
+    r.first = !prev; r.best = !prev || !prev.best || used < prev.best;
+    P.crowns[k] = {day:prev ? prev.day : today(), best:r.best ? used : prev.best, runs:((prev && prev.runs) || 0) + 1};
+    r.bonus = r.first ? Q.items.length * MASTER_XP : 0;
+    save();
+    if (r.bonus) addXP(r.bonus);
+    confetti(); setTimeout(confetti, 600);
+  }
+  transit(() => renderMasterEnd(r), "fwd");
+}
+function renderMasterEnd(r){
+  const k = Q.master, c = CATS[k], n = Q.items.length, cr = crownOf(k);
+  let body;
+  if (r.win) body = `
+    <h1>${r.first ? "Thema gekrönt!" : "Meisterrunde geschafft!"}</h1>
+    <div class="crown crown-card${r.first ? " reveal" : ""}" data-crown="${cr.id}">
+      <span class="cr-icon" aria-hidden="true">${cr.icon}</span>
+      <div><div class="cr-cat">${esc(c.name)}</div><div class="cr-name">${r.first ? `Neues Design „${esc(cr.name)}“ freigeschaltet` : `Design „${esc(cr.name)}“`}</div></div>
+    </div>
+    <div class="note" style="--c:var(--m2)"><div class="big-num">${n} / ${n}</div>
+      <div>fehlerfrei in ${clock(r.used)} von ${clock(Q.limit)} Min.${r.best && !r.first ? " · neue Bestzeit!" : ""}</div>
+      ${r.bonus ? `<div><b>Meisterbonus: +${num(r.bonus)} XP</b></div>` : ""}
+      ${!r.first ? `<div>Bestzeit: ${clock(P.crowns[k].best)}</div>` : ""}</div>
+    <div class="stack"><button class="btn primary wide" data-home>Zur Übersicht</button><button class="btn wide" id="again">Nochmal versuchen</button></div>`;
+  else {
+    const q = Q.items[Q.failAt != null ? Q.failAt : Q.i], a = Q.answered, t = q && q.t;
+    const yours = !a ? "" : a.typed !== undefined ? (a.typed === null ? "Weiß ich nicht" : a.typed) : (q.opts && q.opts[a.pick] ? q.opts[a.pick].label : "");
+    body = `
+    <h1>${r.why === "time" ? "Zeit abgelaufen" : "Leider daneben"}</h1>
+    <div class="note" style="--c:var(--n-pink)"><div class="big-num">${Q.right} / ${n}</div>
+      <div>${r.why === "time" ? `Die ${clock(Q.limit)} Min. sind um.` : "Ein Fehler beendet die Meisterrunde."} Am Lernstand ändert sich nichts.</div></div>
+    ${r.why === "wrong" && t ? `<div class="missed"><strong>Hier lag der Fehler:</strong><p><b>${esc(t.en)}</b> = ${esc(t.de)}</p>${yours ? `<p>Deine Antwort: ${esc(yours)}</p>` : ""}</div>` : ""}
+    <div class="stack"><button class="btn primary wide" id="again">Neu starten</button><button class="btn wide" data-home>Zur Übersicht</button></div>`;
+  }
+  app.innerHTML = `<div class="result">${body}</div>`;
+  $("#again").onclick = () => startMaster(k);
+  app.querySelector("[data-home]").onclick = goHome;
+  window.scrollTo(0,0);
+}
+
 /* Beispielsatz mit markiertem Begriff (Standard- oder Zusatzsatz) */
 const markTerm = (t, en) => esc(en).replace(termRe(t), "$1<mark>$2</mark>");
 
@@ -991,7 +1121,7 @@ function renderQuiz(){
   const last = Q.i === Q.items.length - 1;
   const showExpl = q.type === "def2en" || q.type === "en2def" || (q.type === "type" && !q.byDe) ? q.expl : t.expl;
   const exEn = q.ex ? q.ex[0] : t.exEn, exDe = q.ex ? q.ex[1] : t.exDe;
-  const fb = a ? `<div class="feedback tap-next" id="fbox" style="--fb:var(${a.ok ? "--ok" : "--bad"})">
+  const fb = a && !Q.master ? `<div class="feedback tap-next" id="fbox" style="--fb:var(${a.ok ? "--ok" : "--bad"})">
       <h3>${a.ok ? `Richtig! +${a.gain} XP` : `Leider nicht. −${-a.gain} XP`}</h3>
       ${a.note ? `<p><b>${esc(a.note)}</b></p>` : ""}
       ${q.type === "tf" ? `<p><b>Die Aussage ${q.tf[0] ? "stimmt" : "stimmt nicht"}.</b> ${esc(q.tf[2] || "")}</p>` : ""}
@@ -1005,15 +1135,16 @@ function renderQuiz(){
   app.innerHTML = `
     <div class="bar"><button class="back" aria-label="Quiz beenden" data-home>✕</button>
       <div class="progress"><i style="width:${(Q.i + (a ? 1 : 0)) / Q.items.length * 100}%"></i></div>
-      <span class="xp-chip" aria-label="XP in dieser Runde">${Q.xp >= 0 ? "+" : "−"}${Math.abs(Q.xp)} XP</span>
+      ${Q.master ? `<span class="xp-chip timer" id="mtime" aria-label="Verbleibende Zeit">⏱ ${clock(Q.deadline - Date.now())}</span>`
+        : `<span class="xp-chip" aria-label="XP in dieser Runde">${Q.xp >= 0 ? "+" : "−"}${Math.abs(Q.xp)} XP</span>`}
 </div>
     <div class="note${a ? " tap-next" : ""}${(a ? a.wasPro : isPro(t)) ? " pro-card" : ""}${(a ? a.wasMaster : isMaster(t)) ? " master-card" : ""}" id="qcard" style="--c:${c.c};--r:${Q.i % 2 ? .8 : -.8}deg"${a ? ` title="Weiter zur nächsten Frage"` : ""}>
-      <div class="cat-label">${esc(c.name)} · Frage ${Q.i + 1} von ${Q.items.length}</div>
+      <div class="cat-label">${Q.master ? "🏆 Meisterrunde · " : ""}${esc(c.name)} · Frage ${Q.i + 1} von ${Q.items.length}</div>
       <div class="q-ask">${ask}</div>${body}
     </div>
     ${!a && !Q.revealed && !q.full ? `<div class="reveal-row"><button class="btn" id="reveal">Ganz anzeigen <span class="cost">−1 XP</span></button></div>` : ""}
     ${input}${opts ? `<div class="opts${q.type === "tf" ? " tf" : ""}">${opts}</div>` : ""}${fb}`;
-  app.querySelector("[data-home]").onclick = () => { if (Q.xp || Q.i) save(); stopListen(); goHome(); };
+  app.querySelector("[data-home]").onclick = () => { if (Q.master) { Q.over = true; stopMaster(); } else if (Q.xp || Q.i) save(); stopListen(); goHome(); };
   const h = $("#hint"); if (h) h.onclick = () => { Q.hint = true; renderQuiz(); };
   const rv = $("#reveal"); if (rv) rv.onclick = () => { Q.revealed = true; Q.xp -= 1; addXP(-1); save(); renderQuiz(); };
   if (!a) {
@@ -1030,7 +1161,7 @@ function renderQuiz(){
       inp.focus({preventScroll:true});
     }
   }
-  else {
+  else if (!Q.master) {
     const n = $("#next"); n.onclick = nextQuestion; n.focus({preventScroll:true});
     /* Klick auf die Quizkarte = Weiter; Knöpfe in der Karte (Deutschen Satz zeigen, Anhören) behalten ihre Funktion */
     /* Nach der Antwort: Karte, Antworten und Info-Box führen ebenfalls weiter (kurze Sperre gegen Doppeltipps) */
@@ -1061,6 +1192,7 @@ function answerSpoken(alts){
   settle(best.r.ok, {typed:best.x, spoken:true, near:!!best.r.near, wrongId:best.r.other || null});
 }
 function settle(ok, info){
+  if (Q.master) return settleMaster(ok, info);
   const q = Q.items[Q.i], t = q.t, wasPro = isPro(t), wasMaster = isMaster(t);
   P.last = P.last || {}; P.last[t.id] = P.round || 0;
   P.hard = P.hard || {};
@@ -1092,12 +1224,25 @@ function settle(ok, info){
     if (!Q.revealed && !q.full) { gain -= 2; add("Inklusive −2 XP, weil ohne „Ganz anzeigen“ geantwortet."); }
   }
   Q.xp += gain; addXP(gain);
+  /* Gerade gemeistert: kommt in dieser Runde nicht mehr dran. Beim Wiederholen wird mit den übrigen offenen Begriffen aufgefüllt;
+     bleibt keiner übrig, endet das Quiz nach dieser Frage. */
+  if (ok && !wasMaster && isMaster(t)) {
+    const keep = Q.items.slice(0, Q.i + 1);
+    let rest = Q.items.slice(Q.i + 1).filter(x => !isMaster(x.t));
+    if (Q.repeat) { const alive = Q.terms.filter(x => !isMaster(x)); rest = repeatFill(alive, Q.total - Q.i - 1, t).map(x => ({t:x})); }
+    if (!quizPool().length) { rest = []; Q.endEarly = true; add("Das war dein letzter offener Begriff in den gewählten Themen. Das Quiz endet hier."); }
+    Q.items = keep.concat(rest);
+  }
   Q.answered = {pick:info.pick, typed:info.typed, spoken:!!info.spoken, near:info.near, ok, gain, note, wasPro, wasMaster, at:Date.now()}; save(); renderQuiz();
 }
 function nextQuestion(){
   stopListen();
-  if (Q.i === Q.items.length - 1) return transit(renderQuizDone, "fwd");
-  transit(() => { Q.i++; Q.answered = null; Q.hint = false; Q.revealed = false; renderQuiz(); window.scrollTo(0,0); }, "fwd");
+  if (Q.i === Q.items.length - 1) return Q.master ? masterEnd(true) : transit(renderQuizDone, "fwd");
+  transit(() => {
+    Q.i++; Q.answered = null; Q.hint = false; Q.revealed = false;
+    const t = Q.items[Q.i].t; Q.items[Q.i] = Q.master ? masterQ(t) : makeQuestion(t);   /* Frage erst jetzt bauen: Lernstand ist aktuell */
+    renderQuiz(); window.scrollTo(0,0);
+  }, "fwd");
 }
 function renderQuizDone(){
   const asked = Q.i + 1, perfect = Q.right === Q.items.length;
@@ -1113,7 +1258,8 @@ function renderQuizDone(){
   }
   const nb = dayBonus(quizzesToday() + 1);
   const qd = quizzesToday();
-  const title = perfect ? "Fehlerfrei!" : "Runde geschafft";
+  const title = Q.endEarly ? "Alles gemeistert! 🏆" : perfect ? "Fehlerfrei!" : "Runde geschafft";
+  const open = quizPool().length;
   app.innerHTML = `<div class="result">
     <h1>${title}</h1>
     <div class="note" style="--c:var(--m2);--r:1deg"><div class="big-num">${Q.right} / ${asked}</div>
@@ -1122,8 +1268,9 @@ function renderQuizDone(){
       ${Q.bonus ? `<div><b>Tagesbonus für dein ${qd}. Quiz: +${Q.bonus} XP</b></div>` : ""}
       ${nb ? `<div>Nächste Runde bringt +${nb} XP Tagesbonus.</div>` : ""}</div>
     ${Q.missed.length ? `<div class="missed"><strong>Diese Begriffe kommen bald wieder:</strong><ul>${Q.missed.map(t => `<li><b>${esc(t.en)}</b> = ${esc(t.de)}</li>`).join("")}</ul></div>` : ""}
-    <div class="stack"><button class="btn primary wide" id="more">Noch eine Runde</button><button class="btn wide" data-home>Zur Übersicht</button></div></div>`;
-  $("#more").onclick = startQuiz; app.querySelector("[data-home]").onclick = goHome; window.scrollTo(0,0);
+    ${Q.endEarly ? `<div class="missed">In den gewählten Themen ist jetzt jeder Begriff gemeistert. Für fertige Themen gibt es auf der Übersicht die Meisterrunde 🏆.</div>` : ""}
+    <div class="stack">${open ? `<button class="btn primary wide" id="more">Noch eine Runde</button>` : ""}<button class="btn wide${open ? "" : " primary"}" data-home>Zur Übersicht</button></div></div>`;
+  if ($("#more")) $("#more").onclick = startQuiz; app.querySelector("[data-home]").onclick = goHome; window.scrollTo(0,0);
 }
 
 /* ---------- Nachschlagen ---------- */
@@ -1150,7 +1297,8 @@ function renderLex(){
     if (!s) {
       html = Object.entries(CATS).map(([k,c]) => {
         const ts = TERMS.filter(t => t.cat === k), n = ts.length, pn = ts.filter(isPro).length;
-        return `<div class="lex-group" style="--c:${c.c}"><details data-lexcat="${k}"><summary><h3><span class="dot"></span>${esc(c.name)}<span class="lex-count">${pn ? `⭐ ${pn} · ` : ""}${n}</span></h3></summary><div class="lex-items"></div></details></div>`;
+        const cr = crowned(k) ? crownOf(k) : null;
+        return `<div class="lex-group" style="--c:${c.c}"><details data-lexcat="${k}"><summary${cr ? ` class="crown" data-crown="${cr.id}"` : ""}><h3><span class="dot"></span>${esc(c.name)}<span class="lex-count">${pn ? `⭐ ${pn} · ` : ""}${n}</span></h3></summary><div class="lex-items"></div></details></div>`;
       }).join("");
     } else {
       const hits = TERMS.filter(t => (t.en + " " + t.de + " " + t.expls.join(" ")).toLowerCase().includes(s));

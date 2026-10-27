@@ -387,6 +387,159 @@ dialog textarea{width:100%;margin:8px 0;background:var(--board);color:var(--ink)
 .boot-error{padding:40px 4px}
 .boot-error p{color:var(--ink-soft);margin-top:10px}
 
+/* ---------- Meisterrunde ---------- */
+.tgroup{display:grid;gap:0;border-radius:var(--r-md);box-shadow:var(--edge)}
+.tgroup .trow{border-bottom-left-radius:0;border-bottom-right-radius:0}
+.master-btn{display:grid;gap:2px;text-align:left;width:100%;padding:10px 14px 11px 50px;border:1px solid var(--line);border-top:0;
+  border-radius:0 0 var(--r-md) var(--r-md);background:color-mix(in srgb, var(--gold) 16%, var(--surface));color:var(--ink);font-size:.93rem;
+  transition:transform .3s var(--spring), background-color .2s}
+.master-btn:active{transform:scale(.97);transition-duration:.08s}
+.master-btn small{color:var(--ink-soft);font-size:.8rem;line-height:1.35}
+.xp-chip.timer{font-variant-numeric:tabular-nums;min-width:5.6em;text-align:center}
+.xp-chip.timer.low{background:color-mix(in srgb, var(--bad) 30%, var(--surface));border-color:var(--bad);animation:tick 1s steps(1) infinite}
+@keyframes tick{50%{color:var(--bad)}}
+
+/* ---------- Gekrönte Themen: jedes Thema hat ein eigenes Design ----------
+   Grundgerüst in .crown, das Muster pro Thema in .crown[data-crown="…"]. Der Lichtstreif (::after) läuft über alle. */
+.crown{position:relative;overflow:hidden;isolation:isolate;color:var(--cr-ink,#fff);border-color:transparent !important;
+  text-shadow:0 1px 2px rgba(0,0,0,.35);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.22), 0 12px 30px -14px var(--cr-glow,rgba(0,0,0,.8)) !important}
+.crown::after{content:"";position:absolute;inset:-60% -30%;z-index:-1;pointer-events:none;
+  background:linear-gradient(105deg,transparent 42%,rgba(255,255,255,.3) 50%,transparent 58%);
+  transform:translateX(-70%);animation:crShine 5s ease-in-out infinite}
+@keyframes crShine{0%,55%{transform:translateX(-70%)}100%{transform:translateX(70%)}}
+.crown .tname{font-weight:800}
+.crown .tnum,.crown .tcrown,.crown .lex-count{color:inherit;opacity:.88}
+.tcrown{grid-column:2 / span 2;font-size:.8rem;font-weight:700;letter-spacing:.02em}
+.crown .tbox{border-color:currentColor}
+.crown[aria-pressed="true"] .tbox{background:currentColor}
+.crown[aria-pressed="true"] .tbox::after{border-color:var(--cr-base,#000)}
+.trow.crown[aria-pressed="false"]{border-style:solid;opacity:.62}
+.trow.crown[aria-pressed="false"] .tname{color:inherit;font-weight:800}
+.tgroup .crown + .master-btn{border-top:0}
+.lex-group>details>summary.crown{border-radius:0}
+/* Vorschau auf dem Ergebnis-Bildschirm */
+.crown-card{display:flex;align-items:center;gap:16px;text-align:left;border-radius:var(--r-lg);padding:22px 20px;margin:18px 0 14px;min-height:110px}
+.crown-card .cr-icon{font-size:2.6rem;line-height:1;text-shadow:none}
+.crown-card .cr-cat{font-family:var(--display);font-weight:800;font-size:1.3rem;line-height:1.15}
+.crown-card .cr-name{font-size:.92rem;opacity:.9;margin-top:2px}
+.crown-card.reveal{animation:crReveal 1.1s var(--spring) both}
+@keyframes crReveal{0%{transform:scale(.6) rotate(-4deg);opacity:0;filter:brightness(3) blur(6px)}60%{filter:brightness(1.6) blur(0)}100%{transform:none;opacity:1;filter:none}}
+
+/* IT & Scrum */
+.crown[data-crown="code"]{--cr-ink:#8dffb4;--cr-base:#03140b;--cr-glow:#1ee37a;
+  background:repeating-linear-gradient(0deg,rgba(141,255,180,.07) 0 1px,transparent 1px 4px),radial-gradient(120% 160% at 0% 50%,#0d4527,#03140b 70%)}
+.crown[data-crown="code"]::before{content:"0101 1101 0010 1110 0111 0100 1011 0001 1010 0110 1001 1100 0011 1110 0101 1011 0110 1001 0100 1110 0001 1011 1100 0101 0111 1010";
+  position:absolute;inset:0;z-index:-1;padding:4px 8px;font:700 11px/1.35 ui-monospace,Consolas,monospace;letter-spacing:2px;word-break:break-all;
+  color:rgba(141,255,180,.15);text-shadow:none;animation:crRise 9s linear infinite}
+.crown[data-crown="code"] .tname,.crown[data-crown="code"] .cr-cat{font-family:ui-monospace,Consolas,monospace;letter-spacing:-.02em}
+@keyframes crRise{from{transform:translateY(0)}to{transform:translateY(-45%)}}
+.crown[data-crown="oop"]{--cr-base:#3d2873;--cr-glow:#8a63e0;
+  background:linear-gradient(30deg,#4e3591 12%,transparent 12.5%,transparent 87%,#4e3591 87.5%,#4e3591) 0 0/40px 70px,
+    linear-gradient(150deg,#4e3591 12%,transparent 12.5%,transparent 87%,#4e3591 87.5%,#4e3591) 0 0/40px 70px,
+    linear-gradient(30deg,#4e3591 12%,transparent 12.5%,transparent 87%,#4e3591 87.5%,#4e3591) 20px 35px/40px 70px,
+    linear-gradient(150deg,#4e3591 12%,transparent 12.5%,transparent 87%,#4e3591 87.5%,#4e3591) 20px 35px/40px 70px,
+    linear-gradient(60deg,#6b4cb8 25%,transparent 25.5%,transparent 75%,#6b4cb8 75%,#6b4cb8) 0 0/40px 70px,
+    linear-gradient(60deg,#6b4cb8 25%,transparent 25.5%,transparent 75%,#6b4cb8 75%,#6b4cb8) 20px 35px/40px 70px,#3d2873}
+.crown[data-crown="algo"]{--cr-ink:#eafffb;--cr-base:#0e3b3a;--cr-glow:#2fb9a8;
+  background:linear-gradient(to top right,transparent 49.5%,#0e3b3a 50%),repeating-linear-gradient(90deg,#2a9f91 0 11px,#0e3b3a 11px 14px)}
+.crown[data-crown="web"]{--cr-ink:#ffe1f8;--cr-base:#170528;--cr-glow:#ff2bd6;border:2px solid transparent !important;
+  text-shadow:0 0 8px #ff2bd6,0 0 2px #ff2bd6;
+  background:linear-gradient(#170528,#170528) padding-box,linear-gradient(110deg,#ff2bd6,#7a2bff,#00e5ff,#ff2bd6,#7a2bff) 0 0/300% 100% border-box;
+  animation:crNeon 4s linear infinite}
+@keyframes crNeon{to{background-position:0 0,-150% 0}}
+.crown[data-crown="arch"]{--cr-ink:#e3eeff;--cr-base:#0d2a5c;--cr-glow:#4d8dff;
+  background:linear-gradient(rgba(255,255,255,.11) 1px,transparent 1px) 0 0/16px 16px,linear-gradient(90deg,rgba(255,255,255,.11) 1px,transparent 1px) 0 0/16px 16px,
+    linear-gradient(rgba(255,255,255,.24) 1px,transparent 1px) 0 0/80px 80px,linear-gradient(90deg,rgba(255,255,255,.24) 1px,transparent 1px) 0 0/80px 80px,#0d2a5c}
+.crown[data-crown="arch"] .tname,.crown[data-crown="arch"] .cr-cat{text-transform:uppercase;letter-spacing:.06em;font-size:.88em}
+.crown[data-crown="data"]{--cr-ink:#fff4dc;--cr-base:#3a2408;--cr-glow:#ffb43a;
+  background:radial-gradient(circle,rgba(255,210,122,.7) 1.5px,transparent 2.1px) 0 0/14px 14px,radial-gradient(circle,rgba(255,210,122,.3) 1px,transparent 1.6px) 7px 7px/14px 14px,linear-gradient(90deg,#3a2408,#6a4512);
+  animation:crData 2.4s linear infinite}
+@keyframes crData{to{background-position:28px 0,35px 7px,0 0}}
+.crown[data-crown="net"]{--cr-ink:#d8fbff;--cr-base:#061b2a;--cr-glow:#00e5ff;
+  background:repeating-linear-gradient(45deg,rgba(0,229,255,.28) 0 1px,transparent 1px 18px),repeating-linear-gradient(-45deg,rgba(0,229,255,.28) 0 1px,transparent 1px 18px),
+    radial-gradient(circle at 85% 50%,#0f5f7d,#061b2a 70%)}
+.crown[data-crown="sec"]{--cr-ink:#f8e8bf;--cr-base:#2b313b;--cr-glow:#d9b45a;
+  box-shadow:inset 0 0 0 2px #d9b45a, 0 12px 30px -14px #d9b45a !important;
+  background:radial-gradient(circle at 10px 10px,#c9ced6 2px,transparent 3px),radial-gradient(circle at calc(100% - 10px) 10px,#c9ced6 2px,transparent 3px),
+    radial-gradient(circle at 10px calc(100% - 10px),#c9ced6 2px,transparent 3px),radial-gradient(circle at calc(100% - 10px) calc(100% - 10px),#c9ced6 2px,transparent 3px),
+    repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 2px,rgba(0,0,0,.06) 2px 4px),linear-gradient(180deg,#5d6776,#2b313b)}
+.crown[data-crown="ops"]{--cr-base:#3d7bd9;--cr-glow:#7fb6f2;
+  background:radial-gradient(ellipse 70px 22px at 50% 72%,rgba(255,255,255,.6),transparent 70%) 0 0/220px 100%,
+    radial-gradient(ellipse 90px 26px at 50% 30%,rgba(255,255,255,.45),transparent 70%) 0 0/300px 100%,linear-gradient(180deg,#3a74cf,#86bbf3);
+  animation:crClouds 16s linear infinite}
+@keyframes crClouds{to{background-position:220px 0,-300px 0,0 0}}
+.crown[data-crown="git"]{--cr-ink:#eaffef;--cr-base:#1f3d2b;--cr-glow:#f05032;
+  background:repeating-linear-gradient(60deg,transparent 0 14px,rgba(240,80,50,.55) 14px 16px),repeating-linear-gradient(-60deg,transparent 0 22px,rgba(255,255,255,.16) 22px 24px),
+    linear-gradient(135deg,#1f3d2b,#2f5e3f)}
+.crown[data-crown="test"]{--cr-ink:#0d3b2a;--cr-base:#bff0d8;--cr-glow:#5fd3a0;text-shadow:none;
+  background:conic-gradient(#c6f2dc 25%,#a9e6ca 0 50%,#c6f2dc 0 75%,#a9e6ca 0) 0 0/18px 18px}
+.crown[data-crown="test"]::before{content:"✓";position:absolute;right:10px;top:50%;transform:translateY(-50%) rotate(-12deg);z-index:-1;
+  font:900 4.2rem/1 var(--display);color:rgba(13,59,42,.14)}
+.crown[data-crown="ai"]{--cr-base:#1a0b2e;--cr-glow:#b45fff;
+  background:radial-gradient(circle at 20% 30%,rgba(255,95,210,.7),transparent 45%),radial-gradient(circle at 80% 70%,rgba(95,168,255,.7),transparent 45%),
+    radial-gradient(circle at 50% 50%,rgba(155,95,255,.55),transparent 60%),#1a0b2e;background-size:220% 220%;animation:crAurora 7s ease-in-out infinite alternate}
+@keyframes crAurora{to{background-position:100% 100%}}
+.crown[data-crown="scrum"]{--cr-base:#c4511a;--cr-glow:#ff9a3d;
+  background:repeating-linear-gradient(90deg,transparent 0 24px,rgba(255,255,255,.28) 24px 27px),linear-gradient(100deg,#e2611f,#ffb547);
+  animation:crSprint .7s linear infinite}
+@keyframes crSprint{to{background-position:-54px 0,0 0}}
+.crown[data-crown="pm"]{--cr-ink:#3b2a0e;--cr-base:#e6d09c;--cr-glow:#d9b45a;text-shadow:none;
+  background:repeating-radial-gradient(circle at 88% 130%,transparent 0 10px,rgba(70,45,10,.22) 10px 11px),
+    linear-gradient(135deg,#f3e2b8,#d6bb82)}
+.crown[data-crown="pm"]::before{content:"🏁";position:absolute;right:14px;top:50%;transform:translateY(-50%);z-index:-1;font-size:1.8rem;opacity:.3}
+@property --rip{syntax:"<length>";inherits:false;initial-value:0px}
+.crown[data-crown="talk"]{--cr-base:#7b1fa2;--cr-glow:#ff5fa8;
+  background:repeating-radial-gradient(circle at 92% 50%,transparent 0 var(--rip),rgba(255,255,255,.3) var(--rip) calc(var(--rip) + 2px),transparent calc(var(--rip) + 2px) calc(var(--rip) + 16px)),
+    linear-gradient(90deg,#7b1fa2,#c2185b);animation:crRipple 1.6s linear infinite}
+@keyframes crRipple{from{--rip:0px}to{--rip:16px}}
+.crown[data-crown="it"]{--cr-ink:#f6f0cf;--cr-base:#0f4a2a;--cr-glow:#e8c35a;
+  background:radial-gradient(circle,#e8c35a 3px,transparent 3.5px) 20px 20px/40px 40px,
+    linear-gradient(90deg,transparent 19px,rgba(232,195,90,.55) 19px 21px,transparent 21px) 0 0/40px 80px,
+    linear-gradient(transparent 19px,rgba(232,195,90,.55) 19px 21px,transparent 21px) 0 0/80px 40px,#0f4a2a}
+/* Glasfaser */
+.crown[data-crown="fgrund"]{--cr-ink:#dff7ff;--cr-base:#050b1a;--cr-glow:#5fd8ff;
+  background:linear-gradient(90deg,transparent,rgba(180,240,255,.95) 50%,transparent) -100% 86%/40% 3px no-repeat,
+    linear-gradient(rgba(120,200,255,.3),rgba(120,200,255,.3)) 0 86%/100% 1px no-repeat,radial-gradient(120% 140% at 100% 100%,#0e2c4f,#050b1a 70%);
+  animation:crPulse 2.6s ease-in infinite}
+@keyframes crPulse{to{background-position:250% 86%,0 86%,0 0}}
+.crown[data-crown="fnetz"]{--cr-ink:#eafff1;--cr-base:#14532d;--cr-glow:#4ade80;
+  background:repeating-conic-gradient(from 60deg at 0% 50%,rgba(255,255,255,.2) 0 2deg,transparent 2deg 8deg),linear-gradient(90deg,#14532d,#22844c)}
+.crown[data-crown="fbau"]{--cr-ink:#fff3e0;--cr-base:#5e3d22;--cr-glow:#c58a4a;
+  background:radial-gradient(circle,rgba(0,0,0,.18) 1px,transparent 1.5px) 0 0/9px 7px,
+    linear-gradient(180deg,#6b8f3a 0 12%,#7a5230 12% 38%,#5e3d22 38% 62%,#8a6a45 62% 80%,#4a3322 80%)}
+.crown[data-crown="fspleiss"]{--cr-base:#0c1e3d;--cr-glow:#ff9a3d;
+  background:radial-gradient(circle at 90% 50%,#fff 0,#ffe08a 5%,#ff8a1f 12%,rgba(255,80,0,.25) 22%,transparent 34%),linear-gradient(90deg,#0c1e3d,#1a1040 55%,#0c1e3d);
+  animation:crArc 1.3s ease-in-out infinite}
+@keyframes crArc{50%{filter:brightness(1.25) saturate(1.2)}}
+.crown[data-crown="fmess"]{--cr-ink:#d2fff0;--cr-base:#04201a;--cr-glow:#7dffcf;
+  background:linear-gradient(174deg,transparent 0 80%,rgba(125,255,207,.75) 80% 82.5%,transparent 82.5%),
+    linear-gradient(rgba(125,255,207,.1) 1px,transparent 1px) 0 0/100% 14px,linear-gradient(90deg,rgba(125,255,207,.1) 1px,transparent 1px) 0 0/20px 100%,#04201a}
+.crown[data-crown="fhaus"]{--cr-ink:#ffe7b0;--cr-base:#141a33;--cr-glow:#ffcf6b;
+  background:conic-gradient(from 90deg at 9px 11px,rgba(20,26,51,.85) 25%,transparent 0) 0 0/72px 60px,
+    conic-gradient(from 90deg at 9px 11px,rgba(255,207,107,.75) 25%,transparent 0) 0 0/24px 30px,#141a33}
+.crown[data-crown="fplan"]{--cr-ink:#e9fff7;--cr-base:#1d4d4f;--cr-glow:#5fd3a0;
+  background:repeating-radial-gradient(ellipse at 30% 60%,transparent 0 9px,rgba(255,255,255,.18) 9px 10px),
+    repeating-radial-gradient(ellipse at 92% 10%,transparent 0 12px,rgba(255,255,255,.12) 12px 13px),linear-gradient(135deg,#1d4d4f,#2c6e57)}
+/* Allgemeine Designs für Themen ohne eigenes */
+.crown[data-crown="g0"]{--cr-ink:#3a2a05;--cr-base:#d8b44a;--cr-glow:#f6e27a;text-shadow:none;
+  background:linear-gradient(115deg,#8a6a1f,#f6e27a 30%,#b8862b 50%,#fff3b0 70%,#9c7424) 0 0/220% 100%;animation:crFoil 6s ease-in-out infinite alternate}
+@keyframes crFoil{to{background-position:100% 0}}
+.crown[data-crown="g1"]{--cr-base:#04161c;--cr-glow:#3dffb0;
+  background:radial-gradient(60% 120% at 20% 0%,rgba(61,255,176,.55),transparent 60%),radial-gradient(60% 120% at 80% 0%,rgba(80,140,255,.5),transparent 60%),#04161c;
+  background-size:200% 100%;animation:crAurora 8s ease-in-out infinite alternate}
+.crown[data-crown="g2"]{--cr-ink:#2a1e3a;--cr-base:#cfc2ff;--cr-glow:#9ad5ff;text-shadow:none;
+  background:linear-gradient(120deg,#ff9ad5,#9ad5ff,#b5ffb0,#fff59a,#ff9ad5) 0 0/300% 100%;animation:crFoil 5s linear infinite alternate}
+.crown[data-crown="g3"]{--cr-base:#0a0f2e;--cr-glow:#8aa2ff;
+  background:radial-gradient(circle,#fff 1px,transparent 1.5px) 0 0/37px 29px,radial-gradient(circle,rgba(255,255,255,.6) .8px,transparent 1.3px) 11px 7px/23px 19px,
+    linear-gradient(180deg,#0a0f2e,#1c2463)}
+.crown[data-crown="g4"]{--cr-ink:#2b2b2b;--cr-base:#e8e6e1;--cr-glow:#bdb8ad;text-shadow:none;
+  background:radial-gradient(ellipse at 20% 30%,rgba(120,115,105,.35),transparent 40%),radial-gradient(ellipse at 70% 80%,rgba(150,145,135,.3),transparent 45%),
+    linear-gradient(125deg,transparent 45%,rgba(110,105,95,.3) 47%,transparent 49%),#ecebe6}
+.crown[data-crown="g5"]{--cr-base:#2a0606;--cr-glow:#ff5a1f;
+  background:radial-gradient(circle at 15% 120%,#ff7a1f,transparent 45%),radial-gradient(circle at 75% 140%,#ff3d1f,transparent 50%),linear-gradient(180deg,#2a0606,#4a0c08);
+  animation:crArc 2s ease-in-out infinite}
+
 /* ---------- Übergänge zwischen den Bereichen ----------
    Nur der Inhalt (#pager) gleitet, Hintergrund und Modulleiste bleiben stehen. */
 .pager{view-transition-name:page}

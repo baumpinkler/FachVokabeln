@@ -196,7 +196,7 @@ Schlüssel in `terms` = Begriffs-ID wie in `buildTerms` (Kleinbuchstaben, Sonder
 | `ops` Betrieb, Cloud & DevOps | 104 | ☐ |
 | `git` Git & Werkzeuge | 76 | ☐ |
 | `test` Testen & Qualität | 81 | ☐ |
-| `ai` KI & Machine Learning | 66 | ☐ |
+| `ai` KI & Machine Learning | 66 | ☑ |
 | `scrum` Scrum & Agile | 96 | ☐ |
 | `pm` Projektmanagement | 104 | ☐ |
 | `talk` Kommunikation im Job | 125 | ☑ |

@@ -186,10 +186,10 @@ Schlüssel in `terms` = Begriffs-ID wie in `buildTerms` (Kleinbuchstaben, Sonder
 |---|---|---|
 | Code-Chat | – | ☑ (v6) |
 | `code` Programmiergrundlagen | 122 | ☑ |
-| `oop` Objektorientierung & Muster | 84 | ☐ |
-| `algo` Algorithmen & Datenstrukturen | 74 | ☐ |
+| `oop` Objektorientierung & Muster | 84 | ☑ |
+| `algo` Algorithmen & Datenstrukturen | 74 | ☑ |
 | `web` Web, UI & Apps | 105 | ☑ |
-| `arch` Architektur & APIs | 103 | ☐ |
+| `arch` Architektur & APIs | 103 | ☑ |
 | `data` Datenbanken & Daten | 90 | ☐ |
 | `net` Netzwerk | 80 | ☐ |
 | `sec` IT-Sicherheit | 92 | ☐ |

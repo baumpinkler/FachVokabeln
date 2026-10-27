@@ -396,7 +396,10 @@ dialog textarea{width:100%;margin:8px 0;background:var(--board);color:var(--ink)
 .master-btn:active{transform:scale(.97);transition-duration:.08s}
 .master-btn small{color:var(--ink-soft);font-size:.8rem;line-height:1.35}
 .xp-chip.timer{font-variant-numeric:tabular-nums;min-width:5.6em;text-align:center}
-.xp-chip.timer.low{background:color-mix(in srgb, var(--bad) 30%, var(--surface));border-color:var(--bad);animation:tick 1s steps(1) infinite}
+.xp-chip.timer{transition:background-color .3s, border-color .3s, color .3s}
+.xp-chip.timer.behind{background:color-mix(in srgb, var(--bad) 30%, var(--surface));border-color:var(--bad);color:var(--bad)}
+.xp-chip.timer.low{animation:tick 1s steps(1) infinite}
+.master-btn .mt-stats{color:var(--ink);font-weight:700;opacity:.85}
 @keyframes tick{50%{color:var(--bad)}}
 
 /* ---------- Gekrönte Themen: jedes Thema hat ein eigenes Design ----------

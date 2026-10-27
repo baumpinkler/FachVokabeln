@@ -488,7 +488,7 @@ function showHelp(){
       ${row("Zeit", MASTER_SEC + " Sekunden pro Begriff")}
       ${row("Ein Fehler oder Zeit um", "neu starten")}
       ${row("Erste geschaffte Meisterrunde", "+" + MASTER_XP + " XP pro Begriff", "plus")}
-      <p class="hp-note">In der Meisterrunde kommt jeder Begriff des Themas einmal dran, die Antworten sind ganz sichtbar, und nach einer richtigen Antwort geht es sofort weiter. Es gibt keine XP pro Antwort und der Lernstand ändert sich nicht. Wer sie schafft, krönt das Thema: Es bekommt ein eigenes Design, und jedes Thema hat ein anderes. Ist das ganze Modul gemeistert, entfällt die Tagespflicht.</p></section>
+      <p class="hp-note">In der Meisterrunde kommt jeder Begriff des Themas einmal dran, die Antworten sind ganz sichtbar, und nach einer richtigen Antwort geht es sofort weiter. Die Uhr wird rot, sobald du mehr als 20 Sekunden pro bisheriger Frage verbraucht hast, also hinter dem Plan liegst. Unter dem Knopf stehen dein Rekord an richtigen Antworten und die Zahl deiner Versuche. Es gibt keine XP pro Antwort und der Lernstand ändert sich nicht. Wer sie schafft, krönt das Thema: Es bekommt ein eigenes Design, und jedes Thema hat ein anderes. Ist das ganze Modul gemeistert, entfällt die Tagespflicht.</p></section>
     <section class="hp"><h3>Ränge</h3>
       ${row("Anzahl Ränge", "20")}
       ${row("Höchster Rang", "ab 50.000 XP")}
@@ -772,8 +772,11 @@ function renderHome(fromPop){
       ${cr ? `<span class="tcrown">${cr.icon} ${esc(cr.name)} · gekrönt</span>` : `<span class="tbar" aria-hidden="true"><i style="width:${m/ts.length*100}%"></i></span>`}</button>`;
     if (!done) return row;
     const best = cr && P.crowns[k].best ? ` · Bestzeit ${clock(P.crowns[k].best)}` : "";
+    const mt = (P.mtries && P.mtries[k]) || {n:0, best:0};
+    const stats = mt.n ? `Rekord: ${cr ? ts.length : Math.min(mt.best || 0, ts.length)} von ${ts.length} richtig · ${mt.n} ${mt.n === 1 ? "Versuch" : "Versuche"}` : "Noch kein Versuch";
     return `<div class="tgroup">${row}<button class="master-btn" data-master="${k}"><b>🏆 Meisterrunde${cr ? "" : " starten"}</b>
-      <small>${ts.length} Begriffe in ${clock(ts.length * MASTER_SEC * 1000)} Min., kein Fehler erlaubt${cr ? best : " · schaltet ein geheimes Design frei"}</small></button></div>`;
+      <small>${ts.length} Begriffe in ${clock(ts.length * MASTER_SEC * 1000)} Min., kein Fehler erlaubt${cr ? best : " · schaltet ein geheimes Design frei"}</small>
+      <small class="mt-stats">${stats}</small></button></div>`;
   }).join("");
   const allOn = P.cats.length === Object.keys(CATS).length;
   app.innerHTML = `
@@ -996,6 +999,7 @@ async function startMaster(k){
   Q = {master:k, items:ts.map(t => ({t})), terms:ts, total:ts.length, i:0, combo:0, best:0, xp:0, right:0, missed:[], answered:null,
        hint:false, revealed:false, counted:true, limit:ts.length * MASTER_SEC * 1000};
   Q.items[0] = masterQ(ts[0]);
+  masterTry(k).n++; save();
   transit(() => {
     screen = "quiz"; setFocus(true); navEnterScreen();
     Q.started = Date.now(); Q.deadline = Q.started + Q.limit;
@@ -1003,11 +1007,21 @@ async function startMaster(k){
     Q.tick = setInterval(masterTick, 250);
   }, "fwd");
 }
+/* Versuche und Rekord (meiste richtige Antworten) pro Thema: P.mtries[k] = {n, best} */
+function masterTry(k){ P.mtries = P.mtries || {}; const m = P.mtries[k] = P.mtries[k] || {n:0, best:0}; return m; }
+function masterRecord(){ if (!Q || !Q.master || Q.recorded) return; Q.recorded = true;
+  const m = masterTry(Q.master); m.best = Math.max(m.best || 0, Q.right); save(); }
 function stopMaster(){ if (Q && Q.tick) { clearInterval(Q.tick); Q.tick = null; } }
 function masterTick(){
-  if (!Q || !Q.master || Q.over || screen !== "quiz") { if (Q && Q.master && screen !== "quiz") Q.over = true; return stopMaster(); }
+  if (!Q || !Q.master || Q.over || screen !== "quiz") { if (Q && Q.master && screen !== "quiz") { Q.over = true; masterRecord(); } return stopMaster(); }
   const left = Q.deadline - Date.now(), el = $("#mtime");
-  if (el) { el.textContent = "⏱ " + clock(left); el.classList.toggle("low", left < Math.min(60000, Q.limit * .2)); }
+  if (el) {
+    const behind = Date.now() - Q.started > (Q.i + 1) * MASTER_SEC * 1000;
+    el.textContent = "⏱ " + clock(left);
+    el.classList.toggle("behind", behind);
+    el.classList.toggle("low", left < 30000);
+    el.setAttribute("aria-label", "Verbleibende Zeit" + (behind ? ", du liegst hinter dem Plan" : ""));
+  }
   if (left <= 0) masterEnd(false, "time");
 }
 function settleMaster(ok, info){
@@ -1020,7 +1034,7 @@ function settleMaster(ok, info){
 }
 function masterEnd(win, why){
   if (!Q || Q.over || screen !== "quiz") return;
-  Q.over = true; stopMaster(); stopListen();
+  Q.over = true; stopMaster(); stopListen(); masterRecord();
   const k = Q.master, used = Math.min(Q.limit, Date.now() - Q.started);
   const r = {win, why, used, first:false, bonus:0, best:false};
   if (win) {
@@ -1144,7 +1158,7 @@ function renderQuiz(){
     </div>
     ${!a && !Q.revealed && !q.full ? `<div class="reveal-row"><button class="btn" id="reveal">Ganz anzeigen <span class="cost">−1 XP</span></button></div>` : ""}
     ${input}${opts ? `<div class="opts${q.type === "tf" ? " tf" : ""}">${opts}</div>` : ""}${fb}`;
-  app.querySelector("[data-home]").onclick = () => { if (Q.master) { Q.over = true; stopMaster(); } else if (Q.xp || Q.i) save(); stopListen(); goHome(); };
+  app.querySelector("[data-home]").onclick = () => { if (Q.master) { Q.over = true; stopMaster(); masterRecord(); } else if (Q.xp || Q.i) save(); stopListen(); goHome(); };
   const h = $("#hint"); if (h) h.onclick = () => { Q.hint = true; renderQuiz(); };
   const rv = $("#reveal"); if (rv) rv.onclick = () => { Q.revealed = true; Q.xp -= 1; addXP(-1); save(); renderQuiz(); };
   if (!a) {

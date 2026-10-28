@@ -5,6 +5,16 @@
 > Hochgeladene Dateien liegen unter `/mnt/user-data/uploads/`. Lies sie gezielt mit `grep -n` und `sed -n 'von,bisp'`, statt sie komplett anzuzeigen.
 > Liefere am Ende **nur die geänderten Dateien** aus, erhöhe `VERSION` in `sw.js` und ergänze das Änderungsprotokoll unten.
 
+## Nächste Schritte
+
+> **Für Claude:** Fragt der Nutzer nach den nächsten Schritten („Was ist als Nächstes dran?“ o. Ä.), schau in die Status-Tabellen weiter unten und nenne die nächsten offenen Punkte (☐) in dieser Reihenfolge, jeweils mit Kategorie, Begriffszahl und kurzem Hinweis, was der Chat tun muss. Neue größere Vorhaben hier einreihen, erledigte Phasen abhaken.
+
+1. ☐ **Schritt 2 für IT**: Zusatzinhalte für alle noch offenen IT-Kategorien (Status unter „Ausbau ‚Verstehen statt Auswendiglernen‘“). Ein Chat pro Kategorie.
+2. ☐ **Schritt G für Agile**: Grunddaten für alle 13 Kategorien (Status unter „Neues Modul ‚Agile & Projekte‘“). Ein Chat pro Kategorie.
+3. ☐ **Schritt 2 für Agile**: Zusatzinhalte für alle 13 Kategorien, erst wenn Schritt G **komplett** erledigt ist (Status-Tabelle „Schritt 2 für Agile“). Ein Chat pro Kategorie.
+
+Phase 1 und 2 hängen nicht voneinander ab und dürfen sich auch überschneiden. Phase 3 muss warten, weil die `conf`-Partner auch aus anderen Agile-Kategorien kommen dürfen und diese Begriffe dann schon existieren müssen.
+
 ## Was die App ist
 
 Installierbare Web-App (PWA) zum Lernen englischer Fachbegriffe mit deutscher Übersetzung. Zielgruppe: der Nutzer selbst (Österreich), Android-Handy, Chrome.
@@ -157,7 +167,9 @@ Dateien: `app.js`, `style.css`, `sw.js`. Moduldateien nie komplett lesen.
 7. **Zusatzdateien laden**: Pfad `modules/extra/<modul-key>/<kategorie-key>.json`, beim Quizstart nur für aktive Kategorien per `fetch`, fehlende Dateien (404) still ignorieren. Im Speicher pro Modul zwischenhalten. `sw.js`: nichts vorab laden, der Fetch-Handler cacht sie beim ersten Abruf.
 8. Testdaten für 3–5 Begriffe nur lokal anlegen, **nicht** ausliefern. `VERSION` erhöhen, Änderungsprotokoll ergänzen.
 
-### Schritt 2: Inhalte-Chats (nur IT, ein Chat pro Kategorie)
+### Schritt 2: Inhalte-Chats (zuerst IT, später Agile; ein Chat pro Kategorie)
+
+Gilt für **beide** Module. Für Agile erst starten, wenn Schritt G für alle Agile-Kategorien erledigt ist (siehe „Nächste Schritte“). Unterschiede bei Agile: Begriffe aus `modules/agile.json` lesen, Datei `modules/extra/agile/<kategorie>.json` mit `"module":"agile"`, `conf`-IDs müssen in `modules/agile.json` existieren (die App sucht Partner nur im eigenen Modul), Status in der Tabelle „Schritt 2 für Agile“ abhaken. Alles andere (Format, Regeln, Prüfskript) wie unten beschrieben.
 
 Ablauf: Repo klonen, per Skript nur die Begriffe der Kategorie auslesen (Index 1, 2, 3, 6, 7 – Begriff, Deutsch, Erklärungen), Inhalte in Blöcken von ca. 25 Begriffen schreiben, Datei per Skript prüfen (siehe unten), nur `modules/extra/dev/<kategorie>.json` und diese Datei (Status abhaken) ausliefern. **Keine** `VERSION`-Erhöhung nötig.
 
@@ -195,7 +207,7 @@ Schlüssel in `terms` = Begriffs-ID wie in `buildTerms` (Kleinbuchstaben, Sonder
 | `arch` Architektur & APIs | 103 | ☑ |
 | `data` Datenbanken & Daten | 90 | ☑ |
 | `net` Netzwerk | 80 | ☑ |
-| `sec` IT-Sicherheit | 92 | ☐ |
+| `sec` IT-Sicherheit | 92 | ☑ |
 | `ops` Betrieb, Cloud & DevOps | 104 | ☐ |
 | `git` Git & Werkzeuge | 74 | ☐ |
 | `test` Testen & Qualität | 81 | ☐ |
@@ -276,7 +288,7 @@ Inhaltliche Regeln wie überall: Erklärungen 1–3 ohne den englischen Begriff,
 - Kategorie danach 30–50 Begriffe.
 
 Ausliefern: nur `modules/agile.json` und diese Datei (Status abhaken). Eine `VERSION`-Erhöhung ist nicht nötig.
-Zusatzinhalte (`modules/extra/agile/<kategorie>.json`, Regeln wie in Schritt 2 oben) kommen erst, wenn alle Grunddaten fertig sind.
+**Danach Schritt 2:** Sobald alle Zeilen der Tabelle unten abgehakt sind, kommen die Zusatzinhalte für jede Agile-Kategorie (`modules/extra/agile/<kategorie>.json`, Ablauf und Regeln wie in Schritt 2 oben, Status in der Tabelle „Schritt 2 für Agile“).
 
 ### Status
 
@@ -296,6 +308,24 @@ Zusatzinhalte (`modules/extra/agile/<kategorie>.json`, Regeln wie in Schritt 2 o
 | G `kosten` Verträge, Kosten & Beschaffung | 17 + 18 = 35 | ☐ |
 | G `risiko` Risiko, Qualität & Abschluss | 15 + 18 = 33 | ☐ |
 | G `komm` Stakeholder, Kommunikation & Moderation | 15 + 21 = 36 | ☐ |
+
+### Status Schritt 2 für Agile (erst nach Schritt G)
+
+| Kategorie | Begriffe | Erledigt |
+|---|---|---|
+| `agil` Agile Grundlagen & Frameworks | 43 | ☐ |
+| `team` Scrum-Rollen & Teamdynamik | 37 | ☐ |
+| `sprint` Events & Sprint-Alltag | 38 | ☐ |
+| `backlog` Backlog, Schätzen & Planen | 43 | ☐ |
+| `lean` Kanban & Lean | 42 | ☐ |
+| `produkt` Produktstrategie & Kennzahlen | 41 | ☐ |
+| `discovery` Nutzerforschung & Design Thinking | 39 | ☐ |
+| `orga` Agile Organisation & Führung | 37 | ☐ |
+| `plan` Projektplanung & Steuerung | 49 | ☐ |
+| `anf` Anforderungen & Scope | 34 | ☐ |
+| `kosten` Verträge, Kosten & Beschaffung | 35 | ☐ |
+| `risiko` Risiko, Qualität & Abschluss | 33 | ☐ |
+| `komm` Stakeholder, Kommunikation & Moderation | 36 | ☐ |
 
 ## Änderungsprotokoll
 

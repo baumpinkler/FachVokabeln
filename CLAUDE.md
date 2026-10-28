@@ -190,8 +190,8 @@ Schlüssel in `terms` = Begriffs-ID wie in `buildTerms` (Kleinbuchstaben, Sonder
 | `algo` Algorithmen & Datenstrukturen | 74 | ☑ |
 | `web` Web, UI & Apps | 105 | ☑ |
 | `arch` Architektur & APIs | 103 | ☑ |
-| `data` Datenbanken & Daten | 90 | ☐ |
-| `net` Netzwerk | 80 | ☐ |
+| `data` Datenbanken & Daten | 90 | ☑ |
+| `net` Netzwerk | 80 | ☑ |
 | `sec` IT-Sicherheit | 92 | ☐ |
 | `ops` Betrieb, Cloud & DevOps | 104 | ☐ |
 | `git` Git & Werkzeuge | 76 | ☐ |

@@ -202,6 +202,100 @@ Schlüssel in `terms` = Begriffs-ID wie in `buildTerms` (Kleinbuchstaben, Sonder
 | `talk` Kommunikation im Job | 125 | ☑ |
 | `it` IT-Alltag & Hardware | 105 | ☐ |
 
+## Neues Modul „Agile & Projekte“ (geplant)
+
+Ziel: Scrum (`scrum`) und Projektmanagement (`pm`) aus „IT & Scrum“ in ein eigenes Modul verschieben und auf 507 Begriffe in 13 Kategorien (je 30–50) ausbauen. Die verbindliche Begriffsliste mit Kategorie, Englisch, Deutsch und Herkunft (B = Bestand, N = neu) steht in **`docs/agile-projekte-begriffe.md`**. Diese Liste ist abgesegnet, nicht eigenmächtig ändern.
+Umsetzung in **getrennten Chats**: zuerst der Umbau-Chat, dann ein Chat pro Kategorie für die neuen Begriffe. Jeder Chat klont das Repo, liest diese Datei und hakt seinen Schritt im Status unten ab.
+**Keine Migration des Lernstands nötig**: In den Kategorien `scrum` und `pm` gibt es noch keinen Fortschritt.
+
+### Schritt U: Umbau-Chat
+
+Dateien: `modules/it-scrum.json` (nur per Skript, nie lesen), `modules/index.json`, neues `modules/agile.json`, `modules/extra/dev/*.json` (nur `conf` per Skript), `app.js` (`CROWN_DESIGNS`), `style.css` (Krönchen), `sw.js`, `README.md`, diese Datei.
+
+1. **Neues Modul `modules/agile.json`** anlegen: `key` `agile`, `name` „Agile & Projekte“, `short` „Agile“, `icon` 🧭.
+   - `cats` in dieser Reihenfolge mit Farben: `agil` Agile Grundlagen & Frameworks (mint), `team` Scrum-Rollen & Teamdynamik (teal), `sprint` Events & Sprint-Alltag (orange), `backlog` Backlog, Schätzen & Planen (butter), `lean` Kanban & Lean (sage), `produkt` Produktstrategie & Kennzahlen (sky), `discovery` Nutzerforschung & Design Thinking (rose), `orga` Agile Organisation & Führung (lilac), `plan` Projektplanung & Steuerung (pink), `anf` Anforderungen & Scope (peri), `kosten` Verträge, Kosten & Beschaffung (sand), `risiko` Risiko, Qualität & Abschluss (coral), `komm` Stakeholder, Kommunikation & Moderation (aqua). Farbe jeweils als `var(--n-…)`.
+   - `levels` mit den üblichen XP-Grenzen. Namen: Praktikant:in, Lehrling, Projektassistent:in, Teammitglied, Story-Schreiber:in, Schätzprofi, Retro-Moderator:in, Kanban-Kenner:in, Requirements Engineer, Scrum Master, Product Owner, Projektleiter:in, Agile Coach, Release Train Engineer, Programmmanager:in, Portfolio-Manager:in, Head of PMO, Transformationslead, Chief Agile Officer, Agile-Legende.
+   - `theme`: eigenes weinrotes Schema (`accent` etwa `#8a2342`, `board` fast schwarz mit Weinrot-Stich, etwa `#0d0407`), im Aufbau wie die anderen Module. Gut unterscheidbar von Violett (IT) und Grün (Glasfaser). `bad` (falsche Antwort) muss sich deutlich vom Weinrot abheben, z. B. ein helleres, wärmeres Rot oder Orange-Rot, und die Pastellkarten `coral`/`rose` müssen auf dem Hintergrund gut lesbar bleiben.
+2. **Bestand verschieben** (198 Begriffe, alle mit Herkunft B in der Liste): per Skript aus `it-scrum.json` nach `agile.json` kopieren. Dabei nur Index 0 auf den neuen Kategorie-Key setzen, alles andere unverändert lassen. Danach aus `it-scrum.json` entfernen.
+3. **IT-Modul bereinigen**:
+   - Zusätzlich entfernen: `team velocity`, `to do`, `in progress`, `done`. Diese wandern nicht mit.
+   - `cats` ohne `scrum` und `pm`.
+   - `name` und `short` werden „IT“, in `it-scrum.json` und in `index.json`. `key`, `file` und `ls` bleiben, die Rangnamen auch.
+   - Danach 1.305 Begriffe.
+4. **Kaputte Verweise reparieren** (19 `conf`-Einträge in `modules/extra/dev/`). Ersatz:
+   - `data.json`: kpi → `metric` (statt okr)
+   - `talk.json`:
+     - meeting → `all-hands meeting` (statt workshop)
+     - availability → `high availability` (statt capacity)
+     - knowledge-transfer → `onboarding` (statt handover)
+     - concern → `to raise an issue` (statt risk)
+     - to-raise-an-issue → `concern` (statt escalate)
+     - use-case → `user flow` (statt user-story)
+     - end-user → `client` (statt customer)
+     - checklist → `runbook` (statt definition-of-done)
+     - showstopper → `bug` (statt blocker)
+     - out-of-scope → Eintrag streichen (statt scope-creep)
+   - `algo.json`: iterative → `recursion` (statt iteration)
+   - `web.json`: prototype → `proof of concept` (statt mvp)
+   - `arch.json`:
+     - third-party → `library` (statt vendor)
+     - proof-of-concept → ein Eintrag `prototype` (statt mvp und spike)
+     - non-functional-requirement → beide Einträge streichen (requirement, acceptance-criteria)
+     - system-boundary → `bounded context` (statt scope)
+
+   Jeder Ersatz bekommt einen neuen Unterschied-Satz nach den `conf`-Regeln (Begriff zuerst, beide mit englischem Begriff oder deutschem Hauptwort). Ist der Partner beim Begriff schon vorhanden, nur den alten Eintrag streichen. Danach per Skript prüfen, dass jede `conf`-ID im Modul existiert.
+5. **`modules/index.json`**: dritten Eintrag ergänzen: `key` `agile`, `file` `agile.json`, `name` „Agile & Projekte“, `short` „Agile“, `icon` 🧭, `ls` `devvokabeln.progress.agile`, `doc` `progress-agile`, `accent`/`board` wie im Theme.
+6. **Krönchen**:
+   - In `CROWN_DESIGNS` und `style.css` den Key `scrum` in `sprint` und `pm` in `plan` umbenennen. Die Designs bleiben gleich.
+   - Für die übrigen 11 Kategorien eigene Designs im Stil der vorhandenen ergänzen. Die Designs nicht im Chat zeigen oder beschreiben, sie sind die Belohnung.
+7. **Testen** mit `python3 -m http.server` und Playwright: Modulleiste mit drei Modulen, Wischen, Quiz und Nachschlagen in beiden betroffenen Modulen, keine Konsolenfehler. Kategorien, die anfangs nur wenige Begriffe haben (z. B. `discovery` mit 2), sind erlaubt.
+8. **Abschluss**:
+   - `VERSION` in `sw.js` erhöhen.
+   - README und diese Datei aktualisieren: Modulliste und Begriffszahlen, Tabelle „Dateien“; im Status von „Verstehen statt Auswendiglernen“ die Zeilen `scrum` und `pm` streichen, `git` auf 74.
+   - Änderungsprotokoll ergänzen und Schritt U unten abhaken.
+
+### Schritt G: Grunddaten-Chats (ein Chat pro Kategorie von `agile`)
+
+Ablauf:
+1. Repo klonen.
+2. Aus `docs/agile-projekte-begriffe.md` die Begriffe der Kategorie mit Herkunft N lesen.
+3. Per Skript die schon vorhandenen Begriffe der Kategorie aus `modules/agile.json` auslesen (nur Index 1, 2, 3), damit Erklärungen zusammenpassen und sich nicht wiederholen.
+4. Die neuen Einträge im vollen Format (Index 0–8, siehe „Ein Begriff“) in Blöcken von etwa 25 Begriffen schreiben und per Skript an `raw` anhängen. Die Datei nie komplett lesen.
+5. Das Deutsch aus der Liste übernehmen. Kleine Korrekturen sind erlaubt, wenn sie fachlich nötig sind; dann auch die Liste anpassen.
+
+Inhaltliche Regeln wie überall: Erklärungen 1–3 ohne den englischen Begriff, Beispielsatz enthält ihn wörtlich (ohne „to “), deutscher Satz aus dem österreichischen Arbeitsalltag, Gendern mit `:in`.
+
+**Prüfskript vor der Auslieferung** (muss ohne Fehler laufen):
+- Gültiges JSON.
+- Jeder N-Begriff der Kategorie ist genau einmal vorhanden; alle IDs im Modul sind eindeutig.
+- Jeder Eintrag hat 8–9 Felder, Index 0 ist der Kategorie-Key.
+- Index 3, 6 und 7 enthalten den englischen Begriff nicht (Groß/Klein egal).
+- Index 4 enthält den Begriff (ohne „to “).
+- Index 8, falls vorhanden, besteht nur aus exakten Teilstrings von Index 5.
+- Kategorie danach 30–50 Begriffe.
+
+Ausliefern: nur `modules/agile.json` und diese Datei (Status abhaken). Eine `VERSION`-Erhöhung ist nicht nötig.
+Zusatzinhalte (`modules/extra/agile/<kategorie>.json`, Regeln wie in Schritt 2 oben) kommen erst, wenn alle Grunddaten fertig sind.
+
+### Status
+
+| Schritt | Begriffe (B + N) | Erledigt |
+|---|---|---|
+| U Umbau-Chat | 198 verschoben | ☐ |
+| G `agil` Agile Grundlagen & Frameworks | 23 + 20 = 43 | ☐ |
+| G `team` Scrum-Rollen & Teamdynamik | 14 + 23 = 37 | ☐ |
+| G `sprint` Events & Sprint-Alltag | 14 + 24 = 38 | ☐ |
+| G `backlog` Backlog, Schätzen & Planen | 28 + 15 = 43 | ☐ |
+| G `lean` Kanban & Lean | 11 + 31 = 42 | ☐ |
+| G `produkt` Produktstrategie & Kennzahlen | 5 + 36 = 41 | ☐ |
+| G `discovery` Nutzerforschung & Design Thinking | 2 + 37 = 39 | ☐ |
+| G `orga` Agile Organisation & Führung | 6 + 31 = 37 | ☐ |
+| G `plan` Projektplanung & Steuerung | 38 + 11 = 49 | ☐ |
+| G `anf` Anforderungen & Scope | 10 + 24 = 34 | ☐ |
+| G `kosten` Verträge, Kosten & Beschaffung | 17 + 18 = 35 | ☐ |
+| G `risiko` Risiko, Qualität & Abschluss | 15 + 18 = 33 | ☐ |
+| G `komm` Stakeholder, Kommunikation & Moderation | 15 + 21 = 36 | ☐ |
+
 ## Änderungsprotokoll
 
 | Version | Änderung |

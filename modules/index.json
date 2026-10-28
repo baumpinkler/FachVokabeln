@@ -3,8 +3,8 @@
     {
       "key": "dev",
       "file": "it-scrum.json",
-      "name": "IT & Scrum",
-      "short": "IT & Scrum",
+      "name": "IT",
+      "short": "IT",
       "icon": "💻",
       "ls": "devvokabeln.progress.v1",
       "doc": "progress",
@@ -21,6 +21,17 @@
       "doc": "progress-ftth",
       "accent": "#2a7f52",
       "board": "#030a06"
+    },
+    {
+      "key": "agile",
+      "file": "agile.json",
+      "name": "Agile & Projekte",
+      "short": "Agile",
+      "icon": "🧭",
+      "ls": "devvokabeln.progress.agile",
+      "doc": "progress-agile",
+      "accent": "#8a2342",
+      "board": "#0d0407"
     }
   ]
 }

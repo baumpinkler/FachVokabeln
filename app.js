@@ -542,9 +542,12 @@ const allMastered = () => TERMS.length > 0 && TERMS.every(isMaster);
 /* Gekrönte Themen: jedes hat ein eigenes Design (CSS: .crown[data-crown=…]). Unbekannte Themen bekommen eines der allgemeinen. */
 const CROWN_DESIGNS = {code:["Terminal","💻"], oop:["Baukasten","🧩"], algo:["Sortierwerk","📊"], web:["Neonlicht","🌐"], arch:["Blaupause","📐"],
   data:["Datenstrom","🗄️"], net:["Lichtnetz","🛰️"], sec:["Tresor","🛡️"], ops:["Wolkenmeer","☁️"], git:["Verzweigung","🌿"], test:["Prüfsiegel","✅"],
-  ai:["Synapsen","🧠"], scrum:["Sprint","🏃"], pm:["Meilenstein","🏁"], talk:["Funkwelle","📡"], it:["Schaltkreis","🔌"],
+  ai:["Synapsen","🧠"], talk:["Funkwelle","📡"], it:["Schaltkreis","🔌"],
   fgrund:["Lichtleiter","✨"], fnetz:["Splitterbaum","🌳"], fbau:["Erdschichten","⛏️"], fspleiss:["Lichtbogen","⚡"], fmess:["Messkurve","📈"],
-  fhaus:["Fensterlicht","🏠"], fplan:["Ausbaukarte","🗺️"]};
+  fhaus:["Fensterlicht","🏠"], fplan:["Ausbaukarte","🗺️"],
+  agil:["Kreislauf","🔄"], team:["Schulterschluss","🤝"], sprint:["Sprint","🏃"], backlog:["Kartenstapel","🗂️"], lean:["Taktstraße","🏭"],
+  produkt:["Nordstern","⭐"], discovery:["Ideenwand","💡"], orga:["Räderwerk","⚙️"], plan:["Meilenstein","🏁"], anf:["Lastenheft","📝"],
+  kosten:["Münzschatz","🪙"], risiko:["Warnband","🚧"], komm:["Sprechblasen","💬"]};
 const CROWN_GENERIC = [["Goldfolie","🥇"], ["Polarlicht","🌌"], ["Holografie","💿"], ["Sternenhimmel","🌠"], ["Marmor","🏛️"], ["Glut","🔥"]];
 function crownOf(k){
   if (CROWN_DESIGNS[k]) return {id:k, name:CROWN_DESIGNS[k][0], icon:CROWN_DESIGNS[k][1]};

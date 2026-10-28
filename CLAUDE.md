@@ -8,7 +8,7 @@
 ## Was die App ist
 
 Installierbare Web-App (PWA) zum Lernen englischer Fachbegriffe mit deutscher Übersetzung. Zielgruppe: der Nutzer selbst (Österreich), Android-Handy, Chrome.
-Zwei Module: **IT & Scrum** (`dev`, 1.507 Begriffe, violettes Schema) und **Glasfaser & FTTH** (`ftth`, 500 Begriffe, grünes Schema).
+Drei Module: **IT** (`dev`, 1.305 Begriffe, violettes Schema), **Glasfaser & FTTH** (`ftth`, 500 Begriffe, grünes Schema) und **Agile & Projekte** (`agile`, 198 Begriffe, Ausbau auf 507 läuft, weinrotes Schema).
 Bereiche: Quiz, Karteikarten, Nachschlagen. Dazu Ränge, Kalender, Punkte-Erklärung, Export/Import.
 
 ## Hosting und Updates
@@ -31,8 +31,11 @@ Bereiche: Quiz, Karteikarten, Nachschlagen. Dazu Ränge, Kalender, Punkte-Erklä
 | `manifest.json` | 1 KB | App-Name, Symbole, Startfarbe `#0a0510` |
 | `icons/` | – | `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` |
 | `modules/index.json` | 1 KB | Liste aller Module |
-| `modules/it-scrum.json` | 508 KB (~150.000 Tokens) | **nie komplett lesen oder einfügen** |
+| `modules/it-scrum.json` | 440 KB (~130.000 Tokens) | Modul IT (Dateiname historisch), **nie komplett lesen oder einfügen** |
 | `modules/glasfaser.json` | 172 KB (~50.000 Tokens) | **nie komplett lesen oder einfügen** |
+| `modules/agile.json` | 68 KB (wächst auf ~170 KB) | Modul Agile & Projekte, **nie komplett lesen oder einfügen** |
+| `modules/extra/<modul>/<kategorie>.json` | je 50–160 KB | Zusatzinhalte für schwere Fragearten (siehe „Verstehen statt Auswendiglernen“) |
+| `docs/agile-projekte-begriffe.md` | 28 KB | verbindliche Begriffsliste für Agile & Projekte |
 
 ## Welche Dateien für welche Änderung
 
@@ -50,7 +53,7 @@ Begriffsliste ohne ganze Datei erzeugen: Claude kann die Moduldatei hochgeladen 
 
 ### `modules/index.json`
 ```json
-{"modules":[{"key":"dev","file":"it-scrum.json","name":"IT & Scrum","short":"IT & Scrum","icon":"💻",
+{"modules":[{"key":"dev","file":"it-scrum.json","name":"IT","short":"IT","icon":"💻",
   "ls":"devvokabeln.progress.v1","doc":"progress","accent":"#6c3fb8","board":"#0a0510"}]}
 ```
 `ls` = Speicherschlüssel des Lernstands, **pro Modul eindeutig, nie ändern** (sonst ist der Fortschritt weg).
@@ -65,7 +68,7 @@ Ab 4 Modulen wird der Umschalter automatisch zum Auswahlmenü.
   raw:    [ Eintrag, Eintrag, … ] }
 ```
 `theme`: `board` Hintergrund (fast schwarz), `surface` Flächen, `accent` Modul-Schalter, `m1`/`m2`/`m3` die drei Startseiten-Kärtchen (Karteikarten/Quiz/Nachschlagen).
-XP-Grenzen der Ränge (beide Module gleich): 0, 100, 250, 400, 600, 900, 1.300, 1.800, 2.400, 3.200, 4.300, 5.700, 7.600, 10.000, 13.000, 17.000, 22.500, 29.500, 38.500, 50.000.
+XP-Grenzen der Ränge (alle Module gleich): 0, 100, 250, 400, 600, 900, 1.300, 1.800, 2.400, 3.200, 4.300, 5.700, 7.600, 10.000, 13.000, 17.000, 22.500, 29.500, 38.500, 50.000.
 
 ### Ein Begriff (`raw`-Eintrag, Array)
 | Index | Inhalt | Regel |
@@ -154,7 +157,7 @@ Dateien: `app.js`, `style.css`, `sw.js`. Moduldateien nie komplett lesen.
 7. **Zusatzdateien laden**: Pfad `modules/extra/<modul-key>/<kategorie-key>.json`, beim Quizstart nur für aktive Kategorien per `fetch`, fehlende Dateien (404) still ignorieren. Im Speicher pro Modul zwischenhalten. `sw.js`: nichts vorab laden, der Fetch-Handler cacht sie beim ersten Abruf.
 8. Testdaten für 3–5 Begriffe nur lokal anlegen, **nicht** ausliefern. `VERSION` erhöhen, Änderungsprotokoll ergänzen.
 
-### Schritt 2: Inhalte-Chats (nur IT & Scrum, ein Chat pro Kategorie)
+### Schritt 2: Inhalte-Chats (nur IT, ein Chat pro Kategorie)
 
 Ablauf: Repo klonen, per Skript nur die Begriffe der Kategorie auslesen (Index 1, 2, 3, 6, 7 – Begriff, Deutsch, Erklärungen), Inhalte in Blöcken von ca. 25 Begriffen schreiben, Datei per Skript prüfen (siehe unten), nur `modules/extra/dev/<kategorie>.json` und diese Datei (Status abhaken) ausliefern. **Keine** `VERSION`-Erhöhung nötig.
 
@@ -194,17 +197,15 @@ Schlüssel in `terms` = Begriffs-ID wie in `buildTerms` (Kleinbuchstaben, Sonder
 | `net` Netzwerk | 80 | ☑ |
 | `sec` IT-Sicherheit | 92 | ☐ |
 | `ops` Betrieb, Cloud & DevOps | 104 | ☐ |
-| `git` Git & Werkzeuge | 76 | ☐ |
+| `git` Git & Werkzeuge | 74 | ☐ |
 | `test` Testen & Qualität | 81 | ☐ |
 | `ai` KI & Machine Learning | 66 | ☑ |
-| `scrum` Scrum & Agile | 96 | ☐ |
-| `pm` Projektmanagement | 104 | ☐ |
 | `talk` Kommunikation im Job | 125 | ☑ |
 | `it` IT-Alltag & Hardware | 105 | ☐ |
 
-## Neues Modul „Agile & Projekte“ (geplant)
+## Neues Modul „Agile & Projekte“ (Umbau erledigt, Grunddaten in Arbeit)
 
-Ziel: Scrum (`scrum`) und Projektmanagement (`pm`) aus „IT & Scrum“ in ein eigenes Modul verschieben und auf 507 Begriffe in 13 Kategorien (je 30–50) ausbauen. Die verbindliche Begriffsliste mit Kategorie, Englisch, Deutsch und Herkunft (B = Bestand, N = neu) steht in **`docs/agile-projekte-begriffe.md`**. Diese Liste ist abgesegnet, nicht eigenmächtig ändern.
+Ziel: Scrum (`scrum`) und Projektmanagement (`pm`) aus dem IT-Modul (früher „IT & Scrum“) in ein eigenes Modul verschieben und auf 507 Begriffe in 13 Kategorien (je 30–50) ausbauen. Die verbindliche Begriffsliste mit Kategorie, Englisch, Deutsch und Herkunft (B = Bestand, N = neu) steht in **`docs/agile-projekte-begriffe.md`**. Diese Liste ist abgesegnet, nicht eigenmächtig ändern.
 Umsetzung in **getrennten Chats**: zuerst der Umbau-Chat, dann ein Chat pro Kategorie für die neuen Begriffe. Jeder Chat klont das Repo, liest diese Datei und hakt seinen Schritt im Status unten ab.
 **Keine Migration des Lernstands nötig**: In den Kategorien `scrum` und `pm` gibt es noch keinen Fortschritt.
 
@@ -281,7 +282,7 @@ Zusatzinhalte (`modules/extra/agile/<kategorie>.json`, Regeln wie in Schritt 2 o
 
 | Schritt | Begriffe (B + N) | Erledigt |
 |---|---|---|
-| U Umbau-Chat | 198 verschoben | ☐ |
+| U Umbau-Chat | 198 verschoben | ☑ (v12) |
 | G `agil` Agile Grundlagen & Frameworks | 23 + 20 = 43 | ☐ |
 | G `team` Scrum-Rollen & Teamdynamik | 14 + 23 = 37 | ☐ |
 | G `sprint` Events & Sprint-Alltag | 14 + 24 = 38 | ☐ |
@@ -311,3 +312,4 @@ Zusatzinhalte (`modules/extra/agile/<kategorie>.json`, Regeln wie in Schritt 2 o
 | v9 | Vibration entfernt (bei Antworten und beim Modulwechsel) |
 | v10 | Gemeisterte Begriffe nicht mehr im Quiz; bei 1–2 offenen Begriffen Wiederholung bis 10 Fragen; Quiz endet, wenn der letzte offene Begriff gemeistert wird. Meisterrunde für gemeisterte Themen (20 s pro Begriff, kein Fehler erlaubt, ohne Einfluss auf den Lernstand), Krönung mit eigenem Design pro Thema (23 Themen-Designs + 6 allgemeine), Meisterbonus. Tagespflicht entfällt bei komplett gemeistertem Modul. Hilfe ergänzt |
 | v11 | Meisterrunde: Rekord an richtigen Antworten und Zahl der Versuche unter dem Knopf; Uhr wird rot, wenn man hinter dem Plan (20 s pro Frage) liegt |
+| v12 | Neues Modul **Agile & Projekte** (`agile`, weinrot, 13 Kategorien): 198 Begriffe aus `scrum`, `pm` und 2 aus `git` verschoben (nur Kategorie geändert); `team velocity`, `to do`, `in progress`, `done` gestrichen. IT-Modul heißt jetzt „IT“ (1.305 Begriffe, `key`/`ls` unverändert). 19 `conf`-Verweise in `modules/extra/dev/` auf verschobene Begriffe ersetzt bzw. gestrichen. Krönchen: `scrum` → `sprint`, `pm` → `plan`, 11 neue Designs |

@@ -10,8 +10,9 @@
 > **Für Claude:** Fragt der Nutzer nach den nächsten Schritten, nenne die offenen Punkte (☐) dieser Liste. Neue größere Vorhaben hier einreihen, erledigte abhaken und ihre Ergebnisse in die passenden Abschnitte dieser Datei übernehmen, statt lange Ablaufpläne stehen zu lassen.
 
 1. ☑ **IT-Kategorien aufteilen** (v17): 35 Kategorien mit 30–49 Begriffen, Lernstand bewusst neu gestartet.
-
-Angedachte, noch nicht definierte Vorhaben: „Lernrahmen“ (neue Fragearten, Fortschritt in Stufen statt XP) und eine Sprachprüfung mit KI. Beide erst mit dem Nutzer ausarbeiten, nicht vorwegnehmen.
+2. ☐ **Lernrahmen L1**: Aufräumen (XP, Ränge, Meisterrunde, Tagespflicht weg), neues Lernstand-Modell, Auswahl-Logik, Teil A (Abschnitt „Vorhaben ‚Lernrahmen‘“). Ein Chat.
+3. ☐ **Lernrahmen L2**: Teil B mit Bremse. Ein Chat.
+4. ☐ **Lernrahmen L3**: Teil C mit KI-Prüfung, Krönchen. Ein Chat.
 
 ## Was die App ist
 
@@ -238,6 +239,107 @@ Schlüssel = Begriffs-ID wie in `buildTerms` (Kleinbuchstaben, Sonderzeichen →
 - Die Modulleiste ist auch bei nur einem Modul sichtbar (wegen ＋). Ab 4 Modulen: Auswahlknopf mit ＋ daneben, Auswahlmenü unten mit „Module verwalten“.
 - Ist kein gewähltes Modul ladbar: Seite „Module nicht geladen“ mit „Nochmal versuchen“ und „Module verwalten“. Ein kaputtes Modul bleibt gewählt; beim Wechseln dorthin kommt eine Meldung, die übrigen laufen weiter.
 - Service Worker: App-Cache `fach-vokabeln-<VERSION>` (wird bei jeder Version ersetzt) und Daten-Cache `fach-vokabeln-daten` (alles unter `modules/` außer `index.json`, übersteht App-Updates). Strategie: sofort aus dem Cache, im Hintergrund aktualisieren, Laden immer mit `cache:"no-cache"` wegen der 10-Minuten-Zwischenspeicherung von GitHub Pages.
+
+## Vorhaben „Lernrahmen“ (offen)
+
+Ziel: Statt XP, Rängen und Boxen durchläuft jeder Begriff drei Teile. Die App entscheidet selbst, was als Nächstes gefragt wird. Der Rahmen ist für alle Module gleich und soll auch für Schulmodule (z. B. Biologie) funktionieren, die Claude für den Sohn des Nutzers erstellt. Mit dem Nutzer vollständig abgestimmt; was unten als **Vorschlag** markiert ist, hat Claude festgelegt und darf beim Umsetzen begründet angepasst werden.
+
+### Begriffe
+
+- **Ausgabearten:** Lesen (Text steht da) und Hören (Text wird vorgelesen und steht **nicht** da, 🔊 zum Wiederholen).
+- **Eingabearten:** Auswählen (5 Antworten), Schreiben (Textfeld, Prüfung mit `checkTyped`), Sprechen (🎤, siehe unten).
+- **Bedeutung** = deutsche Übersetzung (Index 2). Beim Vorlesen „ / “ als Komma sprechen.
+- Fehler haben **keine Folgen**: richtige Lösung zeigen, weiter. Es zählen nur richtige Antworten. „Fast richtig“ zählt als richtig.
+
+### Teil A
+
+1. **Bedeutung → Begriff** (wie heute „Wie heißt das auf Englisch?“): jede Ausgabeart (Lesen, Hören) **und** jede Eingabeart (Auswählen, Schreiben, Sprechen) mindestens einmal richtig. Nicht alle Kombinationen; eine Antwort hakt Ausgabe- und Eingabeart zugleich ab (Hören + Sprechen erledigt zwei Häkchen). Mindestens 3 Antworten.
+2. **Begriff → Bedeutung** (wie heute `en2de`): einmal Lesen + Auswählen, einmal Hören + Auswählen. Schreiben und Sprechen gibt es in dieser Richtung nicht (deutsche Übersetzungen mit Artikel und Varianten sind nicht zuverlässig prüfbar).
+
+Teil A fertig = alle 7 Häkchen, mindestens 5 Antworten. Die bisherigen Fragearten `def2en`, `en2def` und die Erklärungen als Frage entfallen; die 3 Erklärungen bleiben im Nachschlagen und dienen in Teil C als Vorlage für die KI.
+
+### Teil B (frühestens am Tag nach Abschluss von Teil A)
+
+Die vier Fragearten werden gemischt abgefragt. Teil B fertig, wenn alle Bedingungen erfüllt sind:
+
+- **Lückensatz** (nur Lesen, kein Hören): jeder verfügbare Satz einmal richtig (Index 4 und die 2 `ex`-Sätze; ein Satz, auf den `termRe` nicht passt, fällt weg) und jede Eingabeart einmal.
+- **Situation** (`sit`, „Welcher Begriff passt?“): jede der 3 Situationen einmal richtig, jede Ausgabeart (Lesen, Hören; vorgelesen wird auf Deutsch) und jede Eingabeart einmal.
+- **Stimmt das?** (`tf`): beide Aussagen einmal richtig, Lesen + Auswählen (Wahr/Falsch), danach Begründung zeigen wie heute.
+- **Unterschied** (`conf`, Darstellung wie heute mit `maskNames`): jeder Unterschied-Satz des Begriffs einmal richtig, Lesen + Auswählen. Gibt es keine `conf` oder weniger als 3 andere Paare im Modul, entfällt die Bedingung.
+
+Allgemein: Was ein Begriff an Inhalten nicht hat, wird nicht verlangt. Mindestens etwa 9–10 Antworten.
+
+### Teil C (frühestens am Tag nach Abschluss von Teil B)
+
+Den Begriff in eigenen Worten erklären, Schreiben oder Sprechen (Diktat auf Deutsch, Text darf vor dem Abschicken frei bearbeitet werden). Die KI prüft (Details unter „KI-Prüfung“). Richtig → Teil C fertig, der Begriff ist **gelernt**.
+
+**Kategorie gemeistert**, wenn alle ihre Begriffe Teil C geschafft haben → Krönchen (`P.crowns[kat] = {day}`, Designs wie bisher). Die Meisterrunde entfällt.
+
+### Bremse
+
+Teil B wird frühestens am Kalendertag nach Abschluss von Teil A angeboten, Teil C frühestens am Tag nach Teil B (Vergleich mit `dayStr`). Damit braucht ein Begriff mindestens 3 Tage. Grund: nicht alles an einem Abend aus dem Kurzzeitgedächtnis abhaken.
+
+### Sprechen: erst ins Textfeld, dann manuell abschicken
+
+Gilt für alle Fragen mit Sprechen (heute schickt `answerSpoken` sofort ab). Die erkannte beste Variante kommt ins Textfeld, man kann neu aufnehmen oder korrigieren und schickt mit einem Knopf ab. **Vorschlag:** Wird unverändert abgeschickt, prüft die App wie heute alle erkannten Varianten und hakt Sprechen ab. Wurde der Text von Hand geändert, zählt die Antwort als Schreiben. In Teil C darf frei bearbeitet werden.
+
+### Schalter „Gerade kein Ton“
+
+Gut sichtbar beim Quizstart (**Vorschlag:** Umschalter auf der Quiz-Kachel bzw. am Rundenstart), gespeichert in `localStorage["lernapp.quiet"]`, bleibt bis zum Ausschalten. Ist er an, gibt es kein Hören und kein Sprechen; diese Häkchen werden später nachgeholt. Begriffe, die nur noch Hören/Sprechen brauchen, warten; die App sagt das am Rundenende („3 Begriffe warten auf eine Runde mit Ton“).
+Kann das Gerät etwas **gar nicht** (kein `speechSynthesis` oder keine Stimme für die Sprache, kein `SR`), gelten die betroffenen Häkchen als erfüllt. Sonst bliebe ein Begriff für immer hängen.
+
+### Sprache pro Modul
+
+Neues optionales Feld in `module.json`: `"lang":{"term":"en-US","meaning":"de-AT"}` (Standard genau diese Werte, daher bleibt `version` 1). Verwendet für Vorlesen (`speak`), Spracheingabe des Begriffs (`listen`) und das Diktat in Teil C (`meaning`). Situationen und Stimmt-das-Aussagen sind in `meaning`-Sprache. Damit ist ein deutschsprachiges Schulmodul möglich (`term` und `meaning` beide `de-AT`).
+
+### Auswahl der Fragen (App entscheidet selbst)
+
+**Vorschlag:**
+- Runde = 10 Fragen (`QUIZ_LEN`), aus den gewählten Themen (`P.cats`, Themenauswahl bleibt).
+- Pro Begriff gibt es eine Liste offener Aufgaben (Teil, Frageart, Inhalt, Aus-/Eingabeart), unter Beachtung von Bremse und „Gerade kein Ton“. Die App wählt pro Begriff die Aufgabe, die die meisten offenen Häkchen auf einmal erfüllt, bei Gleichstand zufällig.
+- Vorrang: begonnene Begriffe vor neuen, höherer Teil vor niedrigerem (Krönchen sollen erreichbar werden). Höchstens 3 neue Begriffe pro Runde. Neue Begriffe aus dem gewählten Thema, das am weitesten ist (Gleichstand: Reihenfolge in `cats`).
+- Nie derselbe Begriff zweimal direkt hintereinander; ein Begriff höchstens 2× pro Runde.
+- Teil-C-Fragen höchstens 2 pro Runde und nur, wenn die KI-Prüfung gerade möglich ist.
+- Gibt es weniger als 10 Aufgaben, wird die Runde kürzer. Gibt es heute gar keine (alles wartet auf die Bremse), sagt die Startseite das: „Heute alles erledigt, morgen geht's weiter mit X Begriffen“.
+- Antwortmöglichkeiten: weiterhin 5, unterschiedliche Anfangsbuchstaben (`keyLetter`), Ablenker zuerst aus derselben Kategorie.
+
+### KI-Prüfung (Teil C)
+
+- **Anbieter:** Google Gemini API, Gratis-Stufe (Nutzer will kein Abo). Aufruf direkt aus dem Browser: `POST https://generativelanguage.googleapis.com/v1beta/models/<MODELL>:generateContent`, Kopfzeile `x-goog-api-key`. Modell als Konstante `AI_MODEL`; vor der Umsetzung in der aktuellen Gemini-Doku ein Flash-Modell wählen, das in der Gratis-Stufe verfügbar ist (Modelle und Grenzen ändern sich). Antwort als JSON anfordern (`generationConfig.responseMimeType = "application/json"`).
+- **Schlüssel:** Jeder Nutzer trägt seinen eigenen Schlüssel ein (neues Blatt „KI-Prüfung“, erreichbar bei Export/Import, mit kurzer Anleitung und Link zu Google AI Studio). Gespeichert nur in `localStorage["lernapp.aikey"]`, **nie im Repo, nie im Export**. Knopf „Testen“ und „Entfernen“.
+- **Hinweis im Blatt:** In der Gratis-Stufe kann Google die Eingaben zum Verbessern der Modelle verwenden. Nur Erklärungen eingeben, nichts Persönliches.
+- **Eingabe an die KI:** Begriff, Bedeutung, die 3 Erklärungen (Index 3, 6, 7) als Musterlösungen, die Antwort. Anweisung (**Vorschlag**): Prüfer:in, die beurteilt, ob die Person den Begriff verstanden hat. Inhaltlich streng, sprachlich großzügig: eigene Worte, Beispiele und Umschreibungen sind gut, Rechtschreib- und Spracherkennungsfehler egal. Nicht richtig: nur die Übersetzung wiederholt, fachlich falsch, zu vage, um den Begriff von verwandten zu unterscheiden. Länge zählt nicht. Ergebnis `{"ok":true|false,"feedback":"1–2 Sätze auf Deutsch, du-Form, freundlich","fehlt":"was gefehlt hat oder leer"}`.
+- **Anzeige:** Urteil, Feedback, danach eine der Musterlösungen. Falsch hat keine Folgen, nächster Versuch in einer späteren Runde.
+- **Fehlerfälle:** kein Schlüssel, offline, Limit erreicht (HTTP 429), ungültiger Schlüssel, unlesbare Antwort → klare Meldung, Antwort wird **nicht** gewertet, Teil C bleibt offen. Ohne Schlüssel oder Netz bietet die Auswahl keine Teil-C-Fragen an; die Startseite zeigt einen Hinweis „X Begriffe warten auf die KI-Prüfung“ mit Link zum Blatt.
+- Der Service Worker greift bei fremden Adressen nicht ein (`fetch`-Handler, nur gleiche Herkunft und Schriften); das muss so bleiben.
+
+### Was wegfällt
+
+XP, Ränge (`levels` in `module.json` wird ignoriert und kann per Skript entfernt werden), Punkte pro Antwort, Tagesbonus, Tagespflicht (ersatzlos, vorerst kein Tagesziel), Boxen/Profi/Meister, Meister-Regel, Pausen (`gapFor`), Verwechslungen (`P.mix`), Vormerkungen (`P.flags`; „Nochmal üben“ bei Karteikarten legt die Karte nur innerhalb des Stapels ans Ende), Meisterrunde samt Rekorden, Ränge-Fenster und Punkte-Erklärung. Karteikarten und Nachschlagen bleiben, beeinflussen den Lernstand nicht.
+
+### Lernstand, Kalender, Oberfläche
+
+- **Kein Übergang:** Bisheriger Lernstand wird verworfen. `P` bekommt `v:2`; ein gespeicherter Lernstand ohne `v:2` wird durch `freshProgress()` ersetzt. Die `ls`-Schlüssel in `index.json` bleiben.
+- **Vorschlag für `P`:** `{v:2, terms:{id:{a:[häkchen], aDay, b:[häkchen], bDay, cDay}}, crowns:{kat:{day}}, cats:[], askLog:{tag:anzahl}, updatedAt}`. Häkchen als kurze Strings, z. B. Teil A `o:read`, `o:hear`, `i:pick`, `i:type`, `i:say`, `r:read`, `r:hear`; Teil B `c0`…`c2`, `ci:pick`…, `s0`…`s2`, `so:read`, `so:hear`, `si:…`, `t0`, `t1`, `u0`, `u1`. `aDay`/`bDay`/`cDay` = Tag des Abschlusses.
+- **Export/Import:** Format-`version` 2; ein Import mit Version 1 wird mit Meldung abgelehnt. Der KI-Schlüssel ist nie enthalten.
+- **Kalender:** zeigt pro Tag nur die Zahl der beantworteten Fragen (richtig und falsch, `P.askLog`), ohne Strafen, Farben nach Menge.
+- **Startseite:** statt XP-Balken und Rang ein Fortschritt pro Thema und fürs Modul: wie viele Begriffe neu, in Teil A, B, C und gelernt. Krönchen wie bisher. Kopf zeigt die Fragen von heute.
+- **Nachschlagen:** statt Profi/Meister-Abzeichen (`proTag`) der Stand des Begriffs (A/B/C/✓).
+- **Rundenende:** wie viele Häkchen gesammelt, welche Begriffe einen Teil abgeschlossen haben, ggf. die Warte-Hinweise.
+- **Hilfe** komplett neu schreiben: drei Teile, Bremse, „Gerade kein Ton“, KI-Prüfung.
+
+### Inhalte pro Begriff (unverändert)
+
+Bedeutung, 3 Erklärungen, Beispielsatz + 2 `ex`, 3 `sit`, 2 `tf`, `conf` optional. IT und Agile haben das für alle 1.812 Begriffe; es müssen keine Inhalte geschrieben werden. Neue Module brauchen dasselbe (ohne `levels`).
+
+### Umsetzung in drei Chats
+
+Jeder Chat liefert eine lauffähige App, testet mit `python3 -m http.server` und Playwright (keine Konsolenfehler), erhöht `VERSION`, ergänzt das Änderungsprotokoll und hakt seinen Punkt unter „Nächste Schritte“ ab.
+
+- **L1 – Aufräumen, Lernstand, Auswahl, Teil A:** Alles unter „Was wegfällt“ entfernen; neues `P` und `freshProgress`; Aufgabenlisten und Auswahl-Logik; Teil A mit allen Aus- und Eingabearten; Sprechen ins Textfeld; „Gerade kein Ton“; `lang` pro Modul; Kalender, Startseite, Nachschlagen, Rundenende, Export v2, Hilfe. Begriffe stehen danach bei „Teil A geschafft“, Teil B zeigt „kommt bald“. Test: Teil A eines Begriffs mit genau 5 Antworten abschließbar; ohne Ton nur Lesen/Auswählen/Schreiben; Gerät ohne `SR` hakt Sprechen automatisch ab.
+- **L2 – Teil B:** vier Fragearten mit Häkchen, Bremse für A → B, Hören der Situationen auf Deutsch. Test: Bremse mit vorgestelltem Datum (Uhr in Playwright verstellen), Begriff ohne `conf`.
+- **L3 – Teil C und Krönchen:** Blatt „KI-Prüfung“, Aufruf, Anzeige, Fehlerfälle, Bremse B → C, „gelernt“, Kategorie gemeistert → Krönchen. Test: Gemini-Antworten in Playwright mit `page.route` nachbilden (richtig, falsch, 429, kaputtes JSON, offline); einen echten Aufruf nur, wenn der Nutzer einen Schlüssel zum Testen gibt.
+- Danach in dieser Datei „Was die App ist“, „Spielregeln“, „Code-Landkarte“, „Gespeicherter Fortschritt“, „Datenformat“ (`lang`, ohne `levels`) und „Neues Modul anlegen“ (Schritt mit `levels` streichen) an den neuen Stand anpassen und diesen Abschnitt auf das Nötigste kürzen.
 
 ## Änderungsprotokoll
 

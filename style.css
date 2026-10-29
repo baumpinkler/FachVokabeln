@@ -73,14 +73,14 @@ h1{font-size:clamp(2rem,9vw,2.6rem);font-weight:800;letter-spacing:-.025em}
 
 /* ---------- Modulleiste ---------- */
 .modbar{
-  position:relative; display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:0;
+  position:relative; display:grid; grid-template-columns:repeat(var(--n, 2), minmax(0, 1fr)) 44px; gap:0;
   padding:4px; margin:2px 0 14px; border-radius:var(--r-md);
   background:color-mix(in srgb, var(--surface) 72%, transparent); border:1px solid var(--line);
   backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); box-shadow:var(--edge);
 }
 .modbar[hidden]{display:none}
 .modbar .ind{
-  position:absolute; top:4px; bottom:4px; left:4px; width:calc((100% - 8px) / var(--n, 2));
+  position:absolute; top:4px; bottom:4px; left:4px; width:calc((100% - 8px - 44px) / var(--n, 2));
   border-radius:var(--r-sm); background:var(--accent);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 6px 18px -8px var(--accent);
   transform:translateX(calc(var(--pos, 0) * 100%)); transition:transform .42s var(--spring);
@@ -88,8 +88,11 @@ h1{font-size:clamp(2rem,9vw,2.6rem);font-weight:800;letter-spacing:-.025em}
 .modbar.drag .ind{transition:none}
 .modbar button{position:relative;z-index:1;border:0;background:transparent;border-radius:var(--r-sm);padding:10px 6px;font-weight:700;font-size:.93rem;color:var(--ink-soft)}
 .modbar button[aria-selected="true"]{color:#fff}
-.modbar.pick{display:block;padding:0;background:transparent;border:0;backdrop-filter:none;box-shadow:none}
-.modpick{width:100%;display:flex;align-items:center;gap:8px;padding:12px 16px;border:0;border-radius:var(--r-md);background:var(--accent);color:#fff;font-weight:700;font-size:.95rem}
+.modbar .mod-add{padding:10px 0;font-size:1.15rem;font-weight:400;color:var(--ink-soft)}
+.modbar .mod-add:hover{color:var(--ink)}
+.modbar.pick{display:flex;gap:8px;padding:0;background:transparent;border:0;backdrop-filter:none;box-shadow:none}
+.modbar.pick .mod-add{flex:none;width:48px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--raise);box-shadow:var(--edge)}
+.modpick{flex:1;min-width:0;display:flex;align-items:center;gap:8px;padding:12px 16px;border:0;border-radius:var(--r-md);background:var(--accent);color:#fff;font-weight:700;font-size:.95rem}
 
 /* ---------- Kopf: Rang, Tagesring, Hilfe ---------- */
 .top{display:flex;align-items:center;gap:12px;padding:4px 0 20px}
@@ -371,6 +374,19 @@ dialog textarea{width:100%;margin:8px 0;background:var(--board);color:var(--ink)
 .mod-item{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--raise);color:var(--ink);font-weight:700;font-size:1rem;text-align:left;box-shadow:inset 4px 0 0 var(--ac)}
 .mod-item.cur{outline:2px solid var(--ink)}
 .mod-ic{font-size:1.4rem}
+.mod-manage{margin-top:12px}
+/* Katalog „Module verwalten“ (Blatt und Willkommen-Seite) */
+.cg-list{display:grid;gap:10px;margin:12px 0 4px}
+.cg-item{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--raise);box-shadow:inset 4px 0 0 var(--ac)}
+.cg-item .mod-ic{grid-row:span 2;line-height:1.2}
+.cg-text{min-width:0}
+.cg-text b{display:block;font-family:var(--display);font-size:1.05rem}
+.cg-text p{margin:3px 0 0;font-size:.88rem;color:var(--ink-soft)}
+.cg-text small{display:block;margin-top:4px;font-size:.8rem;color:var(--ink-soft)}
+.cg-act{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:6px}
+.cg-act .btn{padding:9px 18px;font-size:.92rem}
+.cg-on{font-size:.85rem;font-weight:700;color:var(--ok)}
+.cg-hint,.cg-note{font-size:.8rem;color:var(--ink-soft);margin:0}
 
 /* ---------- Meldungen und Effekte ---------- */
 .toast{

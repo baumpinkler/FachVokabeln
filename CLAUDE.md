@@ -12,7 +12,7 @@
 1. ☑ **Schritt 2 für IT**: Zusatzinhalte für alle IT-Kategorien (Status unter „Ausbau ‚Verstehen statt Auswendiglernen‘“).
 2. ☑ **Schritt G für Agile**: Grunddaten für alle 13 Kategorien (Status unter „Neues Modul ‚Agile & Projekte‘“). Ein Chat pro Kategorie.
 3. ☑ **Schritt 2 für Agile**: Zusatzinhalte für alle 13 Kategorien (Status-Tabelle „Schritt 2 für Agile“).
-4. ☐ **Modulsystem**: Module als Ordner, Nutzer wählt seine Module, nur gewählte werden geladen und offline gespeichert (Abschnitt „Vorhaben ‚Modulsystem‘“). Ein Chat.
+4. ☑ **Modulsystem**: Module als Ordner, Nutzer wählt seine Module, nur gewählte werden geladen und offline gespeichert (Abschnitt „Vorhaben ‚Modulsystem‘“). Ein Chat.
 
 Phase 1 und 2 hängen nicht voneinander ab und dürfen sich auch überschneiden. Phase 3 muss warten, weil die `conf`-Partner auch aus anderen Agile-Kategorien kommen dürfen und diese Begriffe dann schon existieren müssen.
 
@@ -21,6 +21,7 @@ Phase 1 und 2 hängen nicht voneinander ab und dürfen sich auch überschneiden.
 Installierbare Web-App (PWA) zum Lernen englischer Fachbegriffe mit deutscher Übersetzung. Zielgruppe: der Nutzer selbst (Österreich), Android-Handy, Chrome.
 Drei Module: **IT** (`dev`, 1.305 Begriffe, violettes Schema), **Glasfaser & FTTH** (`ftth`, 500 Begriffe, grünes Schema) und **Agile & Projekte** (`agile`, 507 Begriffe, weinrotes Schema).
 Bereiche: Quiz, Karteikarten, Nachschlagen. Dazu Ränge, Kalender, Punkte-Erklärung, Export/Import.
+Jeder Nutzer wählt im Katalog „Module verwalten“, welche Module er verwendet; nur diese werden geladen und offline gespeichert (seit v13).
 
 ## Hosting und Updates
 
@@ -41,11 +42,14 @@ Bereiche: Quiz, Karteikarten, Nachschlagen. Dazu Ränge, Kalender, Punkte-Erklä
 | `sw.js` | 2 KB | Service Worker: Offline-Cache, „sofort aus Cache, im Hintergrund aktualisieren“ |
 | `manifest.json` | 1 KB | App-Name, Symbole, Startfarbe `#0a0510` |
 | `icons/` | – | `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` |
-| `modules/index.json` | 1 KB | Liste aller Module |
-| `modules/it-scrum.json` | 440 KB (~130.000 Tokens) | Modul IT (Dateiname historisch), **nie komplett lesen oder einfügen** |
-| `modules/glasfaser.json` | 172 KB (~50.000 Tokens) | **nie komplett lesen oder einfügen** |
-| `modules/agile.json` | 203 KB (~60.000 Tokens) | Modul Agile & Projekte, **nie komplett lesen oder einfügen** |
-| `modules/extra/<modul>/<kategorie>.json` | je 50–160 KB | Zusatzinhalte für schwere Fragearten (siehe „Verstehen statt Auswendiglernen“) |
+| `modules/index.json` | 2 KB | Katalog aller Module (`desc`, `count` für „Module verwalten“) |
+| `modules/<key>/module.json` | – | ein Modul; der Ordnername ist immer der `key` |
+| `modules/dev/module.json` | 440 KB (~130.000 Tokens) | Modul IT, **nie komplett lesen oder einfügen** |
+| `modules/ftth/module.json` | 172 KB (~50.000 Tokens) | Modul Glasfaser & FTTH, **nie komplett lesen oder einfügen** |
+| `modules/agile/module.json` | 203 KB (~60.000 Tokens) | Modul Agile & Projekte, **nie komplett lesen oder einfügen** |
+| `modules/<key>/extra/<kategorie>.json` | je 50–160 KB | Zusatzinhalte für schwere Fragearten (siehe „Verstehen statt Auswendiglernen“), optional |
+
+Bis v12 hießen die Moduldateien `modules/it-scrum.json`, `modules/glasfaser.json`, `modules/agile.json` und die Zusatzdateien `modules/extra/<modul>/…`. Ältere Abschnitte weiter unten nennen noch diese Pfade.
 | `docs/agile-projekte-begriffe.md` | 28 KB | verbindliche Begriffsliste für Agile & Projekte |
 
 ## Welche Dateien für welche Änderung
@@ -55,29 +59,35 @@ Bereiche: Quiz, Karteikarten, Nachschlagen. Dazu Ränge, Kalender, Punkte-Erklä
 | Farben eines Moduls | `modules/index.json` + Hinweis, welches Modul. Claude erzeugt ein kleines Skript bzw. die `theme`-Werte; das große JSON wird per Skript geändert, nicht gelesen |
 | Aussehen, Abstände, Schriften | `style.css` |
 | Spielregeln, Punkte, Quiz, Kalender, neue Funktionen | `app.js` (+ ggf. `style.css`) |
-| Neue Begriffe / neues Modul | `modules/index.json` + **nur die Liste der vorhandenen englischen Begriffe** (nicht die ganze Datei, siehe unten) |
+| Neue Begriffe / neues Modul | `modules/index.json` (`count` mitpflegen) + **nur die Liste der vorhandenen englischen Begriffe** (nicht die ganze Datei, siehe unten). Neues Modul = neuer Ordner `modules/<key>/`, keine Code-Änderung, keine `VERSION`-Erhöhung |
+| Katalog, Modulauswahl, Laden der Module | `app.js` (Bereich „Module laden“ und „Katalog“), `sw.js` (Daten-Cache) |
 | Offline-Verhalten | `sw.js` |
 
 Begriffsliste ohne ganze Datei erzeugen: Claude kann die Moduldatei hochgeladen bekommen und per Skript nur Spalte `[1]` (englischer Begriff) auslesen. Das kostet kaum Tokens, weil die Datei nicht in den Chat geladen wird.
 
 ## Datenformat
 
-### `modules/index.json`
+### `modules/index.json` (Katalog)
 ```json
-{"modules":[{"key":"dev","file":"it-scrum.json","name":"IT","short":"IT","icon":"💻",
+{"modules":[{"key":"dev","name":"IT","short":"IT","icon":"💻",
+  "desc":"Englische Fachbegriffe aus Programmierung, …","count":1305,
   "ls":"devvokabeln.progress.v1","doc":"progress","accent":"#6c3fb8","board":"#0a0510"}]}
 ```
-`ls` = Speicherschlüssel des Lernstands, **pro Modul eindeutig, nie ändern** (sonst ist der Fortschritt weg).
-Ab 4 Modulen wird der Umschalter automatisch zum Auswahlmenü.
+Reihenfolge in `index.json` = Reihenfolge in Katalog, Modulleiste und beim Wischen. Die Moduldatei liegt immer unter `modules/<key>/module.json` (kein Feld `file` mehr).
+- `desc`: ein Satz für den Katalog. `count`: Zahl der Begriffe (per Skript aus `raw`), optional, bei Begriffsänderungen mitpflegen.
+- `ls` = Speicherschlüssel des Lernstands, **pro Modul eindeutig, nie ändern** (sonst ist der Fortschritt weg). Neue Module: `ls` = `lernapp.progress.<key>`, `doc` = `progress-<key>`. Die drei alten Module behalten ihre `devvokabeln.…`-Werte.
+- Optional `format`/`version` wie in der Moduldatei: Braucht ein Modul eine neuere App, zeigt der Katalog das schon ohne Download an.
+- Ab 4 gewählten Modulen wird der Umschalter automatisch zum Auswahlmenü.
 
-### Moduldatei, z. B. `modules/glasfaser.json`
+### Moduldatei `modules/<key>/module.json`
 ```
-{ key, name, short, icon,
+{ format:"fachvokabeln-modul", version:1, key, name, short, icon,
   cats:   { "fgrund": {"name":"Glasfaser-Grundlagen","c":"var(--n-yellow)"}, … },
   levels: [[0,"Praktikant:in"],[100,"Lehrling"], … 20 Einträge … ,[50000,"Glasfaser-Legende"]],
   theme:  { board, board-dot, ink, ink-soft, surface, line, ok, bad, accent, m1, m2, m3 },
   raw:    [ Eintrag, Eintrag, … ] }
 ```
+Kompakt gespeichert (`separators=(",",":")`, `ensure_ascii=False`, ohne Zeilenumbruch am Ende). Die App (`MOD_FORMAT`, `MOD_VERSION` in `app.js`) lädt nur `format` „fachvokabeln-modul“ mit `version` ≤ 1; sonst „braucht eine neuere App-Version“. Ohne gültiges JSON, `raw` oder `cats` gilt das Modul als fehlerhaft.
 `theme`: `board` Hintergrund (fast schwarz), `surface` Flächen, `accent` Modul-Schalter, `m1`/`m2`/`m3` die drei Startseiten-Kärtchen (Karteikarten/Quiz/Nachschlagen).
 XP-Grenzen der Ränge (alle Module gleich): 0, 100, 250, 400, 600, 900, 1.300, 1.800, 2.400, 3.200, 4.300, 5.700, 7.600, 10.000, 13.000, 17.000, 22.500, 29.500, 38.500, 50.000.
 
@@ -115,10 +125,13 @@ XP-Grenzen der Ränge (alle Module gleich): 0, 100, 250, 400, 600, 900, 1.300, 1
 
 | Bereich | Funktionen |
 |---|---|
-| Module laden | `loadIndex`, `ensureModule` (merkt laufende Downloads), `applyTheme`, `loadModule`, `switchModule` (= `swipeTo`), `boot` (ganz unten, lädt die übrigen Module nach 1,5 s vor) |
+| Module laden | `CATALOG_ORDER` (alle aus dem Index), `MODULE_ORDER` (nur gewählte, in Index-Reihenfolge), `INDEX` (Katalogdaten), `loadIndex`, `ensureModule` (merkt laufende Downloads, prüft Format, Fehler mit `code` `offline`/`missing`/`broken`/`newer`), `needsNewerApp`, `modErrText`, `applyTheme`, `loadModule`, `switchModule` (= `swipeTo`) |
+| Modulauswahl | `initChosen` (Übergang: ohne `lernapp.chosen` alle mit Lernstand), `setChosen`, `hasProgress`, `unloadModule`, `dropModuleCache` |
+| Katalog | `showCatalog` (Blatt „Module verwalten“), `mountCatalog`/`catalogItems` (auch für die Willkommen-Seite), `enterModule` (Tagespflicht-Pause, dann wechseln), `removeModule` |
+| Start | `boot` (ganz unten): `loadIndex` → `initChosen` → `renderWelcome` (nichts gewählt) oder `startChosen` (Startmodul, kaputte überspringen, sonst `renderNoModule`) → `startApp` (lädt nach 1,5 s nur die übrigen gewählten Module vor) |
 | Modulwechsel & Wischen | `renderModbar` (Leiste mit Marker `--pos`, Pfeiltasten), `initSwipe` (Wischgeste nur auf der Übersicht, nur Finger/Stift), `swipeTo` (raus-/reinschieben), `snapBack`, `slide`, `settleAnim`; Hinweis einmalig über `lernapp.swipehint` |
 | Übergänge | `transit(fn, dir)` (View Transitions, `dir` = `fwd`/`back`), `goHome`; Karteikarten fliegen nach rechts (gewusst) oder links (nochmal) weg (`advance` in `renderCard`) |
-| Zusatzinhalte | `loadExtras` (beim Quizstart, max. 2,5 s warten, 404 still), `extraOf` (geprüfte Inhalte eines Begriffs), `nameVariants`, `maskNames`; im Speicher `MOD.extra`, `MOD.extraDone`; `BYID` = Begriffe nach ID |
+| Zusatzinhalte | `fetchExtras` (gemeinsamer Lader, merkt laufende Downloads), `loadExtras` (beim Quizstart, max. 2,5 s warten, 404 still), `preloadExtras` (alle Kategorien nach dem Hinzufügen), `extraOf` (geprüfte Inhalte eines Begriffs), `nameVariants`, `maskNames`; im Speicher `MOD.extra`, `MOD.extraDone`; `BYID` = Begriffe nach ID |
 | Begriffe | `buildTerms`, `cloze`, `clozeDe`, `keyLetter`, `shortLabel`, `highlight` |
 | Speicher | `freshProgress`, `save`, `fixCats`; Cloud-Funktionen (`pushCloud`, `syncCloud`, `connectCloud`) sind Altlast aus claude.ai und außerhalb inaktiv |
 | Punkte & Ränge | `addXP`, `levelInfo`, `levels`, `dailyCheck`, `dayBonus`, `setBox` |
@@ -127,7 +140,7 @@ XP-Grenzen der Ränge (alle Module gleich): 0, 100, 250, 400, 600, 900, 1.300, 1
 | Quiz | `startQuiz` (async), `quizPool`, `repeatFill`, `makeQuestion`, `easyQuestion`, `hardQuestion`, `hardTypes`, `otherConfs`, `renderQuiz`, `answer`/`answerTyped` → `settle` (Punkte, Lernstand), `checkTyped`, `nextQuestion`, `renderQuizDone` |
 | Karteikarten | `startCards`, `renderCard`, `renderCardsDone` |
 | Nachschlagen | `renderLex`, `proTag` |
-| Startseite & Kopf | `renderHome`, `renderTop` |
+| Startseite & Kopf | `renderHome` (Knopf „Module verwalten“ bei Export/Import), `renderTop`, `renderModbar` (nur gewählte Module, ＋ am Ende) |
 | Fenster | `sheet`, `openDialog`, `showLevels`, `showHelp`, `showCalendar`/`renderCalendar`, `showExport`, `showImport`, `showModulePicker` |
 | Zurück-Taste | `navPush`, `navEnterScreen`, `popstate`-Handler, `renderHome(fromPop)` |
 | Sonstiges | `speak` (Vorlesen), `listen`/`stopListen`/`answerSpoken` (Spracheingabe, `SR`), `toast(msg, ms)`, `confetti`, `setFocus` (blendet Modulleiste und Kopf in Quiz/Karten/Nachschlagen aus) |
@@ -136,7 +149,8 @@ XP-Grenzen der Ränge (alle Module gleich): 0, 100, 250, 400, 600, 900, 1.300, 1
 
 `xp`, `crowns{kategorie:{day, best (ms), runs}}`, `mtries{kategorie:{n, best}}` (Meisterrunde: Versuche, meiste richtige Antworten), `boxes{id:0–15}`, `last{id:runde}`, `round`, `flags{id:1}`, `mix{id:{andereId:anzahl}}`, `hard{id:anzahl}`, `cats[]`, `quizLog{tag:anzahl}`, `xpLog{tag:netto}`, `penaltyLog{tag:200}`, `checkedUntil`, `penalty`, `updatedAt`.
 Tagesformat: `JJJJ-M-T` (ohne führende Nullen, siehe `dayStr`). Export-Format: `{"format":"lernapp-fortschritt","version":1,"modules":{key:P}}`.
-Weitere Schlüssel: `devvokabeln.module` (zuletzt offenes Modul), `lernapp.theme` (Farbschema für den Start).
+Weitere Schlüssel: `lernapp.chosen` (Array der gewählten Modul-Keys), `devvokabeln.module` (zuletzt offenes Modul), `lernapp.theme` (Farbschema für den Start), `lernapp.swipehint`.
+Entfernen eines Moduls löscht nur `lernapp.chosen`-Eintrag und Daten-Cache, nie den Lernstand. Beim Wieder-Hinzufügen wird `checkedUntil` auf gestern gesetzt (keine Tagespflicht-Abzüge für die Pause). Der Export enthält alle Module mit Lernstand, auch abgewählte; ein Import nimmt nicht gewählte Module in die Auswahl auf.
 
 ## Gestaltung und Konventionen
 
@@ -170,11 +184,11 @@ Dateien: `app.js`, `style.css`, `sw.js`. Moduldateien nie komplett lesen.
 
 ### Schritt 2: Inhalte-Chats (zuerst IT, später Agile; ein Chat pro Kategorie)
 
-Gilt für **beide** Module. Für Agile erst starten, wenn Schritt G für alle Agile-Kategorien erledigt ist (siehe „Nächste Schritte“). Unterschiede bei Agile: Begriffe aus `modules/agile.json` lesen, Datei `modules/extra/agile/<kategorie>.json` mit `"module":"agile"`, `conf`-IDs müssen in `modules/agile.json` existieren (die App sucht Partner nur im eigenen Modul), Status in der Tabelle „Schritt 2 für Agile“ abhaken. Alles andere (Format, Regeln, Prüfskript) wie unten beschrieben.
+Gilt für **beide** Module. Für Agile erst starten, wenn Schritt G für alle Agile-Kategorien erledigt ist (siehe „Nächste Schritte“). Unterschiede bei Agile: Begriffe aus `modules/agile/module.json` lesen, Datei `modules/agile/extra/<kategorie>.json` mit `"module":"agile"`, `conf`-IDs müssen in `modules/agile/module.json` existieren (die App sucht Partner nur im eigenen Modul), Status in der Tabelle „Schritt 2 für Agile“ abhaken. Alles andere (Format, Regeln, Prüfskript) wie unten beschrieben.
 
-Ablauf: Repo klonen, per Skript nur die Begriffe der Kategorie auslesen (Index 1, 2, 3, 6, 7 – Begriff, Deutsch, Erklärungen), Inhalte in Blöcken von ca. 25 Begriffen schreiben, Datei per Skript prüfen (siehe unten), nur `modules/extra/dev/<kategorie>.json` und diese Datei (Status abhaken) ausliefern. **Keine** `VERSION`-Erhöhung nötig.
+Ablauf: Repo klonen, per Skript nur die Begriffe der Kategorie auslesen (Index 1, 2, 3, 6, 7 – Begriff, Deutsch, Erklärungen), Inhalte in Blöcken von ca. 25 Begriffen schreiben, Datei per Skript prüfen (siehe unten), nur `modules/<modul>/extra/<kategorie>.json` und diese Datei (Status abhaken) ausliefern. **Keine** `VERSION`-Erhöhung nötig.
 
-**Dateiformat** `modules/extra/dev/<kategorie>.json`:
+**Dateiformat** `modules/<modul>/extra/<kategorie>.json` (bis v12: `modules/extra/<modul>/…`):
 ```json
 {"format":"fachvokabeln-extra","version":1,"module":"dev","cat":"net",
  "terms":{
@@ -328,7 +342,7 @@ Ausliefern: nur `modules/agile.json` und diese Datei (Status abhaken). Eine `VER
 | `risiko` Risiko, Qualität & Abschluss | 33 | ☑ |
 | `komm` Stakeholder, Kommunikation & Moderation | 36 | ☑ |
 
-## Vorhaben „Modulsystem“ (offen)
+## Vorhaben „Modulsystem“ (erledigt, v13)
 
 Ziel: Die App ist der feste Lernrahmen, Module sind austauschbare Inhalte im Repo. Jeder Nutzer wählt, welche Module er verwendet. **Nur gewählte Module werden geladen und offline gespeichert.** Hintergrund: Später sollen viele, auch kleine Module dazukommen (z. B. Biologie oder Geographie für einen Schultest, von Claude erstellt). Dann darf nicht jedes Handy alles herunterladen.
 
@@ -336,7 +350,7 @@ Ziel: Die App ist der feste Lernrahmen, Module sind austauschbare Inhalte im Rep
 
 **Ein Chat.** Dateien: `app.js`, `sw.js`, `style.css` (Katalog), `modules/` (nur verschieben und per Skript ergänzen, große JSON-Dateien nie lesen), `README.md`, diese Datei.
 
-### Ist-Zustand: warum heute alles geladen wird
+### Ist-Zustand vor v13: warum damals alles geladen wurde
 
 - `sw.js` lädt beim Installieren alle Module aus `index.json` in den Cache.
 - `boot` lädt nach 1,5 s alle übrigen Module vor (`MODULE_ORDER.forEach(ensureModule)`).
@@ -383,6 +397,14 @@ Ziel: Die App ist der feste Lernrahmen, Module sind austauschbare Inhalte im Rep
     - Wischen, Leiste und Pfeiltasten nur über gewählte Module; Export/Import; keine Konsolenfehler.
 12. **Abschluss:** `VERSION` in `sw.js` erhöhen, Änderungsprotokoll ergänzen, Punkt 4 unter „Nächste Schritte“ abhaken.
 
+**Umsetzung (v13), Abweichungen und Ergänzungen:**
+- Die Modulleiste ist jetzt auch bei nur einem gewählten Modul sichtbar, damit das ＋ erreichbar bleibt. Im Auswahlmodus (ab 4) steht ＋ neben dem Auswahlknopf; das Auswahlmenü hat unten „Module verwalten“.
+- Neues Gerät: Willkommen-Seite mit Katalog und „Importieren“ (Fortschritt von einem anderen Gerät übernehmen, die enthaltenen Module werden gewählt).
+- Ist kein gewähltes Modul ladbar (z. B. offline direkt nach dem Update): Seite „Module nicht geladen“ mit „Nochmal versuchen“ und „Module verwalten“.
+- Ein kaputtes Modul bleibt gewählt (kann ein vorübergehendes Problem sein); beim Wechseln dorthin kommt die Meldung, die übrigen Module laufen weiter.
+- Entfernen des gerade offenen Moduls wechselt zuerst zum nächsten ladbaren gewählten Modul; geht das nicht (offline), wird nichts entfernt.
+- Getestet mit Playwright: leerer Speicher (nur Dateien des gewählten Moduls geladen), Übergang mit Lernstand in allen drei Modulen, Entfernen/Wieder-Hinzufügen ohne Abzüge, echter Offline-Betrieb (Server gestoppt) mit schweren Fragearten aus dem Daten-Cache, Hinzufügen offline (Meldung), Wischen/Pfeiltasten, Export/Import, kaputtes und zu neues Modul.
+
 ## Änderungsprotokoll
 
 | Version | Änderung |
@@ -402,3 +424,4 @@ Ziel: Die App ist der feste Lernrahmen, Module sind austauschbare Inhalte im Rep
 | – | Schritt G für Agile abgeschlossen: 309 neue Begriffe in allen 13 Kategorien, Modul jetzt 507 Begriffe (nur `modules/agile.json`, keine `VERSION`-Erhöhung) |
 | – | Schritt 2 für Agile: Zusatzinhalte für `agil`, `team`, `sprint`, `backlog`, `lean`, `produkt`, `discovery` (283 Begriffe, `modules/extra/agile/`, keine `VERSION`-Erhöhung) |
 | – | Schritt 2 für Agile abgeschlossen: Zusatzinhalte für `orga`, `plan`, `anf`, `kosten`, `risiko`, `komm` (224 Begriffe), damit alle 507 Agile-Begriffe mit Zusatzinhalten (keine `VERSION`-Erhöhung) |
+| v13 | **Modulsystem:** ein Ordner pro Modul (`modules/<key>/module.json`, `modules/<key>/extra/`), Moduldateien mit `format`/`version`; `index.json` ist der Katalog (`desc`, `count`, kein `file`). Nutzer wählt seine Module im neuen Katalog „Module verwalten“ (＋ in der Modulleiste und bei Export/Import), Auswahl in `lernapp.chosen`; bestehende Nutzer behalten alle Module mit Lernstand, neue Geräte starten mit dem Katalog. Nur gewählte Module werden geladen und offline gespeichert, beim Hinzufügen auch alle Zusatzdateien. Service Worker mit eigenem Daten-Cache, der App-Updates übersteht; beim Entfernen werden die Dateien gelöscht, der Lernstand bleibt. Keine Tagespflicht-Abzüge für die Zeit, in der ein Modul abgewählt war. Meldungen für fehlende, kaputte oder zu neue Module. Nach dem Update müssen gewählte Module einmal mit Internet geladen werden |

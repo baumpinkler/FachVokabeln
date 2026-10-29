@@ -2,10 +2,11 @@
   "modules": [
     {
       "key": "dev",
-      "file": "it-scrum.json",
       "name": "IT",
       "short": "IT",
       "icon": "💻",
+      "desc": "Englische Fachbegriffe aus Programmierung, Web, Datenbanken, Netzwerk, Sicherheit, Cloud und KI",
+      "count": 1305,
       "ls": "devvokabeln.progress.v1",
       "doc": "progress",
       "accent": "#6c3fb8",
@@ -13,10 +14,11 @@
     },
     {
       "key": "ftth",
-      "file": "glasfaser.json",
       "name": "Glasfaser & FTTH",
       "short": "Glasfaser",
       "icon": "🔦",
+      "desc": "Englische Fachbegriffe rund um Glasfaserausbau und FTTH",
+      "count": 500,
       "ls": "devvokabeln.progress.ftth",
       "doc": "progress-ftth",
       "accent": "#2a7f52",
@@ -24,10 +26,11 @@
     },
     {
       "key": "agile",
-      "file": "agile.json",
       "name": "Agile & Projekte",
       "short": "Agile",
       "icon": "🧭",
+      "desc": "Englische Fachbegriffe aus agiler Arbeit, Scrum, Produktentwicklung und Projektmanagement",
+      "count": 507,
       "ls": "devvokabeln.progress.agile",
       "doc": "progress-agile",
       "accent": "#8a2342",

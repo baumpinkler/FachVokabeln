@@ -3,36 +3,44 @@
    Nach einem Upload neuer Dateien sieht man die Änderungen beim übernächsten Öffnen.
    Wer eine Änderung sofort erzwingen will, erhöht die VERSION.
    Wichtig: GitHub Pages lässt Dateien 10 Minuten im Browser-Zwischenspeicher liegen.
-   Deshalb wird hier immer mit cache:"reload" bzw. "no-cache" geladen, sonst landen alte Dateien im neuen Cache. */
-const VERSION = "v12";
-const CACHE = "fach-vokabeln-" + VERSION;
+   Deshalb wird hier immer mit cache:"reload" bzw. "no-cache" geladen, sonst landen alte Dateien im neuen Cache.
+
+   Zwei Caches:
+   - fach-vokabeln-<VERSION>: App-Dateien (CORE inkl. modules/index.json), wird bei jeder neuen VERSION ersetzt.
+   - fach-vokabeln-daten: alles unter modules/ außer index.json, also nur die gewählten Module und ihre Zusatzdateien.
+     Wird nie automatisch gelöscht, damit gewählte Module ein App-Update offline überstehen.
+     Beim Entfernen eines Moduls löscht die App dessen Einträge selbst (Cache-API). */
+const VERSION = "v13";
+const PREFIX = "fach-vokabeln-";
+const CACHE = PREFIX + VERSION;
+const DATA = PREFIX + "daten";
 const CORE = [
   "./", "index.html", "style.css", "app.js", "manifest.json",
   "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png",
   "modules/index.json"
 ];
+const BASE = new URL("./", self.location).href;
+const MODULES_BASE = BASE + "modules/";
+const INDEX_URL = BASE + "modules/index.json";
 
+/* Beim Installieren nur die App selbst laden, keine Module: die lädt die App erst, wenn sie gewählt sind */
 self.addEventListener("install", event => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
     await cache.addAll(CORE.map(u => new Request(u, {cache: "reload"})));
-    /* Alle Module gleich mitladen, damit sie auch offline verfügbar sind */
-    try {
-      const idx = await (await fetch("modules/index.json", {cache: "reload"})).json();
-      await cache.addAll(idx.modules.map(m => new Request("modules/" + m.file, {cache: "reload"})));
-    } catch (e) {}
     await self.skipWaiting();
   })());
 });
 
+/* Nur alte App-Caches löschen, nie den Daten-Cache */
 self.addEventListener("activate", event => {
   event.waitUntil((async () => {
-    for (const key of await caches.keys()) if (key !== CACHE) await caches.delete(key);
+    for (const key of await caches.keys()) if (key.startsWith(PREFIX) && key !== CACHE && key !== DATA) await caches.delete(key);
     await self.clients.claim();
   })());
 });
 
-/* Zusatzdateien (modules/extra/…) werden nicht vorab geladen: der Fetch-Handler cacht sie beim ersten Abruf.
+/* Moduldateien und Zusatzdateien landen beim ersten Abruf im Daten-Cache.
    Fehlende Dateien (404) landen nicht im Cache, die App ignoriert sie still. */
 self.addEventListener("fetch", event => {
   const req = event.request;
@@ -41,8 +49,10 @@ self.addEventListener("fetch", event => {
   const sameOrigin = url.origin === self.location.origin;
   const isFont = url.hostname === "fonts.googleapis.com" || url.hostname === "fonts.gstatic.com";
   if (!sameOrigin && !isFont) return;
+  const clean = url.origin + url.pathname;
+  const isData = sameOrigin && clean.startsWith(MODULES_BASE) && clean !== INDEX_URL;
   event.respondWith((async () => {
-    const cache = await caches.open(CACHE);
+    const cache = await caches.open(isData ? DATA : CACHE);
     const cached = await cache.match(req, {ignoreSearch: sameOrigin});
     const network = fetch(req, sameOrigin ? {cache: "no-cache"} : undefined).then(res => {
       if (res && (res.ok || res.type === "opaque")) cache.put(req, res.clone());
@@ -51,7 +61,7 @@ self.addEventListener("fetch", event => {
     if (cached) { event.waitUntil(network); return cached; }
     const res = await network;
     if (res) return res;
-    if (req.mode === "navigate") return (await cache.match("index.html")) || Response.error();
+    if (req.mode === "navigate") return (await (await caches.open(CACHE)).match("index.html")) || Response.error();
     return Response.error();
   })());
 });

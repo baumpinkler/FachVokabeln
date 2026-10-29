@@ -1,6 +1,6 @@
 
 /* ---------- Module ---------- */
-/* Module werden aus modules/*.json geladen */
+/* Jedes Modul liegt in modules/<key>/module.json, der Katalog in modules/index.json */
 let MODULES = {};
 const norm = s => s.toLowerCase().replace(/[^a-z0-9äöüß]/g, "");
 function buildTerms(raw){
@@ -14,7 +14,7 @@ function buildTerms(raw){
     return t;
   });
 }
-let MODKEY = "dev", MOD, CATS, TERMS, BYID = {};
+let MODKEY = null, MOD, CATS, TERMS, BYID = {};
 
 const levels = () => MOD.levels;
 const DAILY_GOAL = 50;
@@ -50,22 +50,73 @@ function fixCats(){ P.cats = (P.cats || []).filter(k => CATS[k]); if (!P.cats.le
 let P;
 let cloudBase = null, cloudRef = null, saveTimer = null, cloud = false;
 
-/* ---------- Module laden (PWA: jedes Modul ist eine eigene JSON-Datei) ---------- */
-const MODULE_ORDER = [];
+/* ---------- Module laden (PWA: jedes Modul ist ein eigener Ordner modules/<key>/) ----------
+   CATALOG_ORDER = alle Module aus index.json, MODULE_ORDER = nur die gewählten (Leiste, Wischen, Pfeiltasten). */
+const CATALOG_ORDER = [], MODULE_ORDER = [], INDEX = {};
+const CHOSEN_KEY = "lernapp.chosen", DATA_CACHE = "fach-vokabeln-daten";
+const MOD_FORMAT = "fachvokabeln-modul", MOD_VERSION = 1;
 async function loadIndex(){
   const r = await fetch("modules/index.json", {cache:"no-cache"});
   const idx = await r.json();
-  for (const m of idx.modules) { MODULES[m.key] = Object.assign(MODULES[m.key] || {}, m); if (!MODULE_ORDER.includes(m.key)) MODULE_ORDER.push(m.key); }
+  for (const m of idx.modules) {
+    INDEX[m.key] = Object.assign({}, m);
+    MODULES[m.key] = Object.assign(MODULES[m.key] || {}, m);
+    if (!CATALOG_ORDER.includes(m.key)) CATALOG_ORDER.push(m.key);
+  }
 }
+/* Unbekanntes Format oder höhere Version: diese App kann das Modul nicht anzeigen */
+const needsNewerApp = o => !!o && (!!o.tooNew || (o.format !== undefined && o.format !== MOD_FORMAT) || (Number(o.version) || 1) > MOD_VERSION);
+function modError(code){ const e = new Error(code); e.code = code; return e; }
 async function ensureModule(key){
   const m = MODULES[key];
-  if (!m) throw new Error("Unbekanntes Modul: " + key);
+  if (!m) throw modError("unknown");
+  if (needsNewerApp(m)) throw modError("newer");
   if (!m.raw) {
-    m.loading = m.loading || fetch("modules/" + m.file).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-      .then(d => Object.assign(m, d)).catch(e => { m.loading = null; throw e; });
+    m.loading = m.loading || (async () => {
+      let r;
+      try { r = await fetch("modules/" + key + "/module.json"); } catch (e) { throw modError("offline"); }
+      if (r.status === 404) throw modError("missing");
+      if (!r.ok) throw modError("offline");
+      let d; try { d = await r.json(); } catch (e) { throw modError("broken"); }
+      if (!d || typeof d !== "object") throw modError("broken");
+      if (needsNewerApp(d)) { m.tooNew = true; throw modError("newer"); }
+      if (!Array.isArray(d.raw) || !d.raw.length || !d.cats || typeof d.cats !== "object" || !Object.keys(d.cats).length) throw modError("broken");
+      Object.assign(m, d);
+    })().catch(e => { m.loading = null; throw e; });
     await m.loading;
   }
   return m;
+}
+function modErrText(e, key){
+  const n = "„" + (MODULES[key] ? MODULES[key].name : key) + "“", c = e && e.code;
+  if (c === "newer") return n + " braucht eine neuere App-Version.";
+  if (c === "missing" || c === "broken" || c === "unknown") return n + " ist fehlerhaft und konnte nicht geladen werden.";
+  return n + " konnte nicht geladen werden. Bist du offline?";
+}
+/* Auswahl: Reihenfolge immer wie in index.json, unbekannte Keys fallen still weg */
+function setChosen(keys, persist = true){
+  const want = new Set(keys);
+  MODULE_ORDER.splice(0, MODULE_ORDER.length, ...CATALOG_ORDER.filter(k => want.has(k)));
+  if (persist) try { localStorage.setItem(CHOSEN_KEY, JSON.stringify(MODULE_ORDER)); } catch (e) {}
+}
+const hasProgress = k => { try { return !!localStorage.getItem(MODULES[k].ls); } catch (e) { return false; } };
+function initChosen(){
+  let c = null;
+  try { const s = localStorage.getItem(CHOSEN_KEY); if (s) c = JSON.parse(s); } catch (e) {}
+  if (Array.isArray(c)) { setChosen(c); return; }
+  /* Übergang: noch keine Auswahl gespeichert → alle Module mit vorhandenem Lernstand */
+  const had = CATALOG_ORDER.filter(hasProgress);
+  setChosen(had, had.length > 0);
+}
+/* Modul aus dem Speicher werfen (nur die Katalogdaten bleiben) */
+function unloadModule(key){ if (INDEX[key]) MODULES[key] = Object.assign({}, INDEX[key]); }
+/* Dateien eines Moduls aus dem Daten-Cache des Service Workers löschen */
+async function dropModuleCache(key){
+  if (!("caches" in window)) return;
+  try {
+    const c = await caches.open(DATA_CACHE), base = new URL("modules/" + key + "/", location.href).href;
+    for (const r of await c.keys()) if (r.url.startsWith(base)) await c.delete(r);
+  } catch (e) {}
 }
 function applyTheme(t){
   const root = document.documentElement;
@@ -101,12 +152,12 @@ async function swipeTo(key, fromDx = 0){
   swiping = true;
   const w = pager.offsetWidth, dir = MODULE_ORDER.indexOf(key) > modIdx() ? 1 : -1, still = reduced();
   bar.classList.remove("drag"); bar.style.setProperty("--pos", MODULE_ORDER.indexOf(key));
-  const loading = ensureModule(key);
+  const loading = ensureModule(key); loading.catch(() => {});   /* Fehler wird unten nach der Animation behandelt */
   pager.style.transform = ""; pager.style.opacity = "";
   if (!still) await slide(pager, {transform:`translateX(${fromDx}px)`, opacity:dragFade(fromDx, w)},
     {transform:`translateX(${-dir * w * .45}px)`, opacity:0}, 170, "cubic-bezier(.4,0,1,1)");
   try { await loading; }
-  catch (e) { toast("Modul konnte nicht geladen werden. Bist du offline?"); settleAnim(pager); renderModbar(); swiping = false; return; }
+  catch (e) { toast(modErrText(e, key)); settleAnim(pager); renderModbar(); swiping = false; return; }
   clearTimeout(saveTimer); pushCloud();
   loadModule(key); renderHome(); window.scrollTo(0, 0);
   syncCloud();
@@ -175,27 +226,30 @@ function transit(fn, dir){
   try { document.startViewTransition(fn); } catch (e) { fn(); }
 }
 const goHome = () => transit(() => renderHome(), "back");
-/* ---------- Zusatzinhalte: modules/extra/<modul>/<kategorie>.json ----------
+/* ---------- Zusatzinhalte: modules/<modul>/extra/<kategorie>.json ----------
    Werden beim Quizstart nur für aktive Kategorien geladen und pro Modul im Speicher gehalten.
+   Beim Hinzufügen eines Moduls werden alle im Hintergrund geladen, damit es offline vollständig läuft.
    Fehlende Dateien (404) werden still ignoriert und nicht erneut angefragt. */
-async function loadExtras(){
-  const m = MOD, key = MODKEY;
-  m.extra = m.extra || {}; m.extraDone = m.extraDone || {};
-  const todo = P.cats.filter(c => !m.extraDone[c]);
-  if (!todo.length) return;
-  const one = async c => {
+function fetchExtras(m, key, cats){
+  m.extra = m.extra || {}; m.extraDone = m.extraDone || {}; m.extraBusy = m.extraBusy || {};
+  const one = c => m.extraBusy[c] || (m.extraBusy[c] = (async () => {
     try {
-      const r = await fetch("modules/extra/" + key + "/" + c + ".json");
+      const r = await fetch("modules/" + key + "/extra/" + c + ".json");
       if (r.status === 404) { m.extraDone[c] = true; return; }
       if (!r.ok) return;
       const d = await r.json();
       if (d && d.terms && typeof d.terms === "object") Object.assign(m.extra, d.terms);
       m.extraDone[c] = true;
     } catch (e) {}                                   /* offline und nicht im Cache: beim nächsten Quiz wieder versuchen */
-  };
-  /* Nicht länger als 2,5 s warten; was später eintrifft, gilt ab dem nächsten Quiz */
-  await Promise.race([Promise.all(todo.map(one)), new Promise(res => setTimeout(res, 2500))]);
+    finally { delete m.extraBusy[c]; }
+  })());
+  return Promise.all(cats.filter(c => !m.extraDone[c]).map(one));
 }
+async function loadExtras(){
+  /* Nicht länger als 2,5 s warten; was später eintrifft, gilt ab dem nächsten Quiz */
+  await Promise.race([fetchExtras(MOD, MODKEY, P.cats), new Promise(res => setTimeout(res, 2500))]);
+}
+function preloadExtras(key){ const m = MODULES[key]; if (m && m.cats) fetchExtras(m, key, Object.keys(m.cats)).catch(() => {}); }
 const arr = a => Array.isArray(a) ? a : [];
 /* Geprüfte Zusatzinhalte eines Begriffs (fehlerhafte Einträge fallen still weg) */
 function extraOf(t){
@@ -354,7 +408,7 @@ function renderCalendar(dlg){
 /* ---------- Fortschritt exportieren / importieren (beide Module in einer Datei) ---------- */
 const EXPORT_FORMAT = "lernapp-fortschritt";
 async function readModuleProgress(k){
-  if (k === MODKEY) return JSON.parse(JSON.stringify(P));
+  if (k === MODKEY && P) return JSON.parse(JSON.stringify(P));
   let local = null, remote = null;
   try { const s = localStorage.getItem(MODULES[k].ls); if (s) local = JSON.parse(s); } catch(e) {}
   if (cloudBase) { try { const snap = await cloudBase.db.doc("data/users/" + cloudBase.id + "/" + MODULES[k].doc).get(); if (snap.exists) remote = snap.data(); } catch(e) {} }
@@ -431,7 +485,13 @@ function showImport(){
       try { localStorage.setItem(MODULES[k].ls, JSON.stringify(d)); } catch (e) {}
       if (cloudBase) { try { cloudBase.db.doc("data/users/" + cloudBase.id + "/" + MODULES[k].doc).set(d); } catch (e) {} }
     }
-    loadModule(MODKEY); renderTop(); dlg.close(); renderHome(); toast("Fortschritt importiert ✅");
+    /* Importierte, nicht gewählte Module kommen in die Auswahl */
+    const fresh = ks.filter(k => !MODULE_ORDER.includes(k));
+    if (fresh.length) setChosen(MODULE_ORDER.concat(fresh));
+    dlg.close();
+    if (!MOD) { startChosen(); toast("Fortschritt importiert ✅"); return; }
+    fresh.forEach(k => ensureModule(k).then(() => preloadExtras(k)).catch(() => {}));
+    loadModule(MODKEY); renderTop(); renderHome(); toast("Fortschritt importiert ✅");
   };
   openDialog(dlg);
 }
@@ -439,10 +499,95 @@ function showModulePicker(){
   const dlg = sheet("modDlg");
   dlg.innerHTML = `<div class="lv-head"><h2>Lernmodul wählen</h2><button class="back" data-x aria-label="Schließen">✕</button></div>
     <div class="mod-list">${MODULE_ORDER.map(k => { const m = MODULES[k];
-      return `<button class="mod-item${k === MODKEY ? " cur" : ""}" data-pick="${k}" style="--ac:${m.accent || "var(--accent)"}"><span class="mod-ic" aria-hidden="true">${m.icon}</span><span>${esc(m.name)}</span></button>`; }).join("")}</div>`;
+      return `<button class="mod-item${k === MODKEY ? " cur" : ""}" data-pick="${k}" style="--ac:${m.accent || "var(--accent)"}"><span class="mod-ic" aria-hidden="true">${m.icon}</span><span>${esc(m.name)}</span></button>`; }).join("")}</div>
+    <button class="btn wide mod-manage" id="modManage">🧩 Module verwalten</button>`;
   dlg.querySelector("[data-x]").onclick = () => dlg.close();
+  dlg.querySelector("#modManage").onclick = () => { dlg.close(); showCatalog(); };
   dlg.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => { dlg.close(); switchModule(b.dataset.pick); });
   openDialog(dlg);
+}
+/* ---------- Katalog „Module verwalten“: hinzufügen und entfernen ---------- */
+let catBusy = false;
+function catalogItems(){
+  return CATALOG_ORDER.map(k => {
+    const m = MODULES[k], on = MODULE_ORDER.includes(k), last = on && MODULE_ORDER.length < 2;
+    const act = needsNewerApp(m) ? `<p class="cg-note">Dieses Modul braucht eine neuere App-Version.</p>`
+      : on ? `<span class="cg-on">✓ gewählt</span><button class="btn cg-btn" data-remove="${k}"${last ? " disabled" : ""}>Entfernen</button>${last ? `<small class="cg-hint">Ein Modul muss gewählt bleiben.</small>` : ""}`
+      : `<button class="btn primary cg-btn" data-add="${k}">Hinzufügen</button>`;
+    return `<div class="cg-item${on ? " on" : ""}" style="--ac:${m.accent || "var(--accent)"}">
+      <span class="mod-ic" aria-hidden="true">${m.icon}</span>
+      <div class="cg-text"><b>${esc(m.name)}</b>${m.desc ? `<p>${esc(m.desc)}</p>` : ""}${m.count ? `<small>${num(m.count)} Begriffe</small>` : ""}</div>
+      <div class="cg-act">${act}</div></div>`;
+  }).join("") || `<p class="sec-sub">Im Katalog sind keine Module.</p>`;
+}
+/* Füllt .cg-list in root und verdrahtet die Knöpfe; onAdded(key) läuft, wenn ein Modul geladen ist */
+function mountCatalog(root, onAdded){
+  const list = root.querySelector(".cg-list"), st = root.querySelector(".exp-status");
+  const status = t => { if (st) st.textContent = t; };
+  const draw = () => {
+    list.innerHTML = catalogItems();
+    list.querySelectorAll("[data-add]").forEach(b => b.onclick = async () => {
+      if (catBusy) return;
+      const k = b.dataset.add; catBusy = true;
+      list.querySelectorAll(".cg-btn").forEach(x => x.disabled = true);
+      b.textContent = "Wird geladen …"; b.setAttribute("aria-busy", "true"); status("„" + MODULES[k].name + "“ wird geladen …");
+      try { await ensureModule(k); }
+      catch (e) {
+        catBusy = false; draw();
+        status(e && e.code === "offline" ? "Keine Internetverbindung. Zum Hinzufügen muss „" + MODULES[k].name + "“ einmal heruntergeladen werden." : modErrText(e, k));
+        return;
+      }
+      catBusy = false; status(""); onAdded(k);
+    });
+    list.querySelectorAll("[data-remove]").forEach(b => b.onclick = async () => {
+      if (catBusy) return;
+      const k = b.dataset.remove;
+      if (!confirm(`„${MODULES[k].name}“ entfernen?\n\nDein Fortschritt bleibt gespeichert, falls du das Modul wieder hinzufügst.`)) return;
+      catBusy = true;
+      const ok = await removeModule(k);
+      catBusy = false; draw();
+      if (ok) status("„" + MODULES[k].name + "“ entfernt. Dein Fortschritt bleibt gespeichert.");
+    });
+  };
+  draw();
+}
+function showCatalog(){
+  const dlg = sheet("catDlg");
+  dlg.innerHTML = `<div class="lv-head"><h2>Module verwalten</h2><button class="back" data-x aria-label="Schließen">✕</button></div>
+    <p class="lv-sub">Nur gewählte Module werden geladen und offline gespeichert. Entfernst du ein Modul, bleibt dein Fortschritt erhalten.</p>
+    <p class="exp-status" role="status"></p>
+    <div class="cg-list"></div>`;
+  dlg.querySelector("[data-x]").onclick = () => dlg.close();
+  mountCatalog(dlg, k => { dlg.close(); enterModule(k); });
+  openDialog(dlg);
+}
+/* Neu gewähltes (bereits geladenes) Modul aufnehmen und hinwechseln */
+async function enterModule(key){
+  const m = MODULES[key];
+  /* Pause ohne Abzüge: Tagespflicht erst ab heute wieder prüfen */
+  try { const s = localStorage.getItem(m.ls); if (s) { const d = JSON.parse(s); d.checkedUntil = yesterday(); localStorage.setItem(m.ls, JSON.stringify(d)); } } catch (e) {}
+  setChosen(MODULE_ORDER.concat(key));
+  preloadExtras(key);
+  if (!MOD) { startApp(key); return; }
+  await swipeTo(key);
+}
+/* Modul abwählen: Lernstand bleibt, Dateien verschwinden aus dem Daten-Cache */
+async function removeModule(key){
+  if (!MODULE_ORDER.includes(key) || MODULE_ORDER.length < 2) return false;
+  if (MOD && key === MODKEY) {
+    let next = null;
+    for (const k of MODULE_ORDER) if (k !== key) { try { await ensureModule(k); next = k; break; } catch (e) {} }
+    if (!next) { toast("Gerade kann kein anderes Modul geladen werden. Bist du offline?"); return false; }
+    clearTimeout(saveTimer); save();
+    setChosen(MODULE_ORDER.filter(k => k !== key));
+    loadModule(next); renderHome();
+  } else {
+    setChosen(MODULE_ORDER.filter(k => k !== key));
+    if (MOD) renderTop();
+  }
+  unloadModule(key);
+  await dropModuleCache(key);
+  return true;
 }
 function showHelp(){
   let dlg = $("#help");
@@ -712,27 +857,30 @@ function renderTop(){
 }
 
 /* Modulleiste über der Übersicht: bleibt beim Wischen stehen, der Marker wandert mit dem Finger mit.
-   Ab 4 Modulen wird daraus ein Auswahlknopf. */
+   Zeigt nur gewählte Module, am Ende ＋ für den Katalog. Ab 4 Modulen wird daraus ein Auswahlknopf. */
 function renderModbar(){
   const bar = $("#modbar"), n = MODULE_ORDER.length;
-  if (n < 2) { bar.hidden = true; return; }
+  if (!n || !MOD) { bar.hidden = true; return; }
   bar.hidden = false;
+  const plus = `<button class="mod-add" id="modAdd" aria-haspopup="dialog" aria-label="Module verwalten" title="Module verwalten">＋</button>`;
   if (n > 3) {
-    bar.className = "modbar pick";
-    bar.innerHTML = `<button class="modpick" id="modPick" aria-haspopup="dialog"><span aria-hidden="true">${MOD.icon}</span> ${esc(MOD.name)} <span class="rank-more" aria-hidden="true">▾</span></button>`;
-    $("#modPick").onclick = showModulePicker; return;
+    bar.className = "modbar pick"; bar.dataset.built = ""; bar.removeAttribute("role"); bar.onkeydown = null;
+    bar.innerHTML = `<button class="modpick" id="modPick" aria-haspopup="dialog"><span aria-hidden="true">${MOD.icon}</span> ${esc(MOD.name)} <span class="rank-more" aria-hidden="true">▾</span></button>${plus}`;
+    $("#modPick").onclick = showModulePicker; $("#modAdd").onclick = showCatalog; return;
   }
   if (bar.dataset.built !== MODULE_ORDER.join()) {
     bar.dataset.built = MODULE_ORDER.join(); bar.className = "modbar";
     bar.setAttribute("role", "tablist"); bar.setAttribute("aria-label", "Lernmodul wählen");
     bar.style.setProperty("--n", n);
     bar.innerHTML = `<span class="ind" aria-hidden="true"></span>` + MODULE_ORDER.map(k => { const m = MODULES[k];
-      return `<button role="tab" data-mod="${k}"><span aria-hidden="true">${m.icon}</span> ${esc(m.short)}</button>`; }).join("");
+      return `<button role="tab" data-mod="${k}"><span aria-hidden="true">${m.icon}</span> ${esc(m.short)}</button>`; }).join("") + plus;
     bar.querySelectorAll("[data-mod]").forEach(b => b.onclick = () => swipeTo(b.dataset.mod));
-    bar.addEventListener("keydown", e => {
+    $("#modAdd").onclick = showCatalog;
+    bar.onkeydown = e => {
+      if (!e.target.closest("[data-mod]")) return;
       const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0, k = MODULE_ORDER[modIdx() + d];
       if (d && k) { e.preventDefault(); swipeTo(k).then(() => { const b = bar.querySelector(`[data-mod="${k}"]`); if (b) b.focus(); }); }
-    });
+    };
   }
   bar.querySelectorAll("[data-mod]").forEach(b => { const on = b.dataset.mod === MODKEY;
     b.setAttribute("aria-selected", on); b.tabIndex = on ? 0 : -1; });
@@ -756,7 +904,7 @@ window.addEventListener("popstate", () => {
   if (ignorePop > 0) { ignorePop--; return; }
   const open = [...document.querySelectorAll("dialog[open]")];
   if (open.length) { open.forEach(d => { d.dataset.popClose = "1"; d.close(); }); return; }
-  if (screen !== "home") transit(() => renderHome(true), "back");
+  if (screen !== "home" && screen !== "welcome") transit(() => renderHome(true), "back");
 });
 function renderHome(fromPop){
   if (fromPop !== true && history.state && history.state.nav === "screen") { ignorePop++; try { history.back(); } catch (e) { ignorePop--; } }
@@ -802,11 +950,13 @@ function renderHome(fromPop){
       <button class="chip-all" id="allcats">${allOn ? "Nur eines wählen" : "Alle auswählen"}</button></div>
     <p class="sec-sub">Angehakte Themen kommen in Quiz und Karteikarten dran (${num(active)} Begriffe). Die Zahl zeigt, wie viele schon sitzen. Gemeisterte Begriffe kommen im Quiz nicht mehr dran; ist ein ganzes Thema gemeistert 🏆, gibt es dafür die Meisterrunde.</p>
     <div class="topics">${rows}</div>
-    <div class="section-title">Fortschritt sichern</div>
+    <div class="section-title">Module und Fortschritt</div>
+    <div class="backup-row"><button class="btn" id="catBtn">🧩 Module verwalten</button></div>
     <div class="backup-row"><button class="btn" id="expBtn">⬇️ Exportieren</button><button class="btn" id="impBtn">⬆️ Importieren</button></div>
     <p class="foot">${cloud ? "Dein Fortschritt wird in deinem Konto gespeichert." : "Dein Fortschritt wird auf diesem Gerät gespeichert."} Der Export enthält alle Module.</p>`;
   $("#expBtn").onclick = showExport;
   $("#impBtn").onclick = showImport;
+  $("#catBtn").onclick = showCatalog;
   app.querySelectorAll("[data-go]").forEach(b => b.onclick = () => {
     const go = b.dataset.go;
     if (go === "quiz") startQuiz(); else transit(go === "cards" ? startCards : renderLex, "fwd");
@@ -1332,24 +1482,65 @@ function renderLex(){
 }
 
 /* ---------- Start ---------- */
-async function boot(){
-  try {
-    await loadIndex();
-    let startKey = MODULE_ORDER[0];
-    try { const s = localStorage.getItem(MODULE_KEY); if (s && MODULES[s]) startKey = s; } catch (e) {}
-    await ensureModule(startKey);
-    loadModule(startKey);
-    renderTop(); renderHome(); initSwipe();
-    /* Die anderen Module im Hintergrund laden, damit das Wischen sofort reagiert */
-    setTimeout(() => MODULE_ORDER.forEach(k => ensureModule(k).catch(() => {})), 1500);
-    let hinted = true; try { hinted = !!localStorage.getItem(SWIPE_HINT); } catch (e) {}
-    if (!hinted && MODULE_ORDER.length > 1) setTimeout(() => {
-      if (screen === "home") { toast("Tipp: Wisch nach links oder rechts, um das Modul zu wechseln.", 4200); try { localStorage.setItem(SWIPE_HINT, "1"); } catch (e) {} }
-    }, 1200);
-  } catch (e) {
-    $("#app").innerHTML = `<div class="boot-error"><h1>Laden fehlgeschlagen</h1><p>Die Lerndaten konnten nicht geladen werden. Prüfe die Internetverbindung und öffne die App erneut. Beim allerersten Start ist eine Verbindung nötig, danach funktioniert sie auch offline.</p></div>`;
-    console.error(e);
+let swipeReady = false;
+function startApp(key, notice){
+  loadModule(key);
+  renderTop(); renderHome(); window.scrollTo(0, 0);
+  if (!swipeReady) { initSwipe(); swipeReady = true; }
+  /* Nur die übrigen gewählten Module im Hintergrund laden, damit das Wischen sofort reagiert */
+  setTimeout(() => MODULE_ORDER.forEach(k => { if (k !== MODKEY) ensureModule(k).catch(() => {}); }), 1500);
+  /* Meldung über nicht geladene Module hat Vorrang vor dem Wisch-Tipp */
+  if (notice) { setTimeout(() => toast(notice, 4200), 400); return; }
+  let hinted = true; try { hinted = !!localStorage.getItem(SWIPE_HINT); } catch (e) {}
+  if (!hinted && MODULE_ORDER.length > 1) setTimeout(() => {
+    if (screen === "home") { toast("Tipp: Wisch nach links oder rechts, um das Modul zu wechseln.", 4200); try { localStorage.setItem(SWIPE_HINT, "1"); } catch (e) {} }
+  }, 1200);
+}
+/* Startmodul: zuletzt offenes, sonst erstes gewähltes; kaputte oder fehlende Module werden übersprungen */
+async function startChosen(){
+  let last = null; try { last = localStorage.getItem(MODULE_KEY); } catch (e) {}
+  const order = MODULE_ORDER.includes(last) ? [last].concat(MODULE_ORDER.filter(k => k !== last)) : MODULE_ORDER.slice();
+  const failed = [];
+  for (const k of order) {
+    try { await ensureModule(k); }
+    catch (e) { failed.push([k, e]); console.warn("Modul nicht geladen:", k, e.code || e); continue; }
+    startApp(k, !failed.length ? "" : failed.length === 1 ? modErrText(failed[0][1], failed[0][0])
+      : "Nicht geladen: " + failed.map(([f]) => MODULES[f].name).join(", ") + ". Bist du offline?");
+    return;
   }
+  renderNoModule(failed);
+}
+/* Neues Gerät: Katalog statt Übersicht */
+function renderWelcome(){
+  screen = "welcome";
+  app.innerHTML = `<h1>Willkommen!</h1>
+    <p class="sec-sub">Wähle die Module, die du lernen willst. Nur sie werden auf dein Gerät geladen und funktionieren danach auch offline. Weitere kannst du jederzeit über ＋ hinzufügen.</p>
+    <p class="exp-status" role="status"></p>
+    <div class="cg-list"></div>
+    <div class="section-title">Schon Fortschritt von einem anderen Gerät?</div>
+    <div class="backup-row"><button class="btn" id="impBtn">⬆️ Importieren</button></div>`;
+  mountCatalog(app, k => enterModule(k));
+  $("#impBtn").onclick = showImport;
+}
+/* Kein gewähltes Modul ladbar (z. B. offline direkt nach einem App-Update) */
+function renderNoModule(failed){
+  screen = "welcome";
+  app.innerHTML = `<div class="boot-error"><h1>Module nicht geladen</h1>
+    <p>${failed.map(([k, e]) => esc(modErrText(e, k))).join("<br>")}</p>
+    <p>Beim ersten Öffnen eines Moduls und einmal nach einem App-Update ist eine Internetverbindung nötig, danach funktioniert es auch offline.</p>
+    <div class="backup-row"><button class="btn primary" id="retryBtn">Nochmal versuchen</button><button class="btn" id="catBtn">🧩 Module verwalten</button></div></div>`;
+  $("#retryBtn").onclick = () => startChosen();
+  $("#catBtn").onclick = showCatalog;
+}
+async function boot(){
+  try { await loadIndex(); }
+  catch (e) {
+    $("#app").innerHTML = `<div class="boot-error"><h1>Laden fehlgeschlagen</h1><p>Die Lerndaten konnten nicht geladen werden. Prüfe die Internetverbindung und öffne die App erneut. Beim allerersten Start ist eine Verbindung nötig, danach funktioniert sie auch offline.</p></div>`;
+    console.error(e); return;
+  }
+  initChosen();
+  if (!MODULE_ORDER.length) { renderWelcome(); return; }
+  await startChosen();
 }
 boot();
 /* Offline-Fähigkeit: Service Worker registrieren und nach einem Update einmal neu laden */

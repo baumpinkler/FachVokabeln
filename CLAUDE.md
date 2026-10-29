@@ -12,8 +12,8 @@
 1. ☑ **IT-Kategorien aufteilen** (v17): 35 Kategorien mit 30–49 Begriffen, Lernstand bewusst neu gestartet.
 2. ☑ **Lernrahmen L1–L3** (v18–v21): drei Teile pro Begriff, Bremse, KI-Prüfung, Krönchen. Regeln unter „Spielregeln“, Hintergrund unter „Lernrahmen: Hintergrund und Entscheidungen“.
 3. ☑ **CLAUDE.md nachgezogen**: alle Abschnitte auf dem Stand des Lernrahmens.
-4. ☐ **Echter Test der KI-Prüfung** mit einem Schlüssel des Nutzers (bisher nur mit nachgebildeten Antworten getestet): Urteile bei guten, knappen, falschen und nur übersetzten Erklärungen ansehen, ggf. `AI_RULES` nachschärfen.
-5. ☐ **`levels` aus den Moduldateien streichen** (optional, per Skript, keine `VERSION`-Erhöhung): Das Feld wird seit v18 nicht mehr gelesen.
+4. ☐ **Echter Test der KI-Prüfung:** Der Nutzer öffnet `tools/ki-test.html` (siehe „Dateien“), lässt die 16 Testfälle laufen und fügt das kopierte Ergebnis im Chat ein. Claude wertet die Abweichungen aus und schärft ggf. `AI_RULES` nach (dann `VERSION` erhöhen). Claude selbst kann Gemini nicht aufrufen (Netzwerk der Arbeitsumgebung), den Schlüssel daher nie im Chat erfragen.
+5. ☑ **`levels` aus den Moduldateien gestrichen** (per Skript, beide Module).
 
 ## Was die App ist
 
@@ -46,6 +46,7 @@ Jeder Nutzer wählt im Katalog „Module verwalten“, welche Module er verwende
 | `modules/<key>/module.json` | – | ein Modul, **genau eine Datei** inkl. Zusatzinhalte (`extra`); der Ordnername ist immer der `key` |
 | `modules/dev/module.json` | 2,1 MB (~600.000 Tokens) | Modul IT, **nie komplett lesen oder einfügen** |
 | `modules/agile/module.json` | 0,9 MB (~270.000 Tokens) | Modul Agile & Projekte, **nie komplett lesen oder einfügen** |
+| `tools/ki-test.html` | 18 KB | Testseite für die KI-Prüfung: `https://baumpinkler.github.io/FachVokabeln/tools/ki-test.html`. Liest `AI_RULES`, `AI_MODEL` und `AI_MODEL_FALLBACK` per Regex aus `app.js` und die Musterlösungen aus den Moduldateien, nimmt den Schlüssel aus `lernapp.aikey` (gleiche Herkunft), schickt 16 Testfälle (gut, knapp, Beispiel, Diktat, Englisch, nur Übersetzung, vage, falsch, verwechselt, halb richtig, Anweisung an die KI; 3 Grenzfälle) plus eigene Fälle, 1–3 Durchläufe, wartet bei 429 65 s, „Ergebnis kopieren“ liefert Text für den Chat. Nachricht und Auswertung sind aus `aiJudge`/`aiParse` kopiert: **bei Änderungen dort mitziehen**. Ändert den Lernstand nicht, ist nicht im Service-Worker-Cache vorgesehen |
 | `docs/agile-projekte-begriffe.md` | 28 KB | abgesegnete Begriffsliste für Agile & Projekte (Kategorie, Englisch, Deutsch); nicht eigenmächtig ändern |
 
 ## Welche Dateien für welche Änderung
@@ -89,7 +90,7 @@ Kompakt gespeichert (`separators=(",",":")`, `ensure_ascii=False`, ohne Zeilenum
 `extra` (optional, seit v16, direkt nach `raw`): Zusatzinhalte für schwere Fragearten, Schlüssel = Begriffs-ID (Format und Regeln unter „Zusatzinhalte“). Fehlt das Feld oder fehlt ein Inhalt, entfallen die betreffenden Fragearten und Häkchen in Teil B. Ändern immer per Skript: JSON laden, `extra[id]` setzen, kompakt zurückschreiben.
 `theme`: `board` Hintergrund (fast schwarz), `surface` Flächen, `accent` Modul-Schalter, `m1`/`m2`/`m3` die drei Startseiten-Kärtchen (Karteikarten/Quiz/Nachschlagen).
 `lang` (optional, seit v18): Sprache der Begriffe (`term`, Vorlesen und Sprechen des Begriffs) und der Bedeutung (`meaning`, Vorlesen der Bedeutung und Situationen, Diktat in Teil C). Ein deutschsprachiges Schulmodul hat beide auf `de-AT`. Situationen und Stimmt-das-Aussagen sind in `meaning`-Sprache. `version` bleibt 1.
-`levels` (XP-Ränge) ist seit v18 bedeutungslos: wird ignoriert, in IT und Agile noch vorhanden, neue Module lassen es weg.
+`levels` (XP-Ränge) gibt es seit dem Lernrahmen nicht mehr; aus IT und Agile entfernt, die App ignoriert das Feld, falls es noch irgendwo steht.
 
 ### Ein Begriff (`raw`-Eintrag, Array)
 | Index | Inhalt | Regel |
@@ -150,6 +151,7 @@ Teil B frühestens am Kalendertag nach Teil A, Teil C frühestens am Tag nach Te
 - **Eingabe an die KI:** Begriff, Bedeutung, die 3 Erklärungen (Index 3, 6, 7) als Musterlösungen, die Antwort zwischen `<antwort>`-Marken. Anweisung `AI_RULES`: inhaltlich streng, sprachlich großzügig; nicht richtig sind bloße Übersetzung, fachlich Falsches, zu Vages. Ergebnis `{"ok", "feedback" (1–2 Sätze, du-Form), "fehlt"}`.
 - **Anzeige:** Urteil, Feedback, was gefehlt hat, eine zufällige Musterlösung.
 - **Fehlerfälle** (kein Schlüssel, offline, Zeitüberschreitung, 429, ungültiger Schlüssel, Region, Modell weg, Serverfehler, unlesbare Antwort): klare Meldung, Antwort wird **nicht** gewertet, Text bleibt stehen, „Nochmal prüfen“/„Überspringen“. Nach 429 90 s Pause. Ohne Schlüssel, Netz oder während der Pause bietet die Auswahl keine Teil-C-Fragen an (`aiReady`); Übersicht und Rundenende zeigen „X Begriffe warten auf die KI-Prüfung“ mit Grund und Knopf zum Blatt.
+- **Testen mit echtem Gemini:** `tools/ki-test.html` (siehe „Dateien“).
 - Der Service Worker greift bei fremden Adressen nicht ein (`fetch`-Handler nur gleiche Herkunft und Schriften, POST nie); das muss so bleiben.
 
 ### Oberfläche
@@ -331,3 +333,4 @@ Der Lernrahmen (v18–v21, in drei Chats L1–L3 umgesetzt) hat XP, Ränge, Punk
 | v17 | **IT-Kategorien aufgeteilt:** aus 14 werden 35 Kategorien mit 30–49 Begriffen (nur Index 0 der Begriffe geändert, `extra` unverändert). Die alten Keys bleiben beim Teil, zu dem ihr Krönchen passt, und haben teils neue Namen; 21 neue Kategorien mit eigenen Krönchen-Designs. Neuer Speicherschlüssel `lernapp.progress.dev` (`doc` `progress-dev`): IT startet auf Wunsch des Nutzers bei null, Agile unberührt |
 | v21 | **Lernrahmen L3:** Teil C: Begriff in eigenen Worten erklären (schreiben oder diktieren), Google Gemini prüft mit eigenem Schlüssel (Blatt „KI-Prüfung“, Schlüssel nur in `lernapp.aikey`). Bremse B → C, höchstens 2 Teil-C-Fragen pro Runde, Fehlerfälle ohne Wertung, Hinweis auf der Übersicht, wenn Begriffe auf die KI-Prüfung warten. Begriff gelernt, Kategorie gemeistert → Krönchen. Hilfe und Nachschlagen angepasst |
 | – | `CLAUDE.md` an den Lernrahmen angepasst: „Was die App ist“, „Spielregeln“ (jetzt der Lernrahmen samt KI-Prüfung), „Code-Landkarte“, „Gespeicherter Fortschritt“, „Datenformat“ (`lang`, `levels` bedeutungslos), „Gestaltung“, „Inhalte schreiben“ und „Neues Modul anlegen“ neu; Abschnitt „Vorhaben ‚Lernrahmen‘“ samt Umsetzungsnotizen L1–L3 zu „Lernrahmen: Hintergrund und Entscheidungen“ gekürzt (keine `VERSION`-Erhöhung) |
+| – | Neue Testseite `tools/ki-test.html` für die KI-Prüfung mit echtem Schlüssel (16 Testfälle, eigene Fälle, Ergebnis zum Kopieren). `levels` per Skript aus `modules/dev/module.json` und `modules/agile/module.json` entfernt, sonst unverändert (keine `VERSION`-Erhöhung) |

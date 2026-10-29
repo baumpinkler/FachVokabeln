@@ -10,15 +10,15 @@
 > **Für Claude:** Fragt der Nutzer nach den nächsten Schritten („Was ist als Nächstes dran?“ o. Ä.), schau in die Status-Tabellen weiter unten und nenne die nächsten offenen Punkte (☐) in dieser Reihenfolge, jeweils mit Kategorie, Begriffszahl und kurzem Hinweis, was der Chat tun muss. Neue größere Vorhaben hier einreihen, erledigte Phasen abhaken.
 
 1. ☑ **Schritt 2 für IT**: Zusatzinhalte für alle IT-Kategorien (Status unter „Ausbau ‚Verstehen statt Auswendiglernen‘“).
-2. ☐ **Schritt G für Agile**: Grunddaten für alle 13 Kategorien (Status unter „Neues Modul ‚Agile & Projekte‘“). Ein Chat pro Kategorie.
-3. ☐ **Schritt 2 für Agile**: Zusatzinhalte für alle 13 Kategorien, erst wenn Schritt G **komplett** erledigt ist (Status-Tabelle „Schritt 2 für Agile“). Ein Chat pro Kategorie.
+2. ☑ **Schritt G für Agile**: Grunddaten für alle 13 Kategorien (Status unter „Neues Modul ‚Agile & Projekte‘“). Ein Chat pro Kategorie.
+3. ☐ **Schritt 2 für Agile**: Zusatzinhalte für alle 13 Kategorien (Status-Tabelle „Schritt 2 für Agile“). Schritt G ist komplett, es kann losgehen. Ein Chat pro Kategorie.
 
 Phase 1 und 2 hängen nicht voneinander ab und dürfen sich auch überschneiden. Phase 3 muss warten, weil die `conf`-Partner auch aus anderen Agile-Kategorien kommen dürfen und diese Begriffe dann schon existieren müssen.
 
 ## Was die App ist
 
 Installierbare Web-App (PWA) zum Lernen englischer Fachbegriffe mit deutscher Übersetzung. Zielgruppe: der Nutzer selbst (Österreich), Android-Handy, Chrome.
-Drei Module: **IT** (`dev`, 1.305 Begriffe, violettes Schema), **Glasfaser & FTTH** (`ftth`, 500 Begriffe, grünes Schema) und **Agile & Projekte** (`agile`, 198 Begriffe, Ausbau auf 507 läuft, weinrotes Schema).
+Drei Module: **IT** (`dev`, 1.305 Begriffe, violettes Schema), **Glasfaser & FTTH** (`ftth`, 500 Begriffe, grünes Schema) und **Agile & Projekte** (`agile`, 507 Begriffe, weinrotes Schema).
 Bereiche: Quiz, Karteikarten, Nachschlagen. Dazu Ränge, Kalender, Punkte-Erklärung, Export/Import.
 
 ## Hosting und Updates
@@ -43,7 +43,7 @@ Bereiche: Quiz, Karteikarten, Nachschlagen. Dazu Ränge, Kalender, Punkte-Erklä
 | `modules/index.json` | 1 KB | Liste aller Module |
 | `modules/it-scrum.json` | 440 KB (~130.000 Tokens) | Modul IT (Dateiname historisch), **nie komplett lesen oder einfügen** |
 | `modules/glasfaser.json` | 172 KB (~50.000 Tokens) | **nie komplett lesen oder einfügen** |
-| `modules/agile.json` | 68 KB (wächst auf ~170 KB) | Modul Agile & Projekte, **nie komplett lesen oder einfügen** |
+| `modules/agile.json` | 203 KB (~60.000 Tokens) | Modul Agile & Projekte, **nie komplett lesen oder einfügen** |
 | `modules/extra/<modul>/<kategorie>.json` | je 50–160 KB | Zusatzinhalte für schwere Fragearten (siehe „Verstehen statt Auswendiglernen“) |
 | `docs/agile-projekte-begriffe.md` | 28 KB | verbindliche Begriffsliste für Agile & Projekte |
 
@@ -215,7 +215,7 @@ Schlüssel in `terms` = Begriffs-ID wie in `buildTerms` (Kleinbuchstaben, Sonder
 | `talk` Kommunikation im Job | 125 | ☑ |
 | `it` IT-Alltag & Hardware | 105 | ☑ |
 
-## Neues Modul „Agile & Projekte“ (Umbau erledigt, Grunddaten in Arbeit)
+## Neues Modul „Agile & Projekte“ (Umbau und Grunddaten erledigt)
 
 Ziel: Scrum (`scrum`) und Projektmanagement (`pm`) aus dem IT-Modul (früher „IT & Scrum“) in ein eigenes Modul verschieben und auf 507 Begriffe in 13 Kategorien (je 30–50) ausbauen. Die verbindliche Begriffsliste mit Kategorie, Englisch, Deutsch und Herkunft (B = Bestand, N = neu) steht in **`docs/agile-projekte-begriffe.md`**. Diese Liste ist abgesegnet, nicht eigenmächtig ändern.
 Umsetzung in **getrennten Chats**: zuerst der Umbau-Chat, dann ein Chat pro Kategorie für die neuen Begriffe. Jeder Chat klont das Repo, liest diese Datei und hakt seinen Schritt im Status unten ab.
@@ -295,19 +295,19 @@ Ausliefern: nur `modules/agile.json` und diese Datei (Status abhaken). Eine `VER
 | Schritt | Begriffe (B + N) | Erledigt |
 |---|---|---|
 | U Umbau-Chat | 198 verschoben | ☑ (v12) |
-| G `agil` Agile Grundlagen & Frameworks | 23 + 20 = 43 | ☐ |
-| G `team` Scrum-Rollen & Teamdynamik | 14 + 23 = 37 | ☐ |
-| G `sprint` Events & Sprint-Alltag | 14 + 24 = 38 | ☐ |
-| G `backlog` Backlog, Schätzen & Planen | 28 + 15 = 43 | ☐ |
-| G `lean` Kanban & Lean | 11 + 31 = 42 | ☐ |
-| G `produkt` Produktstrategie & Kennzahlen | 5 + 36 = 41 | ☐ |
-| G `discovery` Nutzerforschung & Design Thinking | 2 + 37 = 39 | ☐ |
-| G `orga` Agile Organisation & Führung | 6 + 31 = 37 | ☐ |
-| G `plan` Projektplanung & Steuerung | 38 + 11 = 49 | ☐ |
-| G `anf` Anforderungen & Scope | 10 + 24 = 34 | ☐ |
-| G `kosten` Verträge, Kosten & Beschaffung | 17 + 18 = 35 | ☐ |
-| G `risiko` Risiko, Qualität & Abschluss | 15 + 18 = 33 | ☐ |
-| G `komm` Stakeholder, Kommunikation & Moderation | 15 + 21 = 36 | ☐ |
+| G `agil` Agile Grundlagen & Frameworks | 23 + 20 = 43 | ☑ |
+| G `team` Scrum-Rollen & Teamdynamik | 14 + 23 = 37 | ☑ |
+| G `sprint` Events & Sprint-Alltag | 14 + 24 = 38 | ☑ |
+| G `backlog` Backlog, Schätzen & Planen | 28 + 15 = 43 | ☑ |
+| G `lean` Kanban & Lean | 11 + 31 = 42 | ☑ |
+| G `produkt` Produktstrategie & Kennzahlen | 5 + 36 = 41 | ☑ |
+| G `discovery` Nutzerforschung & Design Thinking | 2 + 37 = 39 | ☑ |
+| G `orga` Agile Organisation & Führung | 6 + 31 = 37 | ☑ |
+| G `plan` Projektplanung & Steuerung | 38 + 11 = 49 | ☑ |
+| G `anf` Anforderungen & Scope | 10 + 24 = 34 | ☑ |
+| G `kosten` Verträge, Kosten & Beschaffung | 17 + 18 = 35 | ☑ |
+| G `risiko` Risiko, Qualität & Abschluss | 15 + 18 = 33 | ☑ |
+| G `komm` Stakeholder, Kommunikation & Moderation | 15 + 21 = 36 | ☑ |
 
 ### Status Schritt 2 für Agile (erst nach Schritt G)
 
@@ -343,3 +343,4 @@ Ausliefern: nur `modules/agile.json` und diese Datei (Status abhaken). Eine `VER
 | v10 | Gemeisterte Begriffe nicht mehr im Quiz; bei 1–2 offenen Begriffen Wiederholung bis 10 Fragen; Quiz endet, wenn der letzte offene Begriff gemeistert wird. Meisterrunde für gemeisterte Themen (20 s pro Begriff, kein Fehler erlaubt, ohne Einfluss auf den Lernstand), Krönung mit eigenem Design pro Thema (23 Themen-Designs + 6 allgemeine), Meisterbonus. Tagespflicht entfällt bei komplett gemeistertem Modul. Hilfe ergänzt |
 | v11 | Meisterrunde: Rekord an richtigen Antworten und Zahl der Versuche unter dem Knopf; Uhr wird rot, wenn man hinter dem Plan (20 s pro Frage) liegt |
 | v12 | Neues Modul **Agile & Projekte** (`agile`, weinrot, 13 Kategorien): 198 Begriffe aus `scrum`, `pm` und 2 aus `git` verschoben (nur Kategorie geändert); `team velocity`, `to do`, `in progress`, `done` gestrichen. IT-Modul heißt jetzt „IT“ (1.305 Begriffe, `key`/`ls` unverändert). 19 `conf`-Verweise in `modules/extra/dev/` auf verschobene Begriffe ersetzt bzw. gestrichen. Krönchen: `scrum` → `sprint`, `pm` → `plan`, 11 neue Designs |
+| – | Schritt G für Agile abgeschlossen: 309 neue Begriffe in allen 13 Kategorien, Modul jetzt 507 Begriffe (nur `modules/agile.json`, keine `VERSION`-Erhöhung) |

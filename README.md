@@ -1,6 +1,6 @@
 # Fach-Vokabeln
 
-Lern-App für Fachbegriffe als installierbare Web-App. Module: IT (1.305 Begriffe), Glasfaser & FTTH (500 Begriffe) und Agile & Projekte (198 Begriffe, Ausbau auf 507 geplant).
+Lern-App für Fachbegriffe als installierbare Web-App. Module: IT (1.305 Begriffe), Glasfaser & FTTH (500 Begriffe) und Agile & Projekte (507 Begriffe).
 
 
 ## Ein neues Modul hinzufügen

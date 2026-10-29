@@ -9,7 +9,7 @@
 
 > **Für Claude:** Fragt der Nutzer nach den nächsten Schritten („Was ist als Nächstes dran?“ o. Ä.), schau in die Status-Tabellen weiter unten und nenne die nächsten offenen Punkte (☐) in dieser Reihenfolge, jeweils mit Kategorie, Begriffszahl und kurzem Hinweis, was der Chat tun muss. Neue größere Vorhaben hier einreihen, erledigte Phasen abhaken.
 
-1. ☐ **Schritt 2 für IT**: Zusatzinhalte für alle noch offenen IT-Kategorien (Status unter „Ausbau ‚Verstehen statt Auswendiglernen‘“). Ein Chat pro Kategorie.
+1. ☑ **Schritt 2 für IT**: Zusatzinhalte für alle IT-Kategorien (Status unter „Ausbau ‚Verstehen statt Auswendiglernen‘“).
 2. ☐ **Schritt G für Agile**: Grunddaten für alle 13 Kategorien (Status unter „Neues Modul ‚Agile & Projekte‘“). Ein Chat pro Kategorie.
 3. ☐ **Schritt 2 für Agile**: Zusatzinhalte für alle 13 Kategorien, erst wenn Schritt G **komplett** erledigt ist (Status-Tabelle „Schritt 2 für Agile“). Ein Chat pro Kategorie.
 
@@ -208,12 +208,12 @@ Schlüssel in `terms` = Begriffs-ID wie in `buildTerms` (Kleinbuchstaben, Sonder
 | `data` Datenbanken & Daten | 90 | ☑ |
 | `net` Netzwerk | 80 | ☑ |
 | `sec` IT-Sicherheit | 92 | ☑ |
-| `ops` Betrieb, Cloud & DevOps | 104 | ☐ |
-| `git` Git & Werkzeuge | 74 | ☐ |
-| `test` Testen & Qualität | 81 | ☐ |
+| `ops` Betrieb, Cloud & DevOps | 104 | ☑ |
+| `git` Git & Werkzeuge | 74 | ☑ |
+| `test` Testen & Qualität | 81 | ☑ |
 | `ai` KI & Machine Learning | 66 | ☑ |
 | `talk` Kommunikation im Job | 125 | ☑ |
-| `it` IT-Alltag & Hardware | 105 | ☐ |
+| `it` IT-Alltag & Hardware | 105 | ☑ |
 
 ## Neues Modul „Agile & Projekte“ (Umbau erledigt, Grunddaten in Arbeit)
 

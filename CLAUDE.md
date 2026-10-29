@@ -10,7 +10,7 @@
 > **Für Claude:** Fragt der Nutzer nach den nächsten Schritten, nenne die offenen Punkte (☐) dieser Liste. Neue größere Vorhaben hier einreihen, erledigte abhaken und ihre Ergebnisse in die passenden Abschnitte dieser Datei übernehmen, statt lange Ablaufpläne stehen zu lassen.
 
 1. ☑ **IT-Kategorien aufteilen** (v17): 35 Kategorien mit 30–49 Begriffen, Lernstand bewusst neu gestartet.
-2. ☐ **Lernrahmen L1**: Aufräumen (XP, Ränge, Meisterrunde, Tagespflicht weg), neues Lernstand-Modell, Auswahl-Logik, Teil A (Abschnitt „Vorhaben ‚Lernrahmen‘“). Ein Chat.
+2. ☑ **Lernrahmen L1** (v18): Aufräumen, neues Lernstand-Modell, Auswahl-Logik, Teil A. Stand siehe „Umsetzung L1“ im Abschnitt „Vorhaben ‚Lernrahmen‘“.
 3. ☐ **Lernrahmen L2**: Teil B mit Bremse. Ein Chat.
 4. ☐ **Lernrahmen L3**: Teil C mit KI-Prüfung, Krönchen. Ein Chat.
 
@@ -102,6 +102,8 @@ XP-Grenzen der Ränge (alle Module gleich): 0, 100, 250, 400, 600, 900, 1.300, 1
 | 8 | optional: Lücken im deutschen Satz | Array exakter Teilstrings aus [5], z. B. `["sperrt","aus"]`; nötig, wenn [4] den Begriff enthält |
 
 ## Spielregeln (Konstanten in `app.js`)
+
+> **Seit v18 veraltet:** XP, Ränge, Boxen, Meisterrunde, Tagespflicht, Vormerkungen und Verwechslungen gibt es nicht mehr. Es gilt der Lernrahmen (Abschnitt „Vorhaben ‚Lernrahmen‘“, Unterabschnitt „Umsetzung L1“). Weiter gültig sind hier nur Eintippen (`checkTyped`), `conf`-Anzeige (`maskNames`) und die Regeln zu Antwortmöglichkeiten. Dieser Abschnitt, „Code-Landkarte“ und „Gespeicherter Fortschritt“ werden nach L3 neu geschrieben.
 
 - **Quiz:** 10 Fragen (`QUIZ_LEN`), 5 Antworten mit unterschiedlichen Anfangsbuchstaben (`keyLetter`, Artikel/„to“ zählen nicht). Gemeisterte Begriffe kommen nicht mehr dran (`quizPool`). 3–9 offene Begriffe → Runde mit so vielen Fragen; 1–2 → werden wiederholt, bis 10 Fragen zusammen sind (`repeatFill`, nie zweimal derselbe direkt hintereinander). Wird ein Begriff während der Runde gemeistert, fliegen seine restlichen Fragen raus (beim Wiederholen wird mit den übrigen aufgefüllt); ist danach in den gewählten Themen nichts mehr offen, endet das Quiz nach dieser Frage (`Q.endEarly`). Fragen werden erst beim Erreichen gebaut (`nextQuestion`), damit der Lernstand aktuell ist.
 - **Meisterrunde** (`startMaster`, nur für Themen mit allen Begriffen gemeistert, `catMastered`): jeder Begriff des Themas einmal, gemischt, Fragen wie bei gemeisterten Begriffen, aber alle Antworten ganz sichtbar (`masterQ`). Zeit: `MASTER_SEC` = 20 s pro Begriff, Uhr statt XP oben (`masterTick`), rot (`.behind`), sobald mehr als 20 s × (Nummer der aktuellen Frage) verbraucht sind, blinkt in den letzten 30 s. Versuche (beim Start gezählt) und Rekord an richtigen Antworten (beim Ende oder Abbruch, `masterRecord`) stehen unter dem Knopf. Richtig → nach 0,55 s automatisch weiter; ein Fehler oder Zeit um → Ende, neu starten. Keine XP pro Antwort, kein Einfluss auf Lernstand, Verwechslungen oder Tagespflicht. Erste geschaffte Runde: Thema gekrönt (`P.crowns`), +`MASTER_XP` (5) XP pro Begriff; danach zählt nur die Bestzeit.
@@ -332,6 +334,20 @@ XP, Ränge (`levels` in `module.json` wird ignoriert und kann per Skript entfern
 
 Bedeutung, 3 Erklärungen, Beispielsatz + 2 `ex`, 3 `sit`, 2 `tf`, `conf` optional. IT und Agile haben das für alle 1.812 Begriffe; es müssen keine Inhalte geschrieben werden. Neue Module brauchen dasselbe (ohne `levels`).
 
+### Umsetzung L1 (v18, erledigt)
+
+Was L2 und L3 wissen müssen (alles in `app.js`):
+- **`P` v2:** `{v:2, terms:{id:{a:[…], na, nm, t, aDay}}, crowns, cats, askLog, updatedAt}`. `na` = richtige Antworten in Teil A, `nm` = davon Bedeutung → Begriff, `t` = zuletzt gefragt (ms, für die Reihenfolge). `freshProgress`, `normProgress` (verwirft alles ohne `v:2`, auch in `syncCloud`), `loadModule` schreibt den verworfenen Stand sofort zurück. Teil B/C ergänzen `b:[…]`, `bDay`, `cDay` im selben Objekt.
+- **Stand:** `stageOf(t)` → `new`/`a`/`b` (A geschafft)/`c`/`done`; `stageCount`, `barSegs` (Balken, CSS `i.sb-a` … `i.sb-done`), `stageParts` („A 3 · B 2“), `STAGE_W`.
+- **Häkchen Teil A:** `A_CHECKS` (`o:read`, `o:hear`, `i:pick`, `i:type`, `i:say`, `r:read`, `r:hear`), `A_MIN` 5, `A_MIN_M2T` 3, `openChecksA`, `partADone`, `checksHtml(s)` (Chips in Rückmeldung und Nachschlagen).
+- **Aufgaben:** `A_TASKS` (`{dir:"m2t"|"t2m", out, inp, gives}`), `doable`, `taskFor(t)` (meiste offene Häkchen, Gleichstand zufällig; `null` = nichts zu tun), `hasTask`, `waitsForSound`, `autoChecks()` (Gerät kann es nicht → gilt als erledigt, wird nicht gespeichert). **Hier hängt L2 Teil B an:** `taskFor` gibt bei `aDay` derzeit `null` zurück.
+- **Runde:** `planRound` (begonnene nach `t` aufsteigend, dann `freshTerms(≤3)` aus dem Thema mit höchstem `catScore`; jeder Begriff höchstens 2×, erst alle einmal, dann die zweiten Male), `findNext`/`countAhead`/`goQuestion` (Frage und Aufgabe erst beim Erreichen), `makeQuestion(t, task)`, `renderQuiz`, `answer`/`answerInput`/`heard` → `settle` (Häkchen, `askLog`, `aDay`), `renderQuizDone`, `noTasksText`.
+- **Ton:** `quiet`/`setQuiet` (`lernapp.quiet`), `canHear(lang)` → `yes`/`wait`/`no` (Stimmen laden verzögert; ohne Stimmen nach 3 s `no`), `voiceFor` (wählt passende Stimme, `de-AT` fällt auf `de-DE` zurück), `speak`, `sayable` („ / “ → „, “), `listen`. Sprechen: beste erkannte Variante ins Textfeld, unverändert abgeschickt = Sprechen, geändert = Schreiben.
+- **Sprache:** `MOD.lang` aus `langOf(d.lang)` in `ensureModule`; `langName(code)` für Texte („auf Englisch“).
+- **Behalten für L2:** `cloze`, `clozeDe`, `extraOf`, `nameVariants`, `maskNames`, `otherConfs`, `markTerm`, `highlight` (derzeit ungenutzt).
+- **Begründete Abweichungen von den Vorschlägen:** Schreiben und Sprechen erst, wenn der Begriff einmal richtig beantwortet wurde (sonst müsste man einen nie gesehenen Begriff gleich sprechen); Teil A bleibt trotzdem in genau 5 Antworten schaffbar. Antwortmöglichkeiten immer ganz sichtbar (das Anfangsbuchstaben-Spiel hing an den XP-Abzügen). „Gerade kein Ton“ als Schalter direkt unter der Quiz-Kachel. Kopf: gelernt-Zahl, Balken A/B/C, „Fragen heute“ (öffnet Kalender); die Übersicht zeigt pro Thema „A 3 · B 2 / 41“ und einen gestapelten Balken. Kalenderfarben: 1–9, 10–29, ab 30 Fragen.
+- **Getestet** (Playwright, Stimmen und Spracherkennung per Init-Skript nachgebildet; Chromium hat `SpeechRecognition` auch ohne Präfix, beide ersetzen): alter Lernstand verworfen; jeder fertige Begriff mit genau 5 Antworten; Runden ohne direkte Wiederholung und höchstens 2× pro Begriff; „Gerade kein Ton“ nur Lesen/Auswählen/Schreiben; ohne `SR` und ohne Stimmen werden die Häkchen automatisch erfüllt; Export v2, Import v1 abgelehnt; Kalender, Nachschlagen, Karteikarten, Modulwechsel; keine Konsolenfehler.
+
 ### Umsetzung in drei Chats
 
 Jeder Chat liefert eine lauffähige App, testet mit `python3 -m http.server` und Playwright (keine Konsolenfehler), erhöht `VERSION`, ergänzt das Änderungsprotokoll und hakt seinen Punkt unter „Nächste Schritte“ ab.
@@ -366,4 +382,5 @@ Jeder Chat liefert eine lauffähige App, testet mit `python3 -m http.server` und
 | v16 | Ein Modul aus Katalog und Repo entfernt (inkl. Krönchen-Designs). **Zusatzdateien aufgelöst:** alle `modules/<key>/extra/*.json` stecken jetzt im Feld `extra` der `module.json` (1.305 + 507 Einträge, unverändert), ein Modul = eine Datei. `fetchExtras`/`loadExtras`/`preloadExtras` entfallen, Quiz und Meisterrunde starten ohne Warten. Service Worker räumt alte Einträge aus dem Daten-Cache |
 | – | `CLAUDE.md` aufgeräumt: erledigte Ablaufpläne (Ausbau „Verstehen statt Auswendiglernen“, Umbau Agile, Modulsystem) durch die Abschnitte „Inhalte schreiben“, „Neues Modul anlegen“ und „Modulverwaltung“ ersetzt |
 | – | Verbindliche Regel „Größe der Kategorien“: 30–50 Begriffe pro Kategorie (Module unter 30 Begriffen: eine Kategorie), Prüfskript ergänzt. IT als bekannte Abweichung, Aufteilung unter „Nächste Schritte“ eingereiht |
+| v18 | **Lernrahmen L1:** XP, Ränge, Punkte, Tagesbonus, Tagespflicht, Boxen/Profi/Meister, Meisterrunde, Vormerkungen und Verwechslungen entfernt. Neuer Lernstand `P` v2 (alter Lernstand wird verworfen), Teil A mit Lesen/Hören und Auswählen/Schreiben/Sprechen, Auswahl der Fragen durch die App, Sprechen erst ins Textfeld, Schalter „Gerade kein Ton“, `lang` pro Modul, Kalender mit Fragen pro Tag, neue Startseite und Kopfzeile, Stand im Nachschlagen, Karteikarten ohne Vormerkung, Export v2, Hilfe neu. Teil B zeigt „kommt bald“ |
 | v17 | **IT-Kategorien aufgeteilt:** aus 14 werden 35 Kategorien mit 30–49 Begriffen (nur Index 0 der Begriffe geändert, `extra` unverändert). Die alten Keys bleiben beim Teil, zu dem ihr Krönchen passt, und haben teils neue Namen; 21 neue Kategorien mit eigenen Krönchen-Designs. Neuer Speicherschlüssel `lernapp.progress.dev` (`doc` `progress-dev`): IT startet auf Wunsch des Nutzers bei null, Agile unberührt |

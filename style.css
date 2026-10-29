@@ -94,11 +94,11 @@ h1{font-size:clamp(2rem,9vw,2.6rem);font-weight:800;letter-spacing:-.025em}
 .modbar.pick .mod-add{flex:none;width:48px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--raise);box-shadow:var(--edge)}
 .modpick{flex:1;min-width:0;display:flex;align-items:center;gap:8px;padding:12px 16px;border:0;border-radius:var(--r-md);background:var(--accent);color:#fff;font-weight:700;font-size:.95rem}
 
-/* ---------- Kopf: Rang, Tagesring, Hilfe ---------- */
+/* ---------- Kopf: Lernstand, Fragen heute, Hilfe ---------- */
 .top{display:flex;align-items:center;gap:12px;padding:4px 0 20px}
 .rank{flex:1;min-width:0;display:block;text-align:left;border:0;background:none;padding:0;color:inherit}
-.rank-name{font-family:var(--display);font-weight:800;font-size:1.12rem;line-height:1.2;letter-spacing:-.01em}
 .rank-more{opacity:.55;font-weight:400}
+.rank-name{font-family:var(--display);font-weight:800;font-size:1.12rem;line-height:1.2;letter-spacing:-.01em}
 .xpbar{height:6px;border-radius:99px;background:color-mix(in srgb, var(--line) 70%, transparent);margin:7px 0 4px;overflow:hidden}
 .xpbar i{display:block;height:100%;border-radius:99px;background:var(--m1);transition:width .7s var(--ease)}
 .xp-text{font-size:.8rem;color:var(--ink-soft);text-wrap:balance}
@@ -140,9 +140,6 @@ button.badge{border:0;background:none;padding:0;cursor:pointer}
 .stand-bar{display:flex;gap:2px;height:10px;border-radius:99px;background:color-mix(in srgb, var(--line) 60%, transparent);overflow:hidden}
 .stand-bar i{display:block;height:100%;transition:width .7s var(--ease)}
 .stand-bar i:first-child{border-radius:99px 0 0 99px}
-.sb-master{background:var(--ok)}
-.sb-pro{background:var(--gold)}
-.sb-seen{background:var(--ink-soft);opacity:.45}
 .stand-legend{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:9px;font-size:.85rem;color:var(--ink-soft)}
 .stand-legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:0}
 .stand-legend b{color:var(--ink);font-variant-numeric:tabular-nums}
@@ -164,7 +161,6 @@ button.badge{border:0;background:none;padding:0;cursor:pointer}
 .backup-row{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0}
 .backup-row .btn{flex:1 1 140px}
 .foot{font-size:.8rem;color:var(--ink-soft);margin-top:18px;text-align:center}
-.penalty{background:color-mix(in srgb, var(--bad) 14%, var(--surface));border:1px solid color-mix(in srgb, var(--bad) 60%, transparent);border-radius:var(--r-md);padding:12px 16px;margin:0 0 22px;font-size:.95rem}
 
 /* ---------- Knöpfe ---------- */
 .btn{border:1px solid var(--line);border-radius:var(--r-md);padding:14px 16px;font-weight:700;background:var(--raise);color:var(--ink);font-size:1rem;box-shadow:var(--edge)}
@@ -189,18 +185,6 @@ body.focus .wrap{padding-top:18px}
 .cat-label{font-size:.8rem;font-weight:700;opacity:.7;margin-bottom:8px}
 .term{font-family:var(--display);font-weight:800;font-size:clamp(1.9rem,8.5vw,2.6rem);line-height:1.05;letter-spacing:-.025em;word-break:break-word}
 
-/* Profi- und Meister-Begriffe */
-.pro-tag{display:inline-block;font-size:.72rem;font-weight:700;background:var(--n-yellow);color:var(--note-ink);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:middle;white-space:nowrap}
-.pro-tag.done{background:var(--n-mint)}
-.note.pro-card{box-shadow:inset 0 0 0 3px var(--gold), 0 0 0 4px color-mix(in srgb, var(--gold) 30%, transparent), 0 18px 40px -22px rgba(0,0,0,.9)}
-.note.master-card{box-shadow:inset 0 0 0 3px var(--ok), 0 0 0 4px color-mix(in srgb, var(--ok) 30%, transparent), 0 18px 40px -22px rgba(0,0,0,.9)}
-.prodots{display:inline-flex;gap:2px;margin-left:6px;vertical-align:middle}
-.prodots i{width:5px;height:9px;border-radius:2px;background:var(--line)}
-.prodots i.f{background:var(--gold)}
-.is-master .prodots i.f{background:var(--ok)}
-.boxdots{display:inline-flex;gap:3px;margin-left:6px;vertical-align:middle}
-.boxdots i{width:6px;height:6px;border-radius:50%;background:var(--line)}
-.boxdots i.f{background:var(--ok)}
 
 /* ---------- Karteikarte ---------- */
 .card{display:flex;flex-direction:column;min-height:340px;margin:14px 0 22px;cursor:pointer}
@@ -237,15 +221,11 @@ mark{background:rgba(255,255,255,.6);color:inherit;padding:0 3px;border-radius:4
 .opt.wrong{background:var(--n-pink);color:var(--note-ink);border-color:transparent;text-decoration:line-through;animation:shake .38s ease}
 .opt.dim{opacity:.4}
 .opt.long{font-size:.95rem;line-height:1.35}
-.opt.short{font-family:var(--display);font-weight:800;font-size:1.15rem;letter-spacing:.02em}
 @keyframes rightPop{0%{transform:scale(.96)}55%{transform:scale(1.025)}100%{transform:none}}
 @keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
 .opts.tf{grid-template-columns:1fr 1fr}
 .opts.tf .opt{text-align:center;font-weight:700}
 .tap-next{cursor:pointer}
-.reveal-row{display:flex;justify-content:flex-end;margin:16px 0 -8px}
-.reveal-row .btn{padding:8px 14px;font-size:.9rem;border-radius:999px}
-.reveal-row .cost{opacity:.7;font-weight:400;margin-left:4px}
 .feedback{background:var(--raise);border:1px solid var(--line);border-radius:var(--r-md);padding:15px 17px;margin-bottom:16px;position:relative;overflow:hidden;box-shadow:var(--edge);animation:rise .32s var(--ease)}
 .feedback::before{content:"";position:absolute;inset:0 auto 0 0;width:5px;background:var(--fb)}
 .feedback h3{font-size:1.15rem;color:var(--fb);margin-bottom:4px}
@@ -298,8 +278,6 @@ details[open]>.lex-body{animation:rise .25s var(--ease)}
 .lex-body .ex{border-top-color:var(--line)}
 .expls{margin:4px 0 10px;padding-left:1.3em}
 .expls li{margin:3px 0}
-details.is-pro{border-color:color-mix(in srgb, var(--gold) 70%, transparent);background:linear-gradient(90deg, color-mix(in srgb, var(--gold) 16%, transparent), transparent 65%), var(--surface)}
-details.is-pro.is-master{border-color:color-mix(in srgb, var(--ok) 70%, transparent)}
 .empty{text-align:center;color:var(--ink-soft);padding:30px 0}
 
 /* ---------- Fenster: kommen als Blatt von unten ---------- */
@@ -326,13 +304,6 @@ dialog[open]::backdrop{background:rgba(0,0,0,.55)}
 .lv-head{display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:-20px;background:var(--surface);padding:6px 0;margin-top:-6px;z-index:1}
 .lv-head h2{font-size:1.4rem;letter-spacing:-.015em}
 .lv-sub{color:var(--ink-soft);font-size:.9rem;margin:6px 0 12px}
-.lv-list{list-style:none;margin:0;padding:0;display:grid;gap:3px}
-.lv-list li{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:8px 12px;border-radius:var(--r-sm);font-size:.95rem}
-.lv-list li.done{color:var(--ink-soft)}
-.lv-list li.cur{background:var(--m2);color:var(--note-ink);font-weight:700}
-.lv-num{font-family:var(--display);font-weight:800;text-align:right;opacity:.7}
-.lv-xp{font-variant-numeric:tabular-nums;white-space:nowrap}
-.lv-you{font-size:.72rem;border:1.5px solid currentColor;border-radius:999px;padding:0 6px;margin-left:4px;vertical-align:middle}
 .exp-sum{margin:6px 0 12px;padding-left:1.2em;font-size:.93rem}
 .exp-status{min-height:1.4em;font-size:.88rem;color:var(--ink-soft);margin:6px 0}
 .exp-raw summary{cursor:pointer;font-size:.88rem;color:var(--ink-soft)}
@@ -353,21 +324,15 @@ dialog textarea{width:100%;margin:8px 0;background:var(--board);color:var(--ink)
 .cal-cell{min-width:0;min-height:58px;border:1px solid var(--line);border-radius:var(--r-sm);background:transparent;color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:5px 2px;gap:1px;font-size:.7rem;line-height:1.2;cursor:pointer}
 .cal-cell.empty{border:0;cursor:default}
 .cal-cell.future{opacity:.3;cursor:default}
-.cal-cell.ok{background:color-mix(in srgb, var(--ok) 20%, transparent);border-color:color-mix(in srgb, var(--ok) 70%, transparent)}
-.cal-cell.miss{background:color-mix(in srgb, var(--bad) 18%, transparent);border-color:color-mix(in srgb, var(--bad) 70%, transparent)}
-.cal-cell.partial{border-style:dashed}
 .cal-cell.today{outline:2px solid var(--ink);outline-offset:1px}
 .cal-cell.sel{box-shadow:inset 0 0 0 2px var(--m2)}
 .cal-d{font-weight:800;font-size:.85rem}
-.cal-q{color:var(--ink-soft)}
 .cal-x{font-weight:700;font-variant-numeric:tabular-nums}
 .cal-sel{min-height:2.6em;margin:10px 0 6px;font-size:.9rem}
 .cal-sum{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.88rem;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:10px}
 .cal-sum b{color:var(--ink)}
 .cal-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:.78rem;color:var(--ink-soft)}
 .cal-legend i{display:inline-block;width:11px;height:11px;border-radius:4px;margin-right:5px;vertical-align:-1px;border:1px solid var(--line)}
-.cal-legend i.lg-ok{background:color-mix(in srgb, var(--ok) 40%, transparent);border-color:var(--ok)}
-.cal-legend i.lg-miss{background:color-mix(in srgb, var(--bad) 35%, transparent);border-color:var(--bad)}
 .cal-legend i.lg-today{outline:2px solid var(--ink);border:0}
 /* Modulauswahl (ab 4 Modulen) */
 .mod-list{display:grid;gap:8px;margin-top:10px}
@@ -403,20 +368,6 @@ dialog textarea{width:100%;margin:8px 0;background:var(--board);color:var(--ink)
 .boot-error{padding:40px 4px}
 .boot-error p{color:var(--ink-soft);margin-top:10px}
 
-/* ---------- Meisterrunde ---------- */
-.tgroup{display:grid;gap:0;border-radius:var(--r-md);box-shadow:var(--edge)}
-.tgroup .trow{border-bottom-left-radius:0;border-bottom-right-radius:0}
-.master-btn{display:grid;gap:2px;text-align:left;width:100%;padding:10px 14px 11px 50px;border:1px solid var(--line);border-top:0;
-  border-radius:0 0 var(--r-md) var(--r-md);background:color-mix(in srgb, var(--gold) 16%, var(--surface));color:var(--ink);font-size:.93rem;
-  transition:transform .3s var(--spring), background-color .2s}
-.master-btn:active{transform:scale(.97);transition-duration:.08s}
-.master-btn small{color:var(--ink-soft);font-size:.8rem;line-height:1.35}
-.xp-chip.timer{font-variant-numeric:tabular-nums;min-width:5.6em;text-align:center}
-.xp-chip.timer{transition:background-color .3s, border-color .3s, color .3s}
-.xp-chip.timer.behind{background:color-mix(in srgb, var(--bad) 30%, var(--surface));border-color:var(--bad);color:var(--bad)}
-.xp-chip.timer.low{animation:tick 1s steps(1) infinite}
-.master-btn .mt-stats{color:var(--ink);font-weight:700;opacity:.85}
-@keyframes tick{50%{color:var(--bad)}}
 
 /* ---------- Gekrönte Themen: jedes Thema hat ein eigenes Design ----------
    Grundgerüst in .crown, das Muster pro Thema in .crown[data-crown="…"]. Der Lichtstreif (::after) läuft über alle. */
@@ -435,7 +386,6 @@ dialog textarea{width:100%;margin:8px 0;background:var(--board);color:var(--ink)
 .crown[aria-pressed="true"] .tbox::after{border-color:var(--cr-base,#000)}
 .trow.crown[aria-pressed="false"]{border-style:solid;opacity:.62}
 .trow.crown[aria-pressed="false"] .tname{color:inherit;font-weight:800}
-.tgroup .crown + .master-btn{border-top:0}
 .lex-group>details>summary.crown{border-radius:0}
 /* Vorschau auf dem Ergebnis-Bildschirm */
 .crown-card{display:flex;align-items:center;gap:16px;text-align:left;border-radius:var(--r-lg);padding:22px 20px;margin:18px 0 14px;min-height:110px}
@@ -679,3 +629,56 @@ html[data-dir="back"]::view-transition-new(page){animation-name:vtInBack}
   *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
   ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none !important}
 }
+
+/* ---------- Lernrahmen: Teile A, B, C ---------- */
+/* Farben der Teile (Balken im Kopf, Themenzeilen, Legenden) */
+i.sb-a{background:var(--m1)}
+i.sb-b{background:var(--gold)}
+i.sb-c{background:var(--m3)}
+i.sb-done{background:var(--ok)}
+i.sb-new{background:color-mix(in srgb, var(--line) 90%, transparent)}
+.xpbar.seg,.tbar{display:flex;gap:1px}
+.xpbar.seg i,.tbar i{flex:none;border-radius:0}
+.rank .stand-legend{font-size:.76rem;gap:2px 11px;margin-top:2px}
+.rank .stand-legend i{width:7px;height:7px;margin-right:4px}
+/* Hinweis auf der Übersicht (nichts zu tun, warten auf Ton) */
+.notice{background:var(--raise);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:var(--r-md);padding:12px 16px;margin:0 0 18px;font-size:.93rem;box-shadow:var(--edge)}
+/* Schalter „Gerade kein Ton“ direkt unter der Quiz-Kachel */
+.quiet{grid-column:1 / -1;display:flex;align-items:center;gap:12px;width:100%;margin-top:-4px;text-align:left;padding:11px 16px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--raise);color:var(--ink);box-shadow:var(--edge)}
+.quiet .q-ic{font-size:1.3rem;line-height:1}
+.quiet b{display:block;font-size:.97rem}
+.quiet small{display:block;color:var(--ink-soft);font-size:.82rem}
+.quiet .switch{margin-left:auto;flex:none;width:46px;height:28px;border-radius:99px;background:color-mix(in srgb, var(--line) 95%, transparent);position:relative;transition:background-color .2s}
+.quiet .switch::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--ink-soft);transition:transform .28s var(--spring), background-color .2s}
+.quiet[aria-pressed="true"]{border-color:var(--accent)}
+.quiet[aria-pressed="true"] .switch{background:var(--accent)}
+.quiet[aria-pressed="true"] .switch::after{transform:translateX(18px);background:#fff}
+/* Hören: Text steht nicht da, großer Knopf zum Wiederholen */
+.hear-btn{display:inline-flex;align-items:center;gap:10px;margin-top:4px;padding:13px 22px 13px 18px;border:0;border-radius:999px;background:rgba(255,255,255,.55);color:var(--note-ink);font-weight:800;font-size:1.05rem;box-shadow:inset 0 0 0 1px rgba(28,36,64,.18)}
+.hear-btn span{font-size:1.6rem;line-height:1}
+.q-heard{margin:6px 0 0;font-size:.85rem;opacity:.7}
+.mic.big{width:72px;font-size:1.7rem}
+.say-note{font-size:.85rem;color:var(--ink-soft);margin:-4px 0 12px}
+/* Häkchen von Teil A */
+.chk{display:grid;gap:4px;margin:10px 0 12px;font-size:.8rem}
+.chk>span{color:var(--ink-soft)}
+.chk div{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}
+.chk i{font-style:normal;padding:2px 9px;border-radius:999px;border:1px dashed var(--line);color:var(--ink-soft)}
+.chk i.on{border-style:solid;background:color-mix(in srgb, var(--ok) 22%, transparent);border-color:color-mix(in srgb, var(--ok) 70%, transparent);color:var(--ink)}
+.chk i.on::before{content:"✓ "}
+.fb-got{color:var(--ok);font-weight:700}
+.fb-done{font-size:1.02rem}
+/* Stand im Nachschlagen */
+.st-tag{display:inline-block;font-size:.72rem;font-weight:700;background:var(--m1);color:var(--note-ink);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:middle;white-space:nowrap}
+.st-tag.b{background:var(--gold)}
+.st-tag.c{background:var(--m3)}
+.st-tag.done{background:var(--ok)}
+details.st-done{border-color:color-mix(in srgb, var(--ok) 70%, transparent)}
+.lex-st{color:var(--ink-soft);font-size:.88rem}
+/* Kalender: Farbe nach Zahl der Fragen */
+.cal-cell.l1{background:color-mix(in srgb, var(--ok) 12%, transparent);border-color:color-mix(in srgb, var(--ok) 35%, transparent)}
+.cal-cell.l2{background:color-mix(in srgb, var(--ok) 28%, transparent);border-color:color-mix(in srgb, var(--ok) 60%, transparent)}
+.cal-cell.l3{background:color-mix(in srgb, var(--ok) 50%, transparent);border-color:var(--ok)}
+.cal-legend i.l1{background:color-mix(in srgb, var(--ok) 12%, transparent);border-color:color-mix(in srgb, var(--ok) 35%, transparent)}
+.cal-legend i.l2{background:color-mix(in srgb, var(--ok) 28%, transparent);border-color:color-mix(in srgb, var(--ok) 60%, transparent)}
+.cal-legend i.l3{background:color-mix(in srgb, var(--ok) 50%, transparent);border-color:var(--ok)}

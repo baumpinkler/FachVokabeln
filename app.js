@@ -666,6 +666,10 @@ const allMastered = () => TERMS.length > 0 && TERMS.every(isMaster);
 const CROWN_DESIGNS = {code:["Terminal","💻"], oop:["Baukasten","🧩"], algo:["Sortierwerk","📊"], web:["Neonlicht","🌐"], arch:["Blaupause","📐"],
   data:["Datenstrom","🗄️"], net:["Lichtnetz","🛰️"], sec:["Tresor","🛡️"], ops:["Wolkenmeer","☁️"], git:["Verzweigung","🌿"], test:["Prüfsiegel","✅"],
   ai:["Synapsen","🧠"], talk:["Funkwelle","📡"], it:["Schaltkreis","🔌"],
+  fehler:["Käferjagd","🐞"], clean:["Feinschliff","🧽"], funk:["Lambda","λ"], muster:["Mosaik","🔷"], struktur:["Knotenbaum","🌲"],
+  ui:["Pixelraster","🎛️"], ux:["Farbfächer","🎨"], api:["Kettenglied","🔗"], verteilt:["Sternhaufen","✨"], daten:["Balkenwald","📈"],
+  adressen:["Wegweiser","🪧"], angriff:["Laserschranke","🚨"], deploy:["Raketenstart","🚀"], betrieb:["Kontrollmonitor","🖥️"], tools:["Werkbank","🧰"],
+  qa:["Lupe","🔍"], ml:["Höhenlinien","📉"], meeting:["Runder Tisch","🪑"], job:["Kaffeepause","☕"], geraete:["Fensterwelt","🪟"], itorg:["Skyline","🏙️"],
   agil:["Kreislauf","🔄"], team:["Schulterschluss","🤝"], sprint:["Sprint","🏃"], backlog:["Kartenstapel","🗂️"], lean:["Taktstraße","🏭"],
   produkt:["Nordstern","⭐"], discovery:["Ideenwand","💡"], orga:["Räderwerk","⚙️"], plan:["Meilenstein","🏁"], anf:["Lastenheft","📝"],
   kosten:["Münzschatz","🪙"], risiko:["Warnband","🚧"], komm:["Sprechblasen","💬"]};

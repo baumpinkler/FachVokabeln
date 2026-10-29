@@ -508,6 +508,77 @@ dialog textarea{width:100%;margin:8px 0;background:var(--board);color:var(--ink)
   background:radial-gradient(circle,#e8c35a 3px,transparent 3.5px) 20px 20px/40px 40px,
     linear-gradient(90deg,transparent 19px,rgba(232,195,90,.55) 19px 21px,transparent 21px) 0 0/40px 80px,
     linear-gradient(transparent 19px,rgba(232,195,90,.55) 19px 21px,transparent 21px) 0 0/80px 40px,#0f4a2a}
+/* IT: Kategorien seit v17 */
+.crown[data-crown="fehler"]{--cr-base:#5a0f14;--cr-glow:#ff4b4b;
+  background:radial-gradient(circle,rgba(26,5,7,.5) 2.5px,transparent 3px) 0 0/22px 22px,radial-gradient(circle,rgba(26,5,7,.5) 2.5px,transparent 3px) 11px 11px/22px 22px,linear-gradient(135deg,#8e1b22,#4a0c11)}
+.crown[data-crown="clean"]{--cr-ink:#0f3a3a;--cr-base:#cdeeee;--cr-glow:#7fe0e0;text-shadow:none;
+  background:repeating-linear-gradient(115deg,transparent 0 34px,rgba(255,255,255,.55) 34px 38px,transparent 38px 60px) 0 0/200% 100%,linear-gradient(115deg,#eefcfc,#b8e6e6);
+  animation:crPolish 5s linear infinite}
+@keyframes crPolish{to{background-position:-120px 0,0 0}}
+.crown[data-crown="funk"]{--cr-ink:#ece6ff;--cr-base:#1f1446;--cr-glow:#a58bff;
+  background:repeating-linear-gradient(-30deg,transparent 0 16px,rgba(165,139,255,.16) 16px 18px),linear-gradient(135deg,#1f1446,#3b2a85)}
+.crown[data-crown="funk"]::before{content:"λ";position:absolute;right:14px;top:50%;transform:translateY(-52%);z-index:-1;
+  font:700 4.4rem/1 Georgia,serif;color:rgba(214,200,255,.2)}
+.crown[data-crown="muster"]{--cr-base:#1d3a6b;--cr-glow:#5f9bff;
+  background:conic-gradient(from 45deg,#2b4f8f 25%,#3a66b3 0 50%,#2b4f8f 0 75%,#24467f 0) 0 0/26px 26px}
+.crown[data-crown="struktur"]{--cr-ink:#e4fff4;--cr-base:#12302a;--cr-glow:#4fd6a3;
+  background:radial-gradient(circle,rgba(79,214,163,.6) 2.5px,transparent 3px) 15px 10px/30px 30px,
+    linear-gradient(90deg,transparent 14px,rgba(79,214,163,.35) 14px 16px,transparent 16px) 0 0/30px 30px,
+    linear-gradient(45deg,transparent 48%,rgba(79,214,163,.22) 48% 52%,transparent 52%) 0 0/30px 30px,#12302a}
+.crown[data-crown="ui"]{--cr-ink:#f2f4ff;--cr-base:#1b1f2a;--cr-glow:#4d96ff;
+  background:linear-gradient(90deg,#ff6b6b 0 25%,#ffd93d 0 50%,#6bcb77 0 75%,#4d96ff 0) 0 100%/100% 4px no-repeat,
+    linear-gradient(rgba(255,255,255,.07) 1px,transparent 1px) 0 0/8px 8px,linear-gradient(90deg,rgba(255,255,255,.07) 1px,transparent 1px) 0 0/8px 8px,#1b1f2a}
+.crown[data-crown="ux"]{--cr-ink:#2a1a2e;--cr-base:#f3d9e6;--cr-glow:#ff9ac8;text-shadow:none;
+  background:linear-gradient(100deg,#ffb3b8,#ffd8c4,#c9d6ff,#c6f0ff,#ffb3b8) 0 0/300% 100%;animation:crFan 9s linear infinite}
+@keyframes crFan{to{background-position:-300% 0}}
+.crown[data-crown="api"]{--cr-ink:#dff7ff;--cr-base:#0b2e3d;--cr-glow:#46c8ff;
+  background:radial-gradient(ellipse 10px 6px,transparent 5.5px,rgba(120,220,255,.45) 6px 7.5px,transparent 8px) 0 0/22px 14px,
+    radial-gradient(ellipse 10px 6px,transparent 5.5px,rgba(120,220,255,.3) 6px 7.5px,transparent 8px) 11px 7px/22px 14px,linear-gradient(120deg,#0b2e3d,#155a73)}
+.crown[data-crown="verteilt"]{--cr-ink:#eef1ff;--cr-base:#0a0f24;--cr-glow:#9fb2ff;
+  background:radial-gradient(circle,#fff 1px,transparent 1.6px) 0 0/23px 19px,radial-gradient(circle,rgba(255,255,255,.7) 1.5px,transparent 2.2px) 9px 7px/41px 31px,
+    radial-gradient(circle,rgba(159,178,255,.9) 2px,transparent 2.8px) 25px 3px/67px 47px,radial-gradient(ellipse at 80% 50%,#26306b,#0a0f24 70%)}
+.crown[data-crown="daten"]{--cr-ink:#fff4e0;--cr-base:#1d2b4f;--cr-glow:#ffb347;background:linear-gradient(135deg,#1d2b4f,#2c4073)}
+.crown[data-crown="daten"]::before{content:"";position:absolute;right:96px;bottom:0;width:78px;height:85%;z-index:-1;opacity:.55;
+  background:linear-gradient(#ffb347,#ffb347) 0 100%/12px 35% no-repeat,linear-gradient(#ffc56b,#ffc56b) 22px 100%/12px 60% no-repeat,
+    linear-gradient(#ffd68f,#ffd68f) 44px 100%/12px 45% no-repeat,linear-gradient(#ffe6b5,#ffe6b5) 66px 100%/12px 90% no-repeat}
+.crown[data-crown="adressen"]{--cr-base:#0c4a35;--cr-glow:#3fd28c;
+  background:linear-gradient(135deg,rgba(255,255,255,.14) 25%,transparent 25%) -10px 0/20px 20px,linear-gradient(225deg,rgba(255,255,255,.14) 25%,transparent 25%) -10px 0/20px 20px,#0c4a35;
+  animation:crRoad 2s linear infinite}
+@keyframes crRoad{to{background-position:10px 0,10px 0,0 0}}
+.crown[data-crown="angriff"]{--cr-ink:#ffe4e6;--cr-base:#140508;--cr-glow:#ff2a3d;
+  background:repeating-linear-gradient(170deg,transparent 0 15px,rgba(255,42,61,.55) 15px 16px,transparent 16px 26px) 0 0/100% 200%,radial-gradient(circle at 15% 50%,#3d0a12,#140508 70%);
+  animation:crLaser 3s linear infinite}
+@keyframes crLaser{to{background-position:0 -52px,0 0}}
+.crown[data-crown="deploy"]{--cr-ink:#fff1e6;--cr-base:#1a1240;--cr-glow:#ff8a3d;
+  background:radial-gradient(ellipse 60px 26px at 0 100%,rgba(255,138,61,.7),transparent 70%),radial-gradient(circle,rgba(255,255,255,.8) 1px,transparent 1.6px) 0 0/29px 23px,
+    linear-gradient(200deg,#1a1240,#3a1f6b)}
+.crown[data-crown="betrieb"]{--cr-ink:#b9ffcf;--cr-base:#04140a;--cr-glow:#3dff7a;
+  background:linear-gradient(90deg,transparent,rgba(61,255,122,.35),transparent) -40% 0/30% 100% no-repeat,
+    linear-gradient(rgba(61,255,122,.1) 1px,transparent 1px) 0 0/100% 6px,#04140a;animation:crScan 3.2s linear infinite}
+@keyframes crScan{to{background-position:140% 0,0 0,0 0}}
+.crown[data-crown="tools"]{--cr-ink:#fff3e0;--cr-base:#5a361a;--cr-glow:#e0a060;
+  background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(0,0,0,.18)),repeating-linear-gradient(92deg,#7a4a24 0 7px,#8a5530 7px 10px,#6e4220 10px 17px,#80502a 17px 22px)}
+.crown[data-crown="qa"]{--cr-ink:#3b2a10;--cr-base:#f6efe0;--cr-glow:#d9a441;text-shadow:none;
+  background:radial-gradient(circle at calc(100% - 130px) 50%,transparent 22px,rgba(59,42,16,.18) 23px 28px,transparent 29px),linear-gradient(135deg,#fbf6ea,#eadcbc)}
+.crown[data-crown="ml"]{--cr-base:#1b2b5a;--cr-glow:#7ab8ff;
+  background:repeating-radial-gradient(ellipse at 70% 62%,#1b2b5a 0 7px,#3a5aa8 7px 9px,#1b2b5a 9px 16px)}
+.crown[data-crown="meeting"]{--cr-ink:#fff2dd;--cr-base:#4a2c17;--cr-glow:#e9c27a;
+  background:radial-gradient(circle at calc(100% - 130px) 50%,rgba(201,154,82,.75) 0 18px,transparent 19px),
+    radial-gradient(circle at calc(100% - 130px) 50%,transparent 26px,rgba(233,194,122,.35) 27px 29px,transparent 30px),linear-gradient(135deg,#4a2c17,#6d4324)}
+.crown[data-crown="job"]{--cr-ink:#fbeee0;--cr-base:#3b2416;--cr-glow:#d9b48c;
+  background:radial-gradient(circle at calc(100% - 125px) 55%,rgba(232,203,166,.7) 0 13px,rgba(168,119,75,.7) 14px 19px,rgba(59,36,22,0) 20px),linear-gradient(135deg,#3b2416,#6f4a2f)}
+.crown[data-crown="job"]::before{content:"";position:absolute;right:114px;top:4px;width:22px;height:28px;z-index:-1;opacity:.35;
+  background:repeating-linear-gradient(90deg,transparent 0 5px,#fff 5px 7px);border-radius:50% 50% 0 0;animation:crSteam 2.4s ease-in-out infinite alternate}
+@keyframes crSteam{to{transform:translateY(-4px);opacity:.15}}
+.crown[data-crown="geraete"]{--cr-base:#0b3a6e;--cr-glow:#4fa3ff;
+  background:linear-gradient(rgba(255,255,255,.28),rgba(255,255,255,.28)) right 124px top calc(50% - 12px)/20px 20px no-repeat,
+    linear-gradient(rgba(255,255,255,.2),rgba(255,255,255,.2)) right 100px top calc(50% - 12px)/20px 20px no-repeat,
+    linear-gradient(rgba(255,255,255,.2),rgba(255,255,255,.2)) right 124px top calc(50% + 12px)/20px 20px no-repeat,
+    linear-gradient(rgba(255,255,255,.14),rgba(255,255,255,.14)) right 100px top calc(50% + 12px)/20px 20px no-repeat,linear-gradient(135deg,#0b3a6e,#1565b8)}
+.crown[data-crown="itorg"]{--cr-base:#2c1f55;--cr-glow:#ff9a6a;
+  background:linear-gradient(#120c24,#120c24) 0 100%/100% 12% no-repeat,linear-gradient(#120c24,#120c24) calc(100% - 180px) 100%/18px 55% no-repeat,
+    linear-gradient(#120c24,#120c24) calc(100% - 154px) 100%/22px 80% no-repeat,linear-gradient(#120c24,#120c24) calc(100% - 126px) 100%/16px 45% no-repeat,
+    linear-gradient(#120c24,#120c24) calc(100% - 102px) 100%/20px 65% no-repeat,linear-gradient(180deg,#3b2a6b,#b85a6a 75%,#e88a5a)}
 /* Agile & Projekte */
 .crown[data-crown="agil"]{--cr-ink:#eafff5;--cr-base:#0f3d33;--cr-glow:#5fe0b4;
   background:repeating-radial-gradient(circle at 90% 50%,transparent 0 12px,rgba(141,255,210,.22) 12px 14px),

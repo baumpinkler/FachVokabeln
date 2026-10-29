@@ -7,8 +7,8 @@
       "icon": "💻",
       "desc": "Englische Fachbegriffe aus Programmierung, Web, Datenbanken, Netzwerk, Sicherheit, Cloud und KI",
       "count": 1305,
-      "ls": "devvokabeln.progress.v1",
-      "doc": "progress",
+      "ls": "lernapp.progress.dev",
+      "doc": "progress-dev",
       "accent": "#6c3fb8",
       "board": "#0a0510"
     },

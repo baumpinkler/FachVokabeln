@@ -9,7 +9,9 @@
 
 > **Für Claude:** Fragt der Nutzer nach den nächsten Schritten, nenne die offenen Punkte (☐) dieser Liste. Neue größere Vorhaben hier einreihen, erledigte abhaken und ihre Ergebnisse in die passenden Abschnitte dieser Datei übernehmen, statt lange Ablaufpläne stehen zu lassen.
 
-Derzeit ist nichts offen. Angedachte, noch nicht definierte Vorhaben: „Lernrahmen“ (neue Fragearten, Fortschritt in Stufen statt XP) und eine Sprachprüfung mit KI. Beide erst mit dem Nutzer ausarbeiten, nicht vorwegnehmen.
+1. ☑ **IT-Kategorien aufteilen** (v17): 35 Kategorien mit 30–49 Begriffen, Lernstand bewusst neu gestartet.
+
+Angedachte, noch nicht definierte Vorhaben: „Lernrahmen“ (neue Fragearten, Fortschritt in Stufen statt XP) und eine Sprachprüfung mit KI. Beide erst mit dem Nutzer ausarbeiten, nicht vorwegnehmen.
 
 ## Was die App ist
 
@@ -67,7 +69,7 @@ Moduldateien nie in den Chat laden: per Skript nur die nötigen Spalten auslesen
 ```
 Reihenfolge in `index.json` = Reihenfolge in Katalog, Modulleiste und beim Wischen. Die Moduldatei liegt immer unter `modules/<key>/module.json` (kein Feld `file` mehr).
 - `desc`: ein Satz für den Katalog. `count`: Zahl der Begriffe (per Skript aus `raw`), optional, bei Begriffsänderungen mitpflegen.
-- `ls` = Speicherschlüssel des Lernstands, **pro Modul eindeutig, nie ändern** (sonst ist der Fortschritt weg). Neue Module: `ls` = `lernapp.progress.<key>`, `doc` = `progress-<key>`. `dev` und `agile` behalten ihre alten `devvokabeln.…`-Werte.
+- `ls` = Speicherschlüssel des Lernstands, **pro Modul eindeutig, nie ändern** (sonst ist der Fortschritt weg). Neue Module: `ls` = `lernapp.progress.<key>`, `doc` = `progress-<key>`. `agile` behält seinen alten Wert `devvokabeln.progress.agile`. `dev` hat seit v17 `lernapp.progress.dev` (Neustart nach der Kategorie-Aufteilung, der alte Lernstand liegt ungenutzt unter `devvokabeln.progress.v1`).
 - Optional `format`/`version` wie in der Moduldatei: Braucht ein Modul eine neuere App, zeigt der Katalog das schon ohne Download an.
 - Ab 4 gewählten Modulen wird der Umschalter automatisch zum Auswahlmenü.
 
@@ -170,7 +172,7 @@ Gilt für alle Module. Moduldateien nie komplett lesen: per Skript die nötigen 
 3. Für Agile gilt `docs/agile-projekte-begriffe.md`: neue Begriffe dort zuerst mit dem Nutzer abstimmen, Deutsch aus der Liste übernehmen.
 4. `count` in `index.json` anpassen. Neue Begriffe brauchen auch Zusatzinhalte (nächster Abschnitt), sonst gibt es für sie ab Profi nur `type` und `def2en`.
 
-Regeln: Erklärungen 1–3 ohne den englischen Begriff, Beispielsatz enthält ihn wörtlich (ohne „to “), deutscher Satz aus dem österreichischen Arbeitsalltag, Gendern mit `:in`. Eine Kategorie hat idealerweise 30–50 Begriffe.
+Regeln: Erklärungen 1–3 ohne den englischen Begriff, Beispielsatz enthält ihn wörtlich (ohne „to “), deutscher Satz aus dem österreichischen Arbeitsalltag, Gendern mit `:in`. Die Größenregel für Kategorien (siehe „Größe der Kategorien“) muss danach weiter erfüllt sein.
 
 **Prüfskript** (muss ohne Fehler laufen):
 - Gültiges JSON; alle IDs im Modul eindeutig.
@@ -178,6 +180,20 @@ Regeln: Erklärungen 1–3 ohne den englischen Begriff, Beispielsatz enthält ih
 - Index 3, 6 und 7 enthalten den englischen Begriff nicht (Groß/Klein egal).
 - Index 4 enthält den Begriff (ohne „to “).
 - Index 8, falls vorhanden, besteht nur aus exakten Teilstrings von Index 5.
+- Größenregel: jede Kategorie 30–50 Begriffe (Ausnahme siehe „Größe der Kategorien“); jede Kategorie aus `cats` hat Begriffe.
+
+### Größe der Kategorien (verbindlich)
+
+**Jede Kategorie hat 30–50 Begriffe.** Ausnahme: Ein Modul mit weniger als 30 Begriffen hat genau eine Kategorie.
+Damit sind die Kategorien eines Moduls ungefähr gleich groß. Grund: Meisterrunden dauern überall ähnlich lang, und jedes Thema ist in vernünftiger Zeit zu meistern.
+
+- Wird eine Kategorie zu groß, wird sie geteilt: neue Kategorie mit eigenem Namen und Key, ein Teil behält den alten Key.
+- Wird eine Kategorie zu klein, wird sie mit einer passenden zusammengelegt oder aufgefüllt.
+- Kategorien dürfen dafür umbenannt werden (`name` in `cats`). Der **Key** bleibt nach Möglichkeit, denn an ihm hängen Krönchen (`P.crowns`), Meisterrunden-Rekorde (`P.mtries`), Themenauswahl (`P.cats`) und das Krönchen-Design. Der Lernstand der Begriffe (`P.boxes` usw.) hängt an der Begriffs-ID und bleibt immer erhalten.
+- Neue Kategorie-Keys brauchen eine Farbe in `cats` und sollten ein eigenes Krönchen-Design bekommen (`CROWN_DESIGNS` + `style.css`, dann `VERSION` erhöhen).
+- Wechselt ein Begriff die Kategorie, ändert sich nur Index 0; `extra` und die `conf`-Verweise bleiben gültig.
+
+Beide Module erfüllen die Regel: IT 35 Kategorien mit 30–49 Begriffen (seit v17), Agile 13 mit 33–49.
 
 ### Zusatzinhalte (Feld `extra`)
 
@@ -207,7 +223,7 @@ Schlüssel = Begriffs-ID wie in `buildTerms` (Kleinbuchstaben, Sonderzeichen →
 ## Neues Modul anlegen
 
 1. Ordner `modules/<key>/` mit `module.json` (Format siehe „Moduldatei“).
-2. `cats` mit Pastellfarben `var(--n-…)` (siehe `style.css`), `levels` mit den üblichen XP-Grenzen und eigenen Rangnamen passend zum Fach.
+2. `cats` mit Pastellfarben `var(--n-…)` (siehe `style.css`), Kategorien nach „Größe der Kategorien“ zuschneiden, `levels` mit den üblichen XP-Grenzen und eigenen Rangnamen passend zum Fach.
 3. `theme` im Aufbau wie die anderen Module, gut unterscheidbar von Violett (IT) und Weinrot (Agile). `bad` muss sich deutlich von `accent` abheben, die Pastellkarten müssen auf `board` lesbar bleiben.
 4. Eintrag in `modules/index.json` (Felder siehe „Katalog“), `ls` = `lernapp.progress.<key>`, `doc` = `progress-<key>`, `accent`/`board` wie im Theme.
 5. Inhalte nach „Inhalte schreiben“, inklusive `extra`.
@@ -247,3 +263,5 @@ Schlüssel = Begriffs-ID wie in `buildTerms` (Kleinbuchstaben, Sonderzeichen →
 | v15 | Vorschau aus v14 wieder entfernt, `app.js` wie in v13 |
 | v16 | Ein Modul aus Katalog und Repo entfernt (inkl. Krönchen-Designs). **Zusatzdateien aufgelöst:** alle `modules/<key>/extra/*.json` stecken jetzt im Feld `extra` der `module.json` (1.305 + 507 Einträge, unverändert), ein Modul = eine Datei. `fetchExtras`/`loadExtras`/`preloadExtras` entfallen, Quiz und Meisterrunde starten ohne Warten. Service Worker räumt alte Einträge aus dem Daten-Cache |
 | – | `CLAUDE.md` aufgeräumt: erledigte Ablaufpläne (Ausbau „Verstehen statt Auswendiglernen“, Umbau Agile, Modulsystem) durch die Abschnitte „Inhalte schreiben“, „Neues Modul anlegen“ und „Modulverwaltung“ ersetzt |
+| – | Verbindliche Regel „Größe der Kategorien“: 30–50 Begriffe pro Kategorie (Module unter 30 Begriffen: eine Kategorie), Prüfskript ergänzt. IT als bekannte Abweichung, Aufteilung unter „Nächste Schritte“ eingereiht |
+| v17 | **IT-Kategorien aufgeteilt:** aus 14 werden 35 Kategorien mit 30–49 Begriffen (nur Index 0 der Begriffe geändert, `extra` unverändert). Die alten Keys bleiben beim Teil, zu dem ihr Krönchen passt, und haben teils neue Namen; 21 neue Kategorien mit eigenen Krönchen-Designs. Neuer Speicherschlüssel `lernapp.progress.dev` (`doc` `progress-dev`): IT startet auf Wunsch des Nutzers bei null, Agile unberührt |

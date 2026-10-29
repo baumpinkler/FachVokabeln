@@ -187,13 +187,13 @@ Ablauf: Repo klonen, per Skript nur die Begriffe der Kategorie auslesen (Index 1
 Schlüssel in `terms` = Begriffs-ID wie in `buildTerms` (Kleinbuchstaben, Sonderzeichen → `-`).
 
 **Regeln für die Inhalte**
-- `ex`: genau 2 neue Satzpaare (englisch, deutsch). Englischer Satz enthält den Begriff wörtlich (ohne „to “), anders als der vorhandene Beispielsatz. Deutsch: österreichischer Arbeitsalltag.
+- `ex`: genau 2 neue Satzpaare (englisch, deutsch). Englischer Satz enthält den Begriff wörtlich (ohne „to “), anders als der vorhandene Beispielsatz. Achtung: Die App prüft mit Wortgrenzen (`termRe`), Plural oder angehängte Endungen („tasks“, „user interviews“) zählen **nicht**, der Satz fällt dann still weg. Deutsch: österreichischer Arbeitsalltag.
 - `sit`: genau 3 Situationen auf Deutsch, je 2–3 Sätze, aus dem österreichischen Arbeitsalltag (Lehrling, Kolleg:in, Kund:in, Daily, Krankenstand …). Enthalten **weder** den englischen Begriff **noch** die deutsche Übersetzung oder deren Wortstamm. Keine Frage am Ende (die App fragt „Welcher Begriff passt?“). Die Situation muss eindeutig sein, auch gegenüber naheliegenden Begriffen derselben Kategorie. Die drei Situationen zeigen verschiedene Blickwinkel (Ursache, Folge, Einsatz).
 - `conf`: 1–2 Verwechslungspartner (ID muss im Modul existieren, darf aus anderer Kategorie sein) mit **einem** Satz zum Unterschied, in dem beide Begriffe vorkommen dürfen. Gibt es keinen sinnvollen Partner, leeres Array. Die App ersetzt im Satz beide Begriffe durch „A“ (Begriff selbst) und „B“ (Partner), daher: beide mit dem englischen Begriff oder dem deutschen Hauptwort aus Index 2 nennen (keine Umschreibungen), Begriff zuerst, und der Satz muss auch mit A/B ohne die Namen verständlich sein.
 - `tf`: genau 2 Aussagen auf Deutsch, eine wahr, eine falsch. Die falsche greift eine **typische Fehlvorstellung** auf, nicht etwas offensichtlich Absurdes. Begründung ein Satz. Hier darf der Begriff vorkommen.
 - Gendern mit `:in`, österreichische Wörter, fachlich korrekt und passend zu den vorhandenen Erklärungen.
 
-**Prüfskript vor der Auslieferung** (muss ohne Fehler laufen): jede Begriffs-ID der Kategorie vorhanden; `ex` = 2 Paare und englischer Satz enthält den Begriff; `sit` = 3 und keine enthält Begriff oder deutsche Übersetzung (ohne Artikel, Groß/Klein egal); `conf`-IDs existieren im Modul; `tf` = 2 mit genau einem `true`; gültiges JSON.
+**Prüfskript vor der Auslieferung** (muss ohne Fehler laufen; am sichersten mit `termRe`, `buildTerms`, `nameVariants` und `maskNames` direkt aus `app.js` in Node, weil die App mit Wortgrenzen und deklinierten Formen arbeitet): jede Begriffs-ID der Kategorie vorhanden; `ex` = 2 Paare und englischer Satz enthält den Begriff; `sit` = 3 und keine enthält Begriff oder deutsche Übersetzung (ohne Artikel, Groß/Klein egal); `conf`-IDs existieren im Modul; `tf` = 2 mit genau einem `true`; gültiges JSON.
 
 ### Status
 
@@ -313,13 +313,13 @@ Ausliefern: nur `modules/agile.json` und diese Datei (Status abhaken). Eine `VER
 
 | Kategorie | Begriffe | Erledigt |
 |---|---|---|
-| `agil` Agile Grundlagen & Frameworks | 43 | ☐ |
-| `team` Scrum-Rollen & Teamdynamik | 37 | ☐ |
-| `sprint` Events & Sprint-Alltag | 38 | ☐ |
-| `backlog` Backlog, Schätzen & Planen | 43 | ☐ |
-| `lean` Kanban & Lean | 42 | ☐ |
-| `produkt` Produktstrategie & Kennzahlen | 41 | ☐ |
-| `discovery` Nutzerforschung & Design Thinking | 39 | ☐ |
+| `agil` Agile Grundlagen & Frameworks | 43 | ☑ |
+| `team` Scrum-Rollen & Teamdynamik | 37 | ☑ |
+| `sprint` Events & Sprint-Alltag | 38 | ☑ |
+| `backlog` Backlog, Schätzen & Planen | 43 | ☑ |
+| `lean` Kanban & Lean | 42 | ☑ |
+| `produkt` Produktstrategie & Kennzahlen | 41 | ☑ |
+| `discovery` Nutzerforschung & Design Thinking | 39 | ☑ |
 | `orga` Agile Organisation & Führung | 37 | ☐ |
 | `plan` Projektplanung & Steuerung | 49 | ☐ |
 | `anf` Anforderungen & Scope | 34 | ☐ |
@@ -344,3 +344,4 @@ Ausliefern: nur `modules/agile.json` und diese Datei (Status abhaken). Eine `VER
 | v11 | Meisterrunde: Rekord an richtigen Antworten und Zahl der Versuche unter dem Knopf; Uhr wird rot, wenn man hinter dem Plan (20 s pro Frage) liegt |
 | v12 | Neues Modul **Agile & Projekte** (`agile`, weinrot, 13 Kategorien): 198 Begriffe aus `scrum`, `pm` und 2 aus `git` verschoben (nur Kategorie geändert); `team velocity`, `to do`, `in progress`, `done` gestrichen. IT-Modul heißt jetzt „IT“ (1.305 Begriffe, `key`/`ls` unverändert). 19 `conf`-Verweise in `modules/extra/dev/` auf verschobene Begriffe ersetzt bzw. gestrichen. Krönchen: `scrum` → `sprint`, `pm` → `plan`, 11 neue Designs |
 | – | Schritt G für Agile abgeschlossen: 309 neue Begriffe in allen 13 Kategorien, Modul jetzt 507 Begriffe (nur `modules/agile.json`, keine `VERSION`-Erhöhung) |
+| – | Schritt 2 für Agile: Zusatzinhalte für `agil`, `team`, `sprint`, `backlog`, `lean`, `produkt`, `discovery` (283 Begriffe, `modules/extra/agile/`, keine `VERSION`-Erhöhung) |

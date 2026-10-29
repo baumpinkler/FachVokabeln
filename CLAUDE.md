@@ -12,7 +12,7 @@
 1. ☑ **IT-Kategorien aufteilen** (v17): 35 Kategorien mit 30–49 Begriffen, Lernstand bewusst neu gestartet.
 2. ☑ **Lernrahmen L1–L3** (v18–v21): drei Teile pro Begriff, Bremse, KI-Prüfung, Krönchen. Regeln unter „Spielregeln“, Hintergrund unter „Lernrahmen: Hintergrund und Entscheidungen“.
 3. ☑ **CLAUDE.md nachgezogen**: alle Abschnitte auf dem Stand des Lernrahmens.
-4. ☐ **Echter Test der KI-Prüfung:** Der Nutzer öffnet `tools/ki-test.html` (siehe „Dateien“), lässt die 16 Testfälle laufen und fügt das kopierte Ergebnis im Chat ein. Claude wertet die Abweichungen aus und schärft ggf. `AI_RULES` nach (dann `VERSION` erhöhen). Claude selbst kann Gemini nicht aufrufen (Netzwerk der Arbeitsumgebung), den Schlüssel daher nie im Chat erfragen.
+4. ☑ **Echter Test der KI-Prüfung** (mit `tools/ki-test.html`): alle 16 Testfälle mit dem erwarteten Urteil, `AI_RULES` bleibt unverändert. Bei späteren Änderungen an `AI_RULES` oder `AI_MODEL` die Testseite erneut laufen lassen.
 5. ☑ **`levels` aus den Moduldateien gestrichen** (per Skript, beide Module).
 
 ## Was die App ist
@@ -223,7 +223,7 @@ Gilt für alle Module. Moduldateien nie komplett lesen: per Skript die nötigen 
 
 1. Vorhandene Begriffe der Kategorie per Skript auslesen (Index 1, 2, 3), damit Erklärungen zusammenpassen und sich nicht wiederholen.
 2. Neue Einträge im vollen Format (Index 0–8, siehe „Ein Begriff“) an `raw` anhängen.
-3. Für Agile gilt `docs/agile-projekte-begriffe.md`: neue Begriffe dort zuerst mit dem Nutzer abstimmen, Deutsch aus der Liste übernehmen.
+3. Hat das Modul eine abgestimmte Begriffsliste (`docs/<key>-begriffe.md`, für Agile `docs/agile-projekte-begriffe.md`): neue Begriffe dort zuerst mit dem Nutzer abstimmen, Bedeutung aus der Liste übernehmen.
 4. `count` in `index.json` anpassen. Neue Begriffe brauchen auch Zusatzinhalte (nächster Abschnitt), sonst fällt Teil B für sie fast ganz weg.
 
 Regeln: Erklärungen 1–3 ohne den englischen Begriff, Beispielsatz enthält ihn wörtlich (ohne „to “), deutscher Satz aus dem österreichischen Arbeitsalltag, Gendern mit `:in`. Die Größenregel für Kategorien (siehe „Größe der Kategorien“) muss danach weiter erfüllt sein.
@@ -276,12 +276,40 @@ Schlüssel = Begriffs-ID wie in `buildTerms` (Kleinbuchstaben, Sonderzeichen →
 
 ## Neues Modul anlegen
 
-1. Ordner `modules/<key>/` mit `module.json` (Format siehe „Moduldatei“).
-2. `cats` mit Pastellfarben `var(--n-…)` (siehe `style.css`), Kategorien nach „Größe der Kategorien“ zuschneiden. Kein `levels`. `lang` nur angeben, wenn die Sprachen von `en-US`/`de-AT` abweichen (z. B. deutschsprachiges Schulmodul: beide `de-AT`).
-3. `theme` im Aufbau wie die anderen Module, gut unterscheidbar von Violett (IT) und Weinrot (Agile). `bad` muss sich deutlich von `accent` abheben, die Pastellkarten müssen auf `board` lesbar bleiben.
-4. Eintrag in `modules/index.json` (Felder siehe „Katalog“), `ls` = `lernapp.progress.<key>`, `doc` = `progress-<key>`, `accent`/`board` wie im Theme.
-5. Inhalte nach „Inhalte schreiben“, inklusive `extra` (ohne Zusatzinhalte fällt Teil B weitgehend weg). Die 3 Erklärungen sind in Teil C die Musterlösungen für die KI.
-6. Optional eigene Krönchen-Designs pro Kategorie (`CROWN_DESIGNS` + `style.css`, siehe „Gestaltung“), sonst greifen die allgemeinen. Nur dann `VERSION` erhöhen.
+> **Für Claude:** Will der Nutzer ein neues Modul, zuerst diesen Abschnitt und „Inhalte schreiben“ lesen. Nichts schreiben, bevor Schritt 1 mit dem Nutzer geklärt ist.
+
+1. **Mit dem Nutzer klären:** Fach und Zielgruppe (wer lernt, Vorwissen, bei Schulmodulen Schulstufe/Lehrplan), Sprachen (`lang`), Kategorien und **Begriffsliste** (Kategorie, Begriff, Bedeutung). Die abgestimmte Liste als `docs/<key>-begriffe.md` ablegen (Vorbild `docs/agile-projekte-begriffe.md`); sie gilt danach als verbindlich, Änderungen nur nach Rücksprache. Bei einem rein deutschsprachigen Modul zuerst „Deutschsprachige Module“ unten klären.
+2. Ordner `modules/<key>/` mit `module.json` (Format siehe „Moduldatei“), `format`/`version` wie oben. Kein `levels`.
+3. `cats` mit Pastellfarben `var(--n-…)` (siehe `style.css`), Kategorien nach „Größe der Kategorien“ zuschneiden. `lang` nur angeben, wenn die Sprachen von `en-US`/`de-AT` abweichen.
+4. `theme` mit allen Feldern (`board`, `board-dot`, `ink`, `ink-soft`, `surface`, `line`, `ok`, `bad`, `accent`, `m1`, `m2`, `m3`) im Aufbau wie die anderen Module, gut unterscheidbar von Violett (IT) und Weinrot (Agile). `bad` muss sich deutlich von `accent` abheben, die Pastellkarten müssen auf `board` lesbar bleiben.
+5. Inhalte nach „Inhalte schreiben“ in Blöcken pro Kategorie: erst `raw`, dann `extra`. Jeder Begriff braucht alles aus der Checkliste unten; nach jeder Kategorie beide Prüfskripte.
+6. Eintrag in `modules/index.json` (Felder siehe „Katalog“): `ls` = `lernapp.progress.<key>`, `doc` = `progress-<key>`, `accent`/`board` wie im Theme, `desc`, `count`.
+7. Optional eigene Krönchen-Designs pro Kategorie (`CROWN_DESIGNS` + `style.css`, siehe „Gestaltung“), sonst greifen die allgemeinen. Nur dann `VERSION` erhöhen.
+8. Testen: Modul im Katalog hinzufügen, Quiz, Nachschlagen, Karteikarten (Playwright, siehe „Lernrahmen: Hintergrund und Entscheidungen“).
+
+### Checkliste: was jeder Begriff braucht und wofür
+
+| Inhalt | Feld | Wofür in der App | Worauf achten |
+|---|---|---|---|
+| Begriff | `raw[1]` | Teil A/B Antwort (auswählen, schreiben, sprechen), Vorlesen in `lang.term`, ID | eindeutig; Verben mit „to “; so schreiben, wie man ihn eintippt/spricht |
+| Bedeutung | `raw[2]` | Teil A in beide Richtungen, Vorlesen in `lang.meaning`, `maskNames` | mit Artikel, Varianten mit „ / “, gegendert mit `:in`; kurz |
+| 3 Erklärungen | `raw[3]`, `[6]`, `[7]` | Nachschlagen, Rückmeldung, **Musterlösungen der KI in Teil C** | je ein präziser Satz, drei Blickwinkel (was, Beispiel/Einsatz, Zweck/Abgrenzung); genau genug, um den Begriff von verwandten zu unterscheiden; ohne den Begriff |
+| Beispielsatz + Übersetzung | `raw[4]`, `[5]`, ggf. `[8]` | Lückensatz `c0`, Karteikarten | `[4]` enthält den Begriff wörtlich in Grundform (Wortgrenzen!), sonst entfällt `c0` |
+| 2 weitere Satzpaare | `extra.ex` | Lückensätze `c1`, `c2` | wie oben, anders als `[4]` |
+| 3 Situationen | `extra.sit` | „Welcher Begriff passt?“, lesen und hören | ohne Begriff und Übersetzung, eindeutig, keine Frage am Ende |
+| 2 Aussagen | `extra.tf` | „Stimmt das?“ | eine wahr, eine typische Fehlvorstellung, je mit Begründung |
+| 1–2 Unterschiede | `extra.conf` | „Unterschied“ mit A/B | Partner im selben Modul, beide beim Namen nennen; im Modul braucht es genug Paare (mind. 3 andere) |
+
+Was fehlt, wird nicht abgefragt, aber der Begriff verliert dann Übung: ohne `extra` bleibt von Teil B fast nichts. Die Kategorien brauchen genug Begriffe mit verschiedenen Anfangsbuchstaben für die 5 Antwortmöglichkeiten (mit 30–50 Begriffen pro Kategorie kein Problem).
+
+### Deutschsprachige Module (z. B. Schulmodule): vor dem ersten klären
+
+Der Rahmen ist dafür gedacht (`lang` beide `de-AT`), aber noch nie ausprobiert. Vor dem ersten solchen Modul mit dem Nutzer festlegen und ggf. den Code anpassen (`VERSION` erhöhen, Testseite nicht nötig):
+- **Was ist die „Bedeutung“?** Vorschlag: eine kurze Umschreibung (z. B. Begriff „Fotosynthese“, Bedeutung „Pflanzen machen aus Licht, Wasser und CO₂ Zucker“). Sie muss kurz genug für Antwortmöglichkeiten sein und darf den Begriff nicht enthalten.
+- **Artikel beim Begriff:** `checkTyped` ignoriert nur „to “, keine Artikel. Entweder Begriffe ohne Artikel in `raw[1]` (Artikel dann nur in Erklärungen) oder `typeNorm` um führende Artikel erweitern.
+- **Beugung:** `termRe` und `maskNames` suchen die Grundform mit Wortgrenzen. Deutsche Sätze beugen oft („der Zellen“), dann fällt der Lückensatz weg. Sätze bewusst mit der Grundform schreiben oder `[8]`-artige Lücken auch für `raw[4]`/`ex` einführen.
+- **Satzpaare:** `raw[4]`/`[5]` und `ex` sind als Übersetzungspaar gedacht. Vorschlag: `[4]` Satz mit dem Begriff, `[5]` derselbe Satz als Hilfe umschrieben ohne den Begriff (er erscheint bei „Satz zeigen“).
+- **Ton und Alltag:** Situationen, Beispiele und Erklärungen aus dem Alltag der Zielgruppe (bei Kindern: Schule, Familie, Freizeit), Sprache passend zum Alter. `AI_RULES` prüft „Fachbegriffe“ inhaltlich streng; für Kinder evtl. eine mildere Anweisung pro Modul (dann `AI_RULES` modulabhängig machen und mit `tools/ki-test.html` neue Testfälle anlegen).
 
 ## Modulverwaltung: Verhalten im Detail
 
@@ -334,3 +362,4 @@ Der Lernrahmen (v18–v21, in drei Chats L1–L3 umgesetzt) hat XP, Ränge, Punk
 | v21 | **Lernrahmen L3:** Teil C: Begriff in eigenen Worten erklären (schreiben oder diktieren), Google Gemini prüft mit eigenem Schlüssel (Blatt „KI-Prüfung“, Schlüssel nur in `lernapp.aikey`). Bremse B → C, höchstens 2 Teil-C-Fragen pro Runde, Fehlerfälle ohne Wertung, Hinweis auf der Übersicht, wenn Begriffe auf die KI-Prüfung warten. Begriff gelernt, Kategorie gemeistert → Krönchen. Hilfe und Nachschlagen angepasst |
 | – | `CLAUDE.md` an den Lernrahmen angepasst: „Was die App ist“, „Spielregeln“ (jetzt der Lernrahmen samt KI-Prüfung), „Code-Landkarte“, „Gespeicherter Fortschritt“, „Datenformat“ (`lang`, `levels` bedeutungslos), „Gestaltung“, „Inhalte schreiben“ und „Neues Modul anlegen“ neu; Abschnitt „Vorhaben ‚Lernrahmen‘“ samt Umsetzungsnotizen L1–L3 zu „Lernrahmen: Hintergrund und Entscheidungen“ gekürzt (keine `VERSION`-Erhöhung) |
 | – | Neue Testseite `tools/ki-test.html` für die KI-Prüfung mit echtem Schlüssel (16 Testfälle, eigene Fälle, Ergebnis zum Kopieren). `levels` per Skript aus `modules/dev/module.json` und `modules/agile/module.json` entfernt, sonst unverändert (keine `VERSION`-Erhöhung) |
+| – | KI-Prüfung mit echtem Schlüssel getestet: alle 16 Testfälle wie erwartet. „Neues Modul anlegen“ ausgebaut: Ablauf ab der Abstimmung mit dem Nutzer, Checkliste „was jeder Begriff braucht und wofür“, offene Punkte für deutschsprachige Module (keine `VERSION`-Erhöhung) |

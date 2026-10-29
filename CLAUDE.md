@@ -3,22 +3,24 @@
 > **Für Claude:** Lies diese Datei zuerst. Sie ersetzt das Durchlesen des gesamten Quellcodes.
 > Fordere nur die Dateien an, die für die gewünschte Änderung wirklich nötig sind (siehe „Welche Dateien für welche Änderung“).
 > Hochgeladene Dateien liegen unter `/mnt/user-data/uploads/`. Lies sie gezielt mit `grep -n` und `sed -n 'von,bisp'`, statt sie komplett anzuzeigen.
-> Liefere am Ende **nur die geänderten Dateien** aus. Bei Änderungen an App-Dateien (`app.js`, `style.css`, `index.html`, `sw.js`, `manifest.json`) `VERSION` in `sw.js` erhöhen; reine Inhaltsänderungen in `modules/` brauchen das nicht. Änderungsprotokoll unten ergänzen.
+> Liefere am Ende **nur die geänderten Dateien** aus (Claude kann das Repo auch selbst klonen, siehe „Hosting“). Bei Änderungen an App-Dateien (`app.js`, `style.css`, `index.html`, `sw.js`, `manifest.json`) `VERSION` in `sw.js` erhöhen; reine Inhaltsänderungen in `modules/` brauchen das nicht. Änderungsprotokoll unten ergänzen.
 
 ## Nächste Schritte
 
 > **Für Claude:** Fragt der Nutzer nach den nächsten Schritten, nenne die offenen Punkte (☐) dieser Liste. Neue größere Vorhaben hier einreihen, erledigte abhaken und ihre Ergebnisse in die passenden Abschnitte dieser Datei übernehmen, statt lange Ablaufpläne stehen zu lassen.
 
 1. ☑ **IT-Kategorien aufteilen** (v17): 35 Kategorien mit 30–49 Begriffen, Lernstand bewusst neu gestartet.
-2. ☑ **Lernrahmen L1** (v18): Aufräumen, neues Lernstand-Modell, Auswahl-Logik, Teil A. Stand siehe „Umsetzung L1“ im Abschnitt „Vorhaben ‚Lernrahmen‘“.
-3. ☑ **Lernrahmen L2** (v19): Teil B mit Bremse. Stand siehe „Umsetzung L2“ im Abschnitt „Vorhaben ‚Lernrahmen‘“.
-4. ☐ **Lernrahmen L3**: Teil C mit KI-Prüfung, Krönchen. Ein Chat.
+2. ☑ **Lernrahmen L1–L3** (v18–v21): drei Teile pro Begriff, Bremse, KI-Prüfung, Krönchen. Regeln unter „Spielregeln“, Hintergrund unter „Lernrahmen: Hintergrund und Entscheidungen“.
+3. ☑ **CLAUDE.md nachgezogen**: alle Abschnitte auf dem Stand des Lernrahmens.
+4. ☐ **Echter Test der KI-Prüfung** mit einem Schlüssel des Nutzers (bisher nur mit nachgebildeten Antworten getestet): Urteile bei guten, knappen, falschen und nur übersetzten Erklärungen ansehen, ggf. `AI_RULES` nachschärfen.
+5. ☐ **`levels` aus den Moduldateien streichen** (optional, per Skript, keine `VERSION`-Erhöhung): Das Feld wird seit v18 nicht mehr gelesen.
 
 ## Was die App ist
 
-Installierbare Web-App (PWA) zum Lernen englischer Fachbegriffe mit deutscher Übersetzung. Zielgruppe: der Nutzer selbst (Österreich), Android-Handy, Chrome.
+Installierbare Web-App (PWA) zum Lernen englischer Fachbegriffe mit deutscher Übersetzung. Zielgruppe: der Nutzer selbst (Österreich), Android-Handy, Chrome. Später sollen auch Schulmodule (z. B. Biologie, auch rein deutschsprachig) für den Sohn des Nutzers dazukommen; der Lernrahmen ist dafür für alle Module gleich.
 Zwei Module: **IT** (`dev`, 1.305 Begriffe, violettes Schema) und **Agile & Projekte** (`agile`, 507 Begriffe, weinrotes Schema), beide mit Zusatzinhalten für alle Begriffe.
-Bereiche: Quiz, Karteikarten, Nachschlagen. Dazu Ränge, Kalender, Punkte-Erklärung, Export/Import.
+Jeder Begriff durchläuft drei Teile: **A** (Begriff und Bedeutung), **B** (anwenden), **C** (in eigenen Worten erklären, eine KI prüft). Danach ist er **gelernt**; sind alle Begriffe eines Themas gelernt, bekommt das Thema ein **Krönchen**. Die App entscheidet selbst, was als Nächstes gefragt wird. Keine Punkte, Ränge oder Strafen.
+Bereiche: Quiz (ändert den Lernstand), Karteikarten und Nachschlagen (ändern ihn nicht). Dazu Kalender (Fragen pro Tag), Schalter „Gerade kein Ton“, Blatt „KI-Prüfung“, Hilfe, Export/Import.
 Jeder Nutzer wählt im Katalog „Module verwalten“, welche Module er verwendet; nur diese werden geladen und offline gespeichert (seit v13).
 
 ## Hosting und Updates
@@ -35,8 +37,8 @@ Jeder Nutzer wählt im Katalog „Module verwalten“, welche Module er verwende
 | Datei | Größe | Inhalt |
 |---|---|---|
 | `index.html` | 1 KB | Gerüst (`#modbar` Modulleiste, darunter `#pager` mit `#top` und `#app`), Manifest-Link, Fonts (Google Fonts), setzt gespeichertes Farbschema vor dem Laden |
-| `app.js` | 96 KB (~27.000 Tokens) | gesamte Logik |
-| `style.css` | 48 KB (~14.000 Tokens) | gesamte Gestaltung, Farben über CSS-Variablen |
+| `app.js` | 121 KB (~34.000 Tokens) | gesamte Logik |
+| `style.css` | 60 KB (~17.000 Tokens) | gesamte Gestaltung, Farben über CSS-Variablen |
 | `sw.js` | 3 KB | Service Worker: Offline-Cache, „sofort aus Cache, im Hintergrund aktualisieren“ |
 | `manifest.json` | 1 KB | App-Name, Symbole, Startfarbe `#0a0510` |
 | `icons/` | – | `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` |
@@ -52,7 +54,7 @@ Jeder Nutzer wählt im Katalog „Module verwalten“, welche Module er verwende
 |---|---|
 | Farben eines Moduls | `modules/index.json` + Hinweis, welches Modul. Claude erzeugt ein kleines Skript bzw. die `theme`-Werte; das große JSON wird per Skript geändert, nicht gelesen |
 | Aussehen, Abstände, Schriften | `style.css` |
-| Spielregeln, Punkte, Quiz, Kalender, neue Funktionen | `app.js` (+ ggf. `style.css`) |
+| Lernrahmen, Auswahl, Quiz, KI-Prüfung, Kalender, neue Funktionen | `app.js` (+ ggf. `style.css`) |
 | Neue Begriffe, Zusatzinhalte | die `module.json` nur per Skript bearbeiten (siehe „Inhalte schreiben“), `modules/index.json` (`count` mitpflegen). Keine `VERSION`-Erhöhung |
 | Neues Modul | neuer Ordner `modules/<key>/` mit `module.json` + Eintrag in `modules/index.json` (siehe „Neues Modul anlegen“). Keine Code-Änderung, keine `VERSION`-Erhöhung; nur eigene Krönchen-Designs brauchen `app.js` + `style.css` |
 | Katalog, Modulauswahl, Laden der Module | `app.js` (Bereich „Module laden“ und „Katalog“), `sw.js` (Daten-Cache) |
@@ -78,15 +80,16 @@ Reihenfolge in `index.json` = Reihenfolge in Katalog, Modulleiste und beim Wisch
 ```
 { format:"fachvokabeln-modul", version:1, key, name, short, icon,
   cats:   { "net": {"name":"Netzwerk","c":"var(--n-sky)"}, … },
-  levels: [[0,"Praktikant:in"],[100,"Lehrling"], … 20 Einträge … ,[50000,"IT-Legende"]],
+  lang:   { term:"en-US", meaning:"de-AT" },          // optional, Standard genau diese Werte
   theme:  { board, board-dot, ink, ink-soft, surface, line, ok, bad, accent, m1, m2, m3 },
   raw:    [ Eintrag, Eintrag, … ],
   extra:  { "<begriffs-id>": {ex, sit, conf, tf}, … } }
 ```
 Kompakt gespeichert (`separators=(",",":")`, `ensure_ascii=False`, ohne Zeilenumbruch am Ende). Die App (`MOD_FORMAT`, `MOD_VERSION` in `app.js`) lädt nur `format` „fachvokabeln-modul“ mit `version` ≤ 1; sonst „braucht eine neuere App-Version“. Ohne gültiges JSON, `raw` oder `cats` gilt das Modul als fehlerhaft.
-`extra` (optional, seit v16, direkt nach `raw`): Zusatzinhalte für schwere Fragearten, Schlüssel = Begriffs-ID (Format und Regeln unter „Zusatzinhalte“). Fehlt das Feld, gibt es ab Profi nur `type` und `def2en`. Ändern immer per Skript: JSON laden, `extra[id]` setzen, kompakt zurückschreiben.
+`extra` (optional, seit v16, direkt nach `raw`): Zusatzinhalte für schwere Fragearten, Schlüssel = Begriffs-ID (Format und Regeln unter „Zusatzinhalte“). Fehlt das Feld oder fehlt ein Inhalt, entfallen die betreffenden Fragearten und Häkchen in Teil B. Ändern immer per Skript: JSON laden, `extra[id]` setzen, kompakt zurückschreiben.
 `theme`: `board` Hintergrund (fast schwarz), `surface` Flächen, `accent` Modul-Schalter, `m1`/`m2`/`m3` die drei Startseiten-Kärtchen (Karteikarten/Quiz/Nachschlagen).
-XP-Grenzen der Ränge (alle Module gleich): 0, 100, 250, 400, 600, 900, 1.300, 1.800, 2.400, 3.200, 4.300, 5.700, 7.600, 10.000, 13.000, 17.000, 22.500, 29.500, 38.500, 50.000.
+`lang` (optional, seit v18): Sprache der Begriffe (`term`, Vorlesen und Sprechen des Begriffs) und der Bedeutung (`meaning`, Vorlesen der Bedeutung und Situationen, Diktat in Teil C). Ein deutschsprachiges Schulmodul hat beide auf `de-AT`. Situationen und Stimmt-das-Aussagen sind in `meaning`-Sprache. `version` bleibt 1.
+`levels` (XP-Ränge) ist seit v18 bedeutungslos: wird ignoriert, in IT und Agile noch vorhanden, neue Module lassen es weg.
 
 ### Ein Begriff (`raw`-Eintrag, Array)
 | Index | Inhalt | Regel |
@@ -101,55 +104,101 @@ XP-Grenzen der Ränge (alle Module gleich): 0, 100, 250, 400, 600, 900, 1.300, 1
 | 7 | Erklärung 3 | anderer Blickwinkel (Zweck, Abgrenzung) – ohne den Begriff |
 | 8 | optional: Lücken im deutschen Satz | Array exakter Teilstrings aus [5], z. B. `["sperrt","aus"]`; nötig, wenn [4] den Begriff enthält |
 
-## Spielregeln (Konstanten in `app.js`)
+## Spielregeln: der Lernrahmen
 
-> **Seit v18 veraltet:** XP, Ränge, Boxen, Meisterrunde, Tagespflicht, Vormerkungen und Verwechslungen gibt es nicht mehr. Es gilt der Lernrahmen (Abschnitt „Vorhaben ‚Lernrahmen‘“, Unterabschnitt „Umsetzung L1“). Weiter gültig sind hier nur Eintippen (`checkTyped`), `conf`-Anzeige (`maskNames`) und die Regeln zu Antwortmöglichkeiten. Dieser Abschnitt, „Code-Landkarte“ und „Gespeicherter Fortschritt“ werden nach L3 neu geschrieben.
+Grundsätze: Fehler haben **keine Folgen** (richtige Lösung zeigen, weiter), es zählen nur richtige Antworten, „fast richtig“ zählt als richtig. Was ein Begriff an Inhalten nicht hat, wird nicht verlangt. Kann ein Gerät etwas **gar nicht** (kein `speechSynthesis` oder keine Stimme für die Sprache, kein `SR`), gelten die betroffenen Häkchen als erfüllt (`autoChecks`, nicht gespeichert), sonst bliebe ein Begriff für immer hängen.
 
-- **Quiz:** 10 Fragen (`QUIZ_LEN`), 5 Antworten mit unterschiedlichen Anfangsbuchstaben (`keyLetter`, Artikel/„to“ zählen nicht). Gemeisterte Begriffe kommen nicht mehr dran (`quizPool`). 3–9 offene Begriffe → Runde mit so vielen Fragen; 1–2 → werden wiederholt, bis 10 Fragen zusammen sind (`repeatFill`, nie zweimal derselbe direkt hintereinander). Wird ein Begriff während der Runde gemeistert, fliegen seine restlichen Fragen raus (beim Wiederholen wird mit den übrigen aufgefüllt); ist danach in den gewählten Themen nichts mehr offen, endet das Quiz nach dieser Frage (`Q.endEarly`). Fragen werden erst beim Erreichen gebaut (`nextQuestion`), damit der Lernstand aktuell ist.
-- **Meisterrunde** (`startMaster`, nur für Themen mit allen Begriffen gemeistert, `catMastered`): jeder Begriff des Themas einmal, gemischt, Fragen wie bei gemeisterten Begriffen, aber alle Antworten ganz sichtbar (`masterQ`). Zeit: `MASTER_SEC` = 20 s pro Begriff, Uhr statt XP oben (`masterTick`), rot (`.behind`), sobald mehr als 20 s × (Nummer der aktuellen Frage) verbraucht sind, blinkt in den letzten 30 s. Versuche (beim Start gezählt) und Rekord an richtigen Antworten (beim Ende oder Abbruch, `masterRecord`) stehen unter dem Knopf. Richtig → nach 0,55 s automatisch weiter; ein Fehler oder Zeit um → Ende, neu starten. Keine XP pro Antwort, kein Einfluss auf Lernstand, Verwechslungen oder Tagespflicht. Erste geschaffte Runde: Thema gekrönt (`P.crowns`), +`MASTER_XP` (5) XP pro Begriff; danach zählt nur die Bestzeit.
-- **Fragearten** (`makeQuestion`): Box 0–4 (`easyQuestion`): `en2de`, `de2en`, `def2en` (Erklärung → Begriff), `en2def` (Begriff → Erklärung, Antworten immer ganz sichtbar), `cloze` (Lückensatz, doppelt gewichtet). Ab Box 5 (`hardQuestion`/`hardTypes`): `type` (eintippen, doppelt gewichtet), `def2en` mit Verwechslungs-Ablenkern, `sit` (doppelt), `conf`, `tf`, `cloze` mit Zusatzsatz; ohne Zusatzinhalte nur `type` und `def2en`.
-- **Spracheingabe** (🎤 neben dem Eingabefeld, nur wenn `SR` existiert): `en-US`, bis 5 Varianten, jede mit `checkTyped` geprüft (richtig > fast richtig > Verwechslung > falsch). Zählt wie Eintippen, auch für die Meister-Regel. Braucht in Chrome meist Internet.
-- **Eintippen** (`checkTyped`, `typeNorm`, `lev`): Groß/Klein, führendes „to “, Bindestrich/Leerzeichen/Unterstrich egal; Levenshtein ≤ 1 je angefangene 6 Buchstaben = richtig mit Hinweis „Fast richtig“. Exakt ein anderer Begriff des Moduls = falsch (Verwechslung).
-- **`conf`-Anzeige**: Die Unterschied-Sätze werden maskiert (`maskNames`): englischer Begriff und deutsche Hauptwörter (ohne Artikel, `:in`, kleine Endungen) → „A“/„B“. Falsche Antworten = maskierte Sätze anderer Paare (gleiche Kategorie zuerst); unter 3 anderen Paaren gibt es keine `conf`-Frage.
-- **Punkte pro Antwort:** richtig +5, falsch −2, Profi-Begriff falsch −10, „Ganz anzeigen“ −1, falsch ohne „Ganz anzeigen“ zusätzlich −2 (nicht bei `en2def`, `type`, `conf`, `tf`, alle `full:true`). Ausnahme `tf`: richtig +3, falsch −2 (auch bei Profi). XP nie unter 0.
-- **Lernstand** (`P.boxes`, 0–15): 0–4 in Arbeit, ab 5 (`SIT`) Profi ⭐, 15 (`MAX_BOX`) gemeistert 🏆. Profi braucht 10 richtige in Folge (`PRO_GOAL`), ein Fehler setzt auf 5 zurück. Nur das Quiz verändert den Lernstand.
-- **Meister-Regel** (`settle`, `HARD`, `HARD_NEED` = 3): Box 15 nur mit mindestens 3 richtigen `type`/`sit`/`conf`-Antworten seit dem letzten Fehler (`P.hard`), sonst bleibt der Begriff auf 14. Auf Box 14 ohne erfüllte Regel kommen nur diese Fragearten.
-- **Verwechslungen** (`P.mix`): bei falscher Antwort wird der gewählte Begriff gespeichert (bei `conf` der Partner, beim Eintippen ein exakt getippter anderer Begriff). `distractors` nimmt bei Profi-Begriffen zuerst diese, dann `conf`-Partner (beide Richtungen), dann wie bisher; die Anfangsbuchstaben-Regel gilt weiter.
-- **Tagespflicht** (`QUIZ_GOAL` = 3, `QUIZ_PENALTY` = 200): pro Modul; versäumte Tage werden in `dailyCheck` beim nächsten Öffnen abgezogen. Ist das ganze Modul gemeistert (`allMastered`), entfällt sie; der Ring zeigt dann 🏆.
-- **Tagesbonus** (`dayBonus`): 4.–9. Quiz +25, 10. +50, ab 11. +20.
-- **Auswahl** (`pickQuizTerms`, nur aus `quizPool`): Pausen nach `gapFor` (in Arbeit 2 Runden, Profi 2–6), mind. 3 neue Begriffe pro Runde, max. 3 Vormerkungen (📌).
-- **Karteikarten:** keine XP; „Nochmal üben“ setzt eine Vormerkung (`P.flags`).
+**Begriffe:** Ausgabearten Lesen (Text steht da) und Hören (wird vorgelesen, steht nicht da, 🔊 zum Wiederholen). Eingabearten Auswählen (5 Antworten), Schreiben (`checkTyped`), Sprechen (🎤). Bedeutung = deutsche Übersetzung (Index 2), beim Vorlesen wird „ / “ zum Komma (`sayable`).
+
+### Teil A: Begriff und Bedeutung
+- **Bedeutung → Begriff** (`m2t`): jede Ausgabeart (`o:read`, `o:hear`) und jede Eingabeart (`i:pick`, `i:type`, `i:say`) mindestens einmal richtig; eine Antwort hakt beides zugleich ab.
+- **Begriff → Bedeutung** (`t2m`): einmal Lesen + Auswählen (`r:read`), einmal Hören + Auswählen (`r:hear`). Kein Schreiben/Sprechen in dieser Richtung (deutsche Übersetzungen nicht zuverlässig prüfbar).
+- Fertig (`partADone`): alle 7 Häkchen (`A_CHECKS`), mindestens 5 richtige Antworten (`A_MIN`), davon 3 in Richtung Bedeutung → Begriff (`A_MIN_M2T`). Schreiben und Sprechen erst, wenn der Begriff einmal richtig beantwortet wurde (`doable`).
+
+### Teil B: anwenden (frühestens am Tag nach Teil A)
+Vier Fragearten, gemischt (erst Frageart zufällig unter denen mit offenen Häkchen, darin die Aufgabe mit den meisten offenen Häkchen):
+- **Lückensatz** (nur Lesen): jeder Satz einmal (`c0` = Beispielsatz Index 4, nur wenn `termRe` passt; `c1`/`c2` = `ex`-Sätze) und jede Eingabeart einmal (`ci:pick/type/say`). „Satz auf Deutsch zeigen“ als Hilfe.
+- **Situation** („Welcher Begriff passt?“): jede der 3 Situationen (`s0`–`s2`), Lesen und Hören (`so:read/hear`, vorgelesen in `MOD.lang.meaning`), jede Eingabeart (`si:…`).
+- **Stimmt das?**: beide Aussagen (`t0`, `t1`), Stimmt/Stimmt nicht, danach Begründung.
+- **Unterschied** (`u0`, `u1`): maskierte Sätze mit A/B (`maskNames`); zählt nur, wenn `confWrong` mindestens 3 verschiedene falsche Sätze findet.
+- Fertig: alle vorhandenen Häkchen (mit allen Inhalten 10 Antworten, ohne `conf` 8). `autoFinishB` schließt Teil B ab, wenn nach der Bremse nichts offen ist.
+
+### Teil C: in eigenen Worten (frühestens am Tag nach Teil B)
+- Begriff erklären, schreiben oder diktieren (🎤 in `MOD.lang.meaning`, wird angehängt, frei bearbeitbar). Gemini prüft (Details unter „KI-Prüfung“). Richtig → `cDay`, der Begriff ist **gelernt**. Falsch hat keine Folgen, neuer Versuch in einer späteren Runde. „Weiß ich nicht“ zeigt die Musterlösung ohne KI.
+- **Krönchen:** Sobald alle Begriffe einer Kategorie `cDay` haben, `P.crowns[kat] = {day}` (`crownCheck`); Anzeige als `crownCard` in Rückmeldung und Rundenende, danach dauerhaft auf Übersicht und Nachschlagen.
+
+### Bremse
+Teil B frühestens am Kalendertag nach Teil A, Teil C frühestens am Tag nach Teil B (`afterDay`, Vergleich mit `dayStr`). Ein Begriff braucht also mindestens 3 Tage, damit nicht alles an einem Abend aus dem Kurzzeitgedächtnis abgehakt wird.
+
+### Auswahl der Fragen (`planRound`)
+- Runde = bis zu 10 Fragen (`QUIZ_LEN`) aus den angehakten Themen (`P.cats`). Pro Begriff wählt `taskFor` die Aufgabe mit den meisten offenen Häkchen (Gleichstand zufällig), unter Beachtung von Bremse, „Gerade kein Ton“ und KI-Verfügbarkeit.
+- Begonnene Begriffe vor neuen, höherer Teil vor niedrigerem, dann am längsten nicht gefragt (`t`). Neue Begriffe aus dem angehakten Thema, das am weitesten ist (`catScore`, Gleichstand: Reihenfolge in `cats`): höchstens 3 (`NEW_PER_ROUND`), aber so viele, dass die Runde voll wird.
+- Jeder Begriff höchstens 2× pro Runde (erst alle einmal, dann die zweiten Male), nie zweimal direkt hintereinander. Teil C: höchstens 2 Begriffe (`C_PER_ROUND`), jeder nur einmal.
+- Frage und Aufgabe werden erst beim Erreichen gebaut (`findNext`/`goQuestion`), damit der Lernstand aktuell ist. Gibt es weniger Aufgaben, wird die Runde kürzer; gibt es keine, sagt `noTasksText` warum („Heute alles erledigt, morgen geht's weiter mit X Begriffen“, warten auf Ton, warten auf die KI-Prüfung, alles gelernt).
+- Antwortmöglichkeiten: 5, unterschiedliche Anfangsbuchstaben (`keyLetter`, Artikel/„to“ zählen nicht), Ablenker zuerst aus derselben Kategorie (`distractors`), immer ganz sichtbar.
+
+### Eingabe und Ton
+- **Schreiben** (`checkTyped`, `typeNorm`, `lev`): Groß/Klein, führendes „to “, Bindestrich/Leerzeichen/Unterstrich egal; Levenshtein ≤ 1 je angefangene 6 Buchstaben = „fast richtig“ (zählt als richtig). Exakt ein anderer Begriff des Moduls = falsch.
+- **Sprechen:** Pro Frage nur eine Eingabeart, Hinweis „✍️ Schreib …“ bzw. „🎤 Sprich …“ über dem Feld. Beim Sprechen ist das Feld bis zur ersten Erkennung gesperrt; `listen` liefert bis zu 5 Varianten, die beste (richtig > fast richtig > Verwechslung > falsch, `heard`) kommt ins Feld. Unverändert abgeschickt = Sprechen, von Hand geändert = Schreiben. Spracherkennung braucht in Chrome meist Internet.
+- **„Gerade kein Ton“** (Schalter unter der Quiz-Kachel, `lernapp.quiet`): kein Hören, kein Sprechen, bis zum Ausschalten. Diese Häkchen werden später nachgeholt; Begriffe, die nur noch sie brauchen, warten (`waitsForSound`), Übersicht und Rundenende sagen das. Teil C geht dann nur schriftlich.
+- **Sprache pro Modul:** `MOD.lang = {term, meaning}` (Standard `en-US`/`de-AT`). Begriff vorlesen und sprechen in `term`, Bedeutung, Situationen und Diktat in `meaning` (`outLang`). `voiceFor` fällt von `de-AT` auf `de-DE` zurück.
+- **`conf`-Anzeige:** `maskNames` ersetzt englischen Begriff und deutsche Hauptwörter (ohne Artikel, `:in`, kleine Endungen) durch „A“/„B“.
+
+### KI-Prüfung (Teil C)
+- **Anbieter:** Google Gemini API, Gratis-Stufe, direkt aus dem Browser: `POST https://generativelanguage.googleapis.com/v1beta/models/<AI_MODEL>:generateContent`, Kopfzeile `x-goog-api-key`, `generationConfig.responseMimeType = "application/json"`. `AI_MODEL` = `gemini-3.5-flash-lite` (Stand Oktober 2026), bei 404 Rückfall auf `gemini-flash-lite-latest`. Modelle und Grenzen ändern sich: bei Problemen in der aktuellen Gemini-Doku (Preisliste, Spalte „Free Tier“) ein Flash-Modell der Gratis-Stufe wählen.
+- **Schlüssel:** jeder Nutzer seinen eigenen, Blatt „KI-Prüfung“ (🤖 neben „Module verwalten“, Link zu Google AI Studio, „Speichern und testen“, „Testen“, „Entfernen“). Nur in `localStorage["lernapp.aikey"]`, **nie im Repo, nie im Export**. Hinweis im Blatt: In der Gratis-Stufe darf Google die Eingaben zum Verbessern der Modelle verwenden, also nur Erklärungen, nichts Persönliches.
+- **Eingabe an die KI:** Begriff, Bedeutung, die 3 Erklärungen (Index 3, 6, 7) als Musterlösungen, die Antwort zwischen `<antwort>`-Marken. Anweisung `AI_RULES`: inhaltlich streng, sprachlich großzügig; nicht richtig sind bloße Übersetzung, fachlich Falsches, zu Vages. Ergebnis `{"ok", "feedback" (1–2 Sätze, du-Form), "fehlt"}`.
+- **Anzeige:** Urteil, Feedback, was gefehlt hat, eine zufällige Musterlösung.
+- **Fehlerfälle** (kein Schlüssel, offline, Zeitüberschreitung, 429, ungültiger Schlüssel, Region, Modell weg, Serverfehler, unlesbare Antwort): klare Meldung, Antwort wird **nicht** gewertet, Text bleibt stehen, „Nochmal prüfen“/„Überspringen“. Nach 429 90 s Pause. Ohne Schlüssel, Netz oder während der Pause bietet die Auswahl keine Teil-C-Fragen an (`aiReady`); Übersicht und Rundenende zeigen „X Begriffe warten auf die KI-Prüfung“ mit Grund und Knopf zum Blatt.
+- Der Service Worker greift bei fremden Adressen nicht ein (`fetch`-Handler nur gleiche Herkunft und Schriften, POST nie); das muss so bleiben.
+
+### Oberfläche
+- **Kopf:** gelernt-Zahl, gestapelter Balken A/B/C/gelernt, „Fragen heute“ (öffnet den Kalender).
+- **Übersicht:** Quiz-Kachel, „Gerade kein Ton“, Karteikarten, Nachschlagen; Hinweise (nichts zu tun, warten auf Ton, warten auf KI); Themen mit Häkchen zum An-/Abwählen, „A 3 · B 2 · C 1 · ✓ 4 / 41“ und gestapeltem Balken, gekrönte Themen im Krönchen-Design.
+- **Quiz:** Kartenkopf mit Kategorie-Punkt, „· neu“ bzw. „· Teil B/C“, Frage x von y; oben rechts die Häkchen der Runde. Rückmeldung mit „Neu abgehakt“, den Häkchen-Chips (`checksHtml`, `checksHtmlB`) und „Teil … geschafft“. Rundenende: richtig/gefragt, neue Häkchen, neue Krönchen, gelernte Begriffe, Teil B/A geschafft, daneben gegangene Begriffe, Warte-Hinweise.
+- **Nachschlagen:** Stand pro Begriff (`stageTag`: „A 3/7“, „B 5/16“, „C“, „✓ gelernt“) und im aufgeklappten Eintrag Häkchen bzw. Datum („ab morgen“, „Jetzt ist Teil C dran“, „Gelernt am …“).
+- **Karteikarten:** 10 Karten (bis zu 5 aus Teil A), „Nochmal“ legt die Karte nur ans Ende des Stapels.
+- **Kalender:** Fragen pro Tag (richtig und falsch, `P.askLog`), Farben 1–9, 10–29, ab 30.
 
 ## Code-Landkarte `app.js`
 
 | Bereich | Funktionen |
 |---|---|
-| Module laden | `CATALOG_ORDER` (alle aus dem Index), `MODULE_ORDER` (nur gewählte, in Index-Reihenfolge), `INDEX` (Katalogdaten), `loadIndex`, `ensureModule` (merkt laufende Downloads, prüft Format, Fehler mit `code` `offline`/`missing`/`broken`/`newer`), `needsNewerApp`, `modErrText`, `applyTheme`, `loadModule`, `switchModule` (= `swipeTo`) |
-| Modulauswahl | `initChosen` (Übergang: ohne `lernapp.chosen` alle mit Lernstand), `setChosen`, `hasProgress`, `unloadModule`, `dropModuleCache` |
-| Katalog | `showCatalog` (Blatt „Module verwalten“), `mountCatalog`/`catalogItems` (auch für die Willkommen-Seite), `enterModule` (Tagespflicht-Pause, dann wechseln), `removeModule` |
-| Start | `boot` (ganz unten): `loadIndex` → `initChosen` → `renderWelcome` (nichts gewählt) oder `startChosen` (Startmodul, kaputte überspringen, sonst `renderNoModule`) → `startApp` (lädt nach 1,5 s nur die übrigen gewählten Module vor) |
-| Modulwechsel & Wischen | `renderModbar` (Leiste mit Marker `--pos`, Pfeiltasten), `initSwipe` (Wischgeste nur auf der Übersicht, nur Finger/Stift), `swipeTo` (raus-/reinschieben), `snapBack`, `slide`, `settleAnim`; Hinweis einmalig über `lernapp.swipehint` |
-| Übergänge | `transit(fn)` (Aus- und Einblenden, seit v20), `goHome`; Karteikarten fliegen nach rechts (gewusst) oder links (nochmal) weg (`advance` in `renderCard`) |
-| Zusatzinhalte | kommen mit der Moduldatei (`MOD.extra`, `ensureModule` setzt `{}`, falls das Feld fehlt), `extraOf` (geprüfte Inhalte eines Begriffs), `nameVariants`, `maskNames`; `BYID` = Begriffe nach ID |
-| Begriffe | `buildTerms`, `cloze`, `clozeDe`, `keyLetter`, `shortLabel`, `highlight` |
-| Speicher | `freshProgress`, `save`, `fixCats`; Cloud-Funktionen (`pushCloud`, `syncCloud`, `connectCloud`) sind Altlast aus claude.ai und außerhalb inaktiv |
-| Punkte & Ränge | `addXP`, `levelInfo`, `levels`, `dailyCheck`, `dayBonus`, `setBox` |
-| Auswahl | `pool`, `pickQuizTerms` (Quiz), `pickTerms` (Karteikarten), `distractors`, `gapFor` |
-| Meisterrunde | `catTerms`, `catMastered`, `crowned`, `allMastered`, `startMaster`, `masterQ`, `masterTick`/`stopMaster`, `settleMaster` (aus `settle` abgezweigt), `masterTry`/`masterRecord`, `masterEnd`, `renderMasterEnd`, `crownOf` + `CROWN_DESIGNS`/`CROWN_GENERIC`, `clock` |
-| Quiz | `startQuiz`, `quizPool`, `repeatFill`, `makeQuestion`, `easyQuestion`, `hardQuestion`, `hardTypes`, `otherConfs`, `renderQuiz`, `answer`/`answerTyped` → `settle` (Punkte, Lernstand), `checkTyped`, `nextQuestion`, `renderQuizDone` |
+| Helfer, Begriffe | `buildTerms` (Begriffe aus `raw`, `t.expls` = Index 3/6/7), `esc`, `shuffle`, `dayStr`/`today`, `termRe`, `cloze`, `clozeDe`, `keyLetter`, `highlight`, `markTerm`, `num`, `pickOne`, `arr`, `own` |
+| Lernstand & Speicher | `P_VERSION`, `freshProgress`, `normProgress` (verwirft alles ohne `v:2`), `fixCats`, `save`; Cloud-Funktionen (`pushCloud`, `syncCloud`, `connectCloud`) sind Altlast aus claude.ai und außerhalb inaktiv |
+| Sprache | `LANG_DEFAULT`, `langOf`, `langName` |
+| Module laden | `CATALOG_ORDER` (alle aus dem Index), `MODULE_ORDER` (nur gewählte), `INDEX`, `loadIndex`, `ensureModule` (merkt laufende Downloads, prüft Format, setzt `extra` und `lang`, Fehler mit `code` `offline`/`missing`/`broken`/`newer`), `needsNewerApp`, `modErrText`, `applyTheme`, `loadModule`, `switchModule` (= `swipeTo`) |
+| Modulauswahl | `initChosen`, `setChosen`, `hasProgress`, `unloadModule`, `dropModuleCache` |
+| Katalog | `showCatalog`, `mountCatalog`/`catalogItems` (auch Willkommen-Seite), `enterModule`, `removeModule`, `showModulePicker` |
+| Modulwechsel & Wischen | `renderModbar`, `initSwipe`, `swipeTo`, `snapBack`, `slide`, `settleAnim`; Hinweis einmalig über `lernapp.swipehint` |
+| Übergänge | `transit(fn)`, `goHome` |
+| Zusatzinhalte | `MOD.extra`, `extraOf` (geprüfte Inhalte), `nameVariants`, `maskNames`; `BYID` = Begriffe nach ID |
+| Stand eines Begriffs | `stateOf`, `touch`, `stageOf` (`new`/`a`/`b`/`c`/`done`), `STAGE_W`, `stageCount`, `barSegs`, `stageParts`, `stageAria`, `catTerms`, `crowned`, `crownOf` + `CROWN_DESIGNS`/`CROWN_GENERIC` |
+| Teil A | `A_CHECKS`, `A_TASKS`, `A_MIN`, `A_MIN_M2T`, `outLang`, `autoChecks`, `doable`, `openChecksA`, `partADone`, `checksHtml` |
+| Teil B | `bContent` (Inhalte, Häkchen, Aufgaben; gemerkt in `BCACHE`), `openChecksB`, `checkNameB`, `taskForB`, `autoFinishB`, `confPairs`, `confWrong`, `checksHtmlB` |
+| Teil C & KI | `AI_KEY`, `AI_MODEL`/`AI_MODEL_FALLBACK`, `aiKey`/`setAiKey`, `aiBlock`/`aiReady`, `aiWaitText`, `taskForC`, `crownCheck`, `aiCall` (Fehlercodes `AI_ERR`, `aiErrText`), `aiParse`, `AI_RULES`, `aiJudge`, `aiTest`, `showAiSheet`, `aiNotice`/`wireAiNotice` |
+| Auswahl | `taskFor` (A/B/C), `hasTask`, `waitsForSound`, `waitsForDay`, `waitsForAi`, `pool`, `catScore`, `freshTerms`, `planRound`, `distractors`, `noTasksText` |
+| Ton | `quiet`/`setQuiet`, `canHear` (`yes`/`wait`/`no`), `voiceFor`, `speak`, `sayable`, `speakBtn`, `SR`, `listen`/`stopListen` |
+| Quiz | `startQuiz`, `findNext`/`countAhead`/`goQuestion`, `makeQuestion`/`makeQuestionB`, `renderQuiz` (A und B), `renderQuizC`, `answer`, `heard`, `answerInput` → `settle` (A/B: Häkchen, `askLog`, `aDay`/`bDay`); `checkC` → `settleC` (C: `nc`, `cDay`, Krönchen), `crownCard`, `nextQuestion`, `renderQuizDone`; Eintippen `checkTyped`, `typeNorm`, `lev` |
 | Karteikarten | `startCards`, `renderCard`, `renderCardsDone` |
-| Nachschlagen | `renderLex`, `proTag` |
-| Startseite & Kopf | `renderHome` (Knopf „Module verwalten“ bei Export/Import), `renderTop`, `renderModbar` (nur gewählte Module, ＋ am Ende) |
-| Fenster | `sheet`, `openDialog`, `showLevels`, `showHelp`, `showCalendar`/`renderCalendar`, `showExport`, `showImport`, `showModulePicker` |
+| Nachschlagen | `renderLex`, `lexItem`, `stageTag` |
+| Startseite & Kopf | `renderHome`, `renderTop` |
+| Fenster | `sheet`, `openDialog`, `showHelp`, `showCalendar`/`renderCalendar`, `showExport`/`buildExport`, `showImport`, `showAiSheet` |
 | Zurück-Taste | `navPush`, `navEnterScreen`, `popstate`-Handler, `renderHome(fromPop)` |
-| Sonstiges | `speak` (Vorlesen), `listen`/`stopListen`/`answerSpoken` (Spracheingabe, `SR`), `toast(msg, ms)`, `confetti`, `setFocus` (blendet Modulleiste und Kopf in Quiz/Karten/Nachschlagen aus) |
+| Sonstiges | `toast(msg, ms)`, `confetti`, `setFocus` (blendet Modulleiste und Kopf in Quiz/Karten/Nachschlagen aus) |
+| Start | `boot` (ganz unten): `loadIndex` → `initChosen` → `renderWelcome` (nichts gewählt) oder `startChosen` (Startmodul, kaputte überspringen, sonst `renderNoModule`) → `startApp` (lädt nach 1,5 s die übrigen gewählten Module vor) |
 
 ## Gespeicherter Fortschritt (`P`, pro Modul in `localStorage[ls]`)
 
-`xp`, `crowns{kategorie:{day, best (ms), runs}}`, `mtries{kategorie:{n, best}}` (Meisterrunde: Versuche, meiste richtige Antworten), `boxes{id:0–15}`, `last{id:runde}`, `round`, `flags{id:1}`, `mix{id:{andereId:anzahl}}`, `hard{id:anzahl}`, `cats[]`, `quizLog{tag:anzahl}`, `xpLog{tag:netto}`, `penaltyLog{tag:200}`, `checkedUntil`, `penalty`, `updatedAt`.
-Tagesformat: `JJJJ-M-T` (ohne führende Nullen, siehe `dayStr`). Export-Format: `{"format":"lernapp-fortschritt","version":1,"modules":{key:P}}`.
-Weitere Schlüssel: `lernapp.chosen` (Array der gewählten Modul-Keys), `devvokabeln.module` (zuletzt offenes Modul), `lernapp.theme` (Farbschema für den Start), `lernapp.swipehint`.
-Entfernen eines Moduls löscht nur `lernapp.chosen`-Eintrag und Daten-Cache, nie den Lernstand. Beim Wieder-Hinzufügen wird `checkedUntil` auf gestern gesetzt (keine Tagespflicht-Abzüge für die Pause). Der Export enthält alle Module mit Lernstand, auch abgewählte; ein Import nimmt nicht gewählte Module in die Auswahl auf.
+```
+{v:2, terms:{id:{a:[…], na, nm, t, aDay, b:[…], nb, bDay, nc, cDay}}, crowns:{kat:{day}}, cats:[…], askLog:{tag:anzahl}, updatedAt}
+```
+- `a`/`b` = Häkchen von Teil A/B (Strings wie oben), `na`/`nb` = richtige Antworten in Teil A/B, `nm` = davon Bedeutung → Begriff, `nc` = Versuche in Teil C, `t` = zuletzt gefragt (ms), `aDay`/`bDay`/`cDay` = Tag des Abschlusses (`cDay` = gelernt). `b` wird beim Abschluss von Teil A angelegt.
+- Ein Begriff ohne Eintrag ist neu. Ein gespeicherter Lernstand ohne `v:2` (alte Version mit XP und Boxen) wird verworfen und sofort überschrieben.
+- Tagesformat: `JJJJ-M-T` (ohne führende Nullen, siehe `dayStr`).
+- Export: `{"format":"lernapp-fortschritt","version":2,"modules":{key:P},"summary":…}`. Import mit Version 1 wird mit Meldung abgelehnt, höhere Versionen ebenfalls.
+- Weitere Schlüssel: `lernapp.aikey` (KI-Schlüssel, nie im Export), `lernapp.quiet` („Gerade kein Ton“), `lernapp.chosen` (Array der gewählten Modul-Keys), `devvokabeln.module` (zuletzt offenes Modul), `lernapp.theme` (Farbschema für den Start), `lernapp.swipehint`.
+- Entfernen eines Moduls löscht nur den `lernapp.chosen`-Eintrag und den Daten-Cache, nie den Lernstand. Der Export enthält alle Module mit Lernstand, auch abgewählte; ein Import nimmt nicht gewählte Module in die Auswahl auf.
 
 ## Gestaltung und Konventionen
 
@@ -158,8 +207,8 @@ Entfernen eines Moduls löscht nur `lernapp.chosen`-Eintrag und Daten-Cache, nie
 - Alles Tippbare federt beim Antippen (`scale(.965)`). Fenster (`dialog`) kommen als Blatt von unten, ab 700 px Breite mittig. Seitenwechsel blenden aus und wieder ein (`transit`: `#modbar` und `#pager` 130 ms aus, 220 ms ein, nichts verschiebt sich; Wechsel während des Ausblendens werden gesammelt). Keine View Transitions mehr (seit v20). `prefers-reduced-motion` schaltet alle Bewegungen ab.
 - `#pager` hat `touch-action: pan-y pinch-zoom`, damit senkrechtes Scrollen beim Browser bleibt und waagrechtes Wischen bei der App.
 - Schriften: Bricolage Grotesque (Überschriften), Atkinson Hyperlegible (Text).
-- Profi-Begriffe: goldener Rahmen (Quiz-Karte und Nachschlagen), gemeistert: grüner Rahmen.
-- Gemeisterte Themen: unter der Themenzeile der Knopf „🏆 Meisterrunde“ (`.tgroup`, `.master-btn`). Gekrönte Themen bekommen `.crown` mit `data-crown="<Kategorie>"` (Übersicht und Nachschlagen). Jede Kategorie hat ein eigenes Muster in `style.css` (`.crown[data-crown="code"]` usw., alles CSS-Verläufe, ein Lichtstreif läuft über alle) und Name + Symbol in `CROWN_DESIGNS`. **Neue Kategorie:** dort und in `style.css` ein eigenes Design ergänzen, sonst bekommt sie eines der 6 allgemeinen (`g0`–`g5`, nach Position im Modul). Designs nicht vorab zeigen, sie sind die Belohnung.
+- Farben der Teile: A `--m1`, B `--gold`, C `--m3`, gelernt `--ok` (Balken `i.sb-*`, `.st-tag`); gelernte Begriffe im Nachschlagen mit grünem Rand. Quiz-Karte `.note.qc` dunkel im Modul-Schema mit wanderndem Schein, Rand nach der Antwort grün/rot.
+- Gekrönte Themen bekommen `.crown` mit `data-crown="<Kategorie>"` (Übersicht und Nachschlagen). Jede Kategorie hat ein eigenes Muster in `style.css` (`.crown[data-crown="code"]` usw., alles CSS-Verläufe, ein Lichtstreif läuft über alle) und Name + Symbol in `CROWN_DESIGNS`. **Neue Kategorie:** dort und in `style.css` ein eigenes Design ergänzen, sonst bekommt sie eines der 6 allgemeinen (`g0`–`g5`, nach Position im Modul). Designs nicht vorab zeigen, sie sind die Belohnung (erstmals sichtbar als `.crown-card` beim Verdienen).
 - Texte auf Deutsch (Österreich: Lehrling, Gehsteig, Stiegenhaus, Krankenstand), Gendern mit `:in`.
 - Fenster immer über `sheet(id)` + `openDialog(dlg)` öffnen, damit die Zurück-Taste funktioniert.
 - Testen: lokal mit `python3 -m http.server` im Projektordner und Playwright; `file://` funktioniert wegen `fetch` nicht.
@@ -173,7 +222,7 @@ Gilt für alle Module. Moduldateien nie komplett lesen: per Skript die nötigen 
 1. Vorhandene Begriffe der Kategorie per Skript auslesen (Index 1, 2, 3), damit Erklärungen zusammenpassen und sich nicht wiederholen.
 2. Neue Einträge im vollen Format (Index 0–8, siehe „Ein Begriff“) an `raw` anhängen.
 3. Für Agile gilt `docs/agile-projekte-begriffe.md`: neue Begriffe dort zuerst mit dem Nutzer abstimmen, Deutsch aus der Liste übernehmen.
-4. `count` in `index.json` anpassen. Neue Begriffe brauchen auch Zusatzinhalte (nächster Abschnitt), sonst gibt es für sie ab Profi nur `type` und `def2en`.
+4. `count` in `index.json` anpassen. Neue Begriffe brauchen auch Zusatzinhalte (nächster Abschnitt), sonst fällt Teil B für sie fast ganz weg.
 
 Regeln: Erklärungen 1–3 ohne den englischen Begriff, Beispielsatz enthält ihn wörtlich (ohne „to “), deutscher Satz aus dem österreichischen Arbeitsalltag, Gendern mit `:in`. Die Größenregel für Kategorien (siehe „Größe der Kategorien“) muss danach weiter erfüllt sein.
 
@@ -188,11 +237,11 @@ Regeln: Erklärungen 1–3 ohne den englischen Begriff, Beispielsatz enthält ih
 ### Größe der Kategorien (verbindlich)
 
 **Jede Kategorie hat 30–50 Begriffe.** Ausnahme: Ein Modul mit weniger als 30 Begriffen hat genau eine Kategorie.
-Damit sind die Kategorien eines Moduls ungefähr gleich groß. Grund: Meisterrunden dauern überall ähnlich lang, und jedes Thema ist in vernünftiger Zeit zu meistern.
+Damit sind die Kategorien eines Moduls ungefähr gleich groß. Grund: Jedes Thema ist in vernünftiger Zeit zu meistern, die Krönchen bleiben vergleichbar.
 
 - Wird eine Kategorie zu groß, wird sie geteilt: neue Kategorie mit eigenem Namen und Key, ein Teil behält den alten Key.
 - Wird eine Kategorie zu klein, wird sie mit einer passenden zusammengelegt oder aufgefüllt.
-- Kategorien dürfen dafür umbenannt werden (`name` in `cats`). Der **Key** bleibt nach Möglichkeit, denn an ihm hängen Krönchen (`P.crowns`), Meisterrunden-Rekorde (`P.mtries`), Themenauswahl (`P.cats`) und das Krönchen-Design. Der Lernstand der Begriffe (`P.boxes` usw.) hängt an der Begriffs-ID und bleibt immer erhalten.
+- Kategorien dürfen dafür umbenannt werden (`name` in `cats`). Der **Key** bleibt nach Möglichkeit, denn an ihm hängen Krönchen (`P.crowns`), Themenauswahl (`P.cats`) und das Krönchen-Design. Der Lernstand der Begriffe (`P.terms`) hängt an der Begriffs-ID und bleibt immer erhalten.
 - Neue Kategorie-Keys brauchen eine Farbe in `cats` und sollten ein eigenes Krönchen-Design bekommen (`CROWN_DESIGNS` + `style.css`, dann `VERSION` erhöhen).
 - Wechselt ein Begriff die Kategorie, ändert sich nur Index 0; `extra` und die `conf`-Verweise bleiben gültig.
 
@@ -200,7 +249,7 @@ Beide Module erfüllen die Regel: IT 35 Kategorien mit 30–49 Begriffen (seit v
 
 ### Zusatzinhalte (Feld `extra`)
 
-Ziel: Profi-Begriffe nicht an immer denselben Texten wiedererkennen, sondern anwenden und abgrenzen. Ablauf: per Skript die Begriffe der Kategorie auslesen (Index 1, 2, 3, 6, 7), Inhalte schreiben, per Skript als `extra[id]` eintragen.
+Ziel: Begriffe in Teil B nicht an immer denselben Texten wiedererkennen, sondern anwenden und abgrenzen. Ablauf: per Skript die Begriffe der Kategorie auslesen (Index 1, 2, 3, 6, 7), Inhalte schreiben, per Skript als `extra[id]` eintragen.
 
 ```json
 "extra":{
@@ -226,10 +275,10 @@ Schlüssel = Begriffs-ID wie in `buildTerms` (Kleinbuchstaben, Sonderzeichen →
 ## Neues Modul anlegen
 
 1. Ordner `modules/<key>/` mit `module.json` (Format siehe „Moduldatei“).
-2. `cats` mit Pastellfarben `var(--n-…)` (siehe `style.css`), Kategorien nach „Größe der Kategorien“ zuschneiden, `levels` mit den üblichen XP-Grenzen und eigenen Rangnamen passend zum Fach.
+2. `cats` mit Pastellfarben `var(--n-…)` (siehe `style.css`), Kategorien nach „Größe der Kategorien“ zuschneiden. Kein `levels`. `lang` nur angeben, wenn die Sprachen von `en-US`/`de-AT` abweichen (z. B. deutschsprachiges Schulmodul: beide `de-AT`).
 3. `theme` im Aufbau wie die anderen Module, gut unterscheidbar von Violett (IT) und Weinrot (Agile). `bad` muss sich deutlich von `accent` abheben, die Pastellkarten müssen auf `board` lesbar bleiben.
 4. Eintrag in `modules/index.json` (Felder siehe „Katalog“), `ls` = `lernapp.progress.<key>`, `doc` = `progress-<key>`, `accent`/`board` wie im Theme.
-5. Inhalte nach „Inhalte schreiben“, inklusive `extra`.
+5. Inhalte nach „Inhalte schreiben“, inklusive `extra` (ohne Zusatzinhalte fällt Teil B weitgehend weg). Die 3 Erklärungen sind in Teil C die Musterlösungen für die KI.
 6. Optional eigene Krönchen-Designs pro Kategorie (`CROWN_DESIGNS` + `style.css`, siehe „Gestaltung“), sonst greifen die allgemeinen. Nur dann `VERSION` erhöhen.
 
 ## Modulverwaltung: Verhalten im Detail
@@ -242,134 +291,14 @@ Schlüssel = Begriffs-ID wie in `buildTerms` (Kleinbuchstaben, Sonderzeichen →
 - Ist kein gewähltes Modul ladbar: Seite „Module nicht geladen“ mit „Nochmal versuchen“ und „Module verwalten“. Ein kaputtes Modul bleibt gewählt; beim Wechseln dorthin kommt eine Meldung, die übrigen laufen weiter.
 - Service Worker: App-Cache `fach-vokabeln-<VERSION>` (wird bei jeder Version ersetzt) und Daten-Cache `fach-vokabeln-daten` (alles unter `modules/` außer `index.json`, übersteht App-Updates). Strategie: sofort aus dem Cache, im Hintergrund aktualisieren, Laden immer mit `cache:"no-cache"` wegen der 10-Minuten-Zwischenspeicherung von GitHub Pages.
 
-## Vorhaben „Lernrahmen“ (offen)
+## Lernrahmen: Hintergrund und Entscheidungen
 
-Ziel: Statt XP, Rängen und Boxen durchläuft jeder Begriff drei Teile. Die App entscheidet selbst, was als Nächstes gefragt wird. Der Rahmen ist für alle Module gleich und soll auch für Schulmodule (z. B. Biologie) funktionieren, die Claude für den Sohn des Nutzers erstellt. Mit dem Nutzer vollständig abgestimmt; was unten als **Vorschlag** markiert ist, hat Claude festgelegt und darf beim Umsetzen begründet angepasst werden.
-
-### Begriffe
-
-- **Ausgabearten:** Lesen (Text steht da) und Hören (Text wird vorgelesen und steht **nicht** da, 🔊 zum Wiederholen).
-- **Eingabearten:** Auswählen (5 Antworten), Schreiben (Textfeld, Prüfung mit `checkTyped`), Sprechen (🎤, siehe unten).
-- **Bedeutung** = deutsche Übersetzung (Index 2). Beim Vorlesen „ / “ als Komma sprechen.
-- Fehler haben **keine Folgen**: richtige Lösung zeigen, weiter. Es zählen nur richtige Antworten. „Fast richtig“ zählt als richtig.
-
-### Teil A
-
-1. **Bedeutung → Begriff** (wie heute „Wie heißt das auf Englisch?“): jede Ausgabeart (Lesen, Hören) **und** jede Eingabeart (Auswählen, Schreiben, Sprechen) mindestens einmal richtig. Nicht alle Kombinationen; eine Antwort hakt Ausgabe- und Eingabeart zugleich ab (Hören + Sprechen erledigt zwei Häkchen). Mindestens 3 Antworten.
-2. **Begriff → Bedeutung** (wie heute `en2de`): einmal Lesen + Auswählen, einmal Hören + Auswählen. Schreiben und Sprechen gibt es in dieser Richtung nicht (deutsche Übersetzungen mit Artikel und Varianten sind nicht zuverlässig prüfbar).
-
-Teil A fertig = alle 7 Häkchen, mindestens 5 Antworten. Die bisherigen Fragearten `def2en`, `en2def` und die Erklärungen als Frage entfallen; die 3 Erklärungen bleiben im Nachschlagen und dienen in Teil C als Vorlage für die KI.
-
-### Teil B (frühestens am Tag nach Abschluss von Teil A)
-
-Die vier Fragearten werden gemischt abgefragt. Teil B fertig, wenn alle Bedingungen erfüllt sind:
-
-- **Lückensatz** (nur Lesen, kein Hören): jeder verfügbare Satz einmal richtig (Index 4 und die 2 `ex`-Sätze; ein Satz, auf den `termRe` nicht passt, fällt weg) und jede Eingabeart einmal.
-- **Situation** (`sit`, „Welcher Begriff passt?“): jede der 3 Situationen einmal richtig, jede Ausgabeart (Lesen, Hören; vorgelesen wird auf Deutsch) und jede Eingabeart einmal.
-- **Stimmt das?** (`tf`): beide Aussagen einmal richtig, Lesen + Auswählen (Wahr/Falsch), danach Begründung zeigen wie heute.
-- **Unterschied** (`conf`, Darstellung wie heute mit `maskNames`): jeder Unterschied-Satz des Begriffs einmal richtig, Lesen + Auswählen. Gibt es keine `conf` oder weniger als 3 andere Paare im Modul, entfällt die Bedingung.
-
-Allgemein: Was ein Begriff an Inhalten nicht hat, wird nicht verlangt. Mindestens etwa 9–10 Antworten.
-
-### Teil C (frühestens am Tag nach Abschluss von Teil B)
-
-Den Begriff in eigenen Worten erklären, Schreiben oder Sprechen (Diktat auf Deutsch, Text darf vor dem Abschicken frei bearbeitet werden). Die KI prüft (Details unter „KI-Prüfung“). Richtig → Teil C fertig, der Begriff ist **gelernt**.
-
-**Kategorie gemeistert**, wenn alle ihre Begriffe Teil C geschafft haben → Krönchen (`P.crowns[kat] = {day}`, Designs wie bisher). Die Meisterrunde entfällt.
-
-### Bremse
-
-Teil B wird frühestens am Kalendertag nach Abschluss von Teil A angeboten, Teil C frühestens am Tag nach Teil B (Vergleich mit `dayStr`). Damit braucht ein Begriff mindestens 3 Tage. Grund: nicht alles an einem Abend aus dem Kurzzeitgedächtnis abhaken.
-
-### Sprechen: erst ins Textfeld, dann manuell abschicken
-
-Gilt für alle Fragen mit Sprechen (heute schickt `answerSpoken` sofort ab). Die erkannte beste Variante kommt ins Textfeld, man kann neu aufnehmen oder korrigieren und schickt mit einem Knopf ab. **Vorschlag:** Wird unverändert abgeschickt, prüft die App wie heute alle erkannten Varianten und hakt Sprechen ab. Wurde der Text von Hand geändert, zählt die Antwort als Schreiben. In Teil C darf frei bearbeitet werden.
-
-### Schalter „Gerade kein Ton“
-
-Gut sichtbar beim Quizstart (**Vorschlag:** Umschalter auf der Quiz-Kachel bzw. am Rundenstart), gespeichert in `localStorage["lernapp.quiet"]`, bleibt bis zum Ausschalten. Ist er an, gibt es kein Hören und kein Sprechen; diese Häkchen werden später nachgeholt. Begriffe, die nur noch Hören/Sprechen brauchen, warten; die App sagt das am Rundenende („3 Begriffe warten auf eine Runde mit Ton“).
-Kann das Gerät etwas **gar nicht** (kein `speechSynthesis` oder keine Stimme für die Sprache, kein `SR`), gelten die betroffenen Häkchen als erfüllt. Sonst bliebe ein Begriff für immer hängen.
-
-### Sprache pro Modul
-
-Neues optionales Feld in `module.json`: `"lang":{"term":"en-US","meaning":"de-AT"}` (Standard genau diese Werte, daher bleibt `version` 1). Verwendet für Vorlesen (`speak`), Spracheingabe des Begriffs (`listen`) und das Diktat in Teil C (`meaning`). Situationen und Stimmt-das-Aussagen sind in `meaning`-Sprache. Damit ist ein deutschsprachiges Schulmodul möglich (`term` und `meaning` beide `de-AT`).
-
-### Auswahl der Fragen (App entscheidet selbst)
-
-**Vorschlag:**
-- Runde = 10 Fragen (`QUIZ_LEN`), aus den gewählten Themen (`P.cats`, Themenauswahl bleibt).
-- Pro Begriff gibt es eine Liste offener Aufgaben (Teil, Frageart, Inhalt, Aus-/Eingabeart), unter Beachtung von Bremse und „Gerade kein Ton“. Die App wählt pro Begriff die Aufgabe, die die meisten offenen Häkchen auf einmal erfüllt, bei Gleichstand zufällig.
-- Vorrang: begonnene Begriffe vor neuen, höherer Teil vor niedrigerem (Krönchen sollen erreichbar werden). Höchstens 3 neue Begriffe pro Runde. Neue Begriffe aus dem gewählten Thema, das am weitesten ist (Gleichstand: Reihenfolge in `cats`).
-- Nie derselbe Begriff zweimal direkt hintereinander; ein Begriff höchstens 2× pro Runde.
-- Teil-C-Fragen höchstens 2 pro Runde und nur, wenn die KI-Prüfung gerade möglich ist.
-- Gibt es weniger als 10 Aufgaben, wird die Runde kürzer. Gibt es heute gar keine (alles wartet auf die Bremse), sagt die Startseite das: „Heute alles erledigt, morgen geht's weiter mit X Begriffen“.
-- Antwortmöglichkeiten: weiterhin 5, unterschiedliche Anfangsbuchstaben (`keyLetter`), Ablenker zuerst aus derselben Kategorie.
-
-### KI-Prüfung (Teil C)
-
-- **Anbieter:** Google Gemini API, Gratis-Stufe (Nutzer will kein Abo). Aufruf direkt aus dem Browser: `POST https://generativelanguage.googleapis.com/v1beta/models/<MODELL>:generateContent`, Kopfzeile `x-goog-api-key`. Modell als Konstante `AI_MODEL`; vor der Umsetzung in der aktuellen Gemini-Doku ein Flash-Modell wählen, das in der Gratis-Stufe verfügbar ist (Modelle und Grenzen ändern sich). Antwort als JSON anfordern (`generationConfig.responseMimeType = "application/json"`).
-- **Schlüssel:** Jeder Nutzer trägt seinen eigenen Schlüssel ein (neues Blatt „KI-Prüfung“, erreichbar bei Export/Import, mit kurzer Anleitung und Link zu Google AI Studio). Gespeichert nur in `localStorage["lernapp.aikey"]`, **nie im Repo, nie im Export**. Knopf „Testen“ und „Entfernen“.
-- **Hinweis im Blatt:** In der Gratis-Stufe kann Google die Eingaben zum Verbessern der Modelle verwenden. Nur Erklärungen eingeben, nichts Persönliches.
-- **Eingabe an die KI:** Begriff, Bedeutung, die 3 Erklärungen (Index 3, 6, 7) als Musterlösungen, die Antwort. Anweisung (**Vorschlag**): Prüfer:in, die beurteilt, ob die Person den Begriff verstanden hat. Inhaltlich streng, sprachlich großzügig: eigene Worte, Beispiele und Umschreibungen sind gut, Rechtschreib- und Spracherkennungsfehler egal. Nicht richtig: nur die Übersetzung wiederholt, fachlich falsch, zu vage, um den Begriff von verwandten zu unterscheiden. Länge zählt nicht. Ergebnis `{"ok":true|false,"feedback":"1–2 Sätze auf Deutsch, du-Form, freundlich","fehlt":"was gefehlt hat oder leer"}`.
-- **Anzeige:** Urteil, Feedback, danach eine der Musterlösungen. Falsch hat keine Folgen, nächster Versuch in einer späteren Runde.
-- **Fehlerfälle:** kein Schlüssel, offline, Limit erreicht (HTTP 429), ungültiger Schlüssel, unlesbare Antwort → klare Meldung, Antwort wird **nicht** gewertet, Teil C bleibt offen. Ohne Schlüssel oder Netz bietet die Auswahl keine Teil-C-Fragen an; die Startseite zeigt einen Hinweis „X Begriffe warten auf die KI-Prüfung“ mit Link zum Blatt.
-- Der Service Worker greift bei fremden Adressen nicht ein (`fetch`-Handler, nur gleiche Herkunft und Schriften); das muss so bleiben.
-
-### Was wegfällt
-
-XP, Ränge (`levels` in `module.json` wird ignoriert und kann per Skript entfernt werden), Punkte pro Antwort, Tagesbonus, Tagespflicht (ersatzlos, vorerst kein Tagesziel), Boxen/Profi/Meister, Meister-Regel, Pausen (`gapFor`), Verwechslungen (`P.mix`), Vormerkungen (`P.flags`; „Nochmal üben“ bei Karteikarten legt die Karte nur innerhalb des Stapels ans Ende), Meisterrunde samt Rekorden, Ränge-Fenster und Punkte-Erklärung. Karteikarten und Nachschlagen bleiben, beeinflussen den Lernstand nicht.
-
-### Lernstand, Kalender, Oberfläche
-
-- **Kein Übergang:** Bisheriger Lernstand wird verworfen. `P` bekommt `v:2`; ein gespeicherter Lernstand ohne `v:2` wird durch `freshProgress()` ersetzt. Die `ls`-Schlüssel in `index.json` bleiben.
-- **Vorschlag für `P`:** `{v:2, terms:{id:{a:[häkchen], aDay, b:[häkchen], bDay, cDay}}, crowns:{kat:{day}}, cats:[], askLog:{tag:anzahl}, updatedAt}`. Häkchen als kurze Strings, z. B. Teil A `o:read`, `o:hear`, `i:pick`, `i:type`, `i:say`, `r:read`, `r:hear`; Teil B `c0`…`c2`, `ci:pick`…, `s0`…`s2`, `so:read`, `so:hear`, `si:…`, `t0`, `t1`, `u0`, `u1`. `aDay`/`bDay`/`cDay` = Tag des Abschlusses.
-- **Export/Import:** Format-`version` 2; ein Import mit Version 1 wird mit Meldung abgelehnt. Der KI-Schlüssel ist nie enthalten.
-- **Kalender:** zeigt pro Tag nur die Zahl der beantworteten Fragen (richtig und falsch, `P.askLog`), ohne Strafen, Farben nach Menge.
-- **Startseite:** statt XP-Balken und Rang ein Fortschritt pro Thema und fürs Modul: wie viele Begriffe neu, in Teil A, B, C und gelernt. Krönchen wie bisher. Kopf zeigt die Fragen von heute.
-- **Nachschlagen:** statt Profi/Meister-Abzeichen (`proTag`) der Stand des Begriffs (A/B/C/✓).
-- **Rundenende:** wie viele Häkchen gesammelt, welche Begriffe einen Teil abgeschlossen haben, ggf. die Warte-Hinweise.
-- **Hilfe** komplett neu schreiben: drei Teile, Bremse, „Gerade kein Ton“, KI-Prüfung.
-
-### Inhalte pro Begriff (unverändert)
-
-Bedeutung, 3 Erklärungen, Beispielsatz + 2 `ex`, 3 `sit`, 2 `tf`, `conf` optional. IT und Agile haben das für alle 1.812 Begriffe; es müssen keine Inhalte geschrieben werden. Neue Module brauchen dasselbe (ohne `levels`).
-
-### Umsetzung L1 (v18, erledigt)
-
-Was L2 und L3 wissen müssen (alles in `app.js`):
-- **`P` v2:** `{v:2, terms:{id:{a:[…], na, nm, t, aDay}}, crowns, cats, askLog, updatedAt}`. `na` = richtige Antworten in Teil A, `nm` = davon Bedeutung → Begriff, `t` = zuletzt gefragt (ms, für die Reihenfolge). `freshProgress`, `normProgress` (verwirft alles ohne `v:2`, auch in `syncCloud`), `loadModule` schreibt den verworfenen Stand sofort zurück. Teil B/C ergänzen `b:[…]`, `bDay`, `cDay` im selben Objekt.
-- **Stand:** `stageOf(t)` → `new`/`a`/`b` (A geschafft)/`c`/`done`; `stageCount`, `barSegs` (Balken, CSS `i.sb-a` … `i.sb-done`), `stageParts` („A 3 · B 2“), `STAGE_W`.
-- **Häkchen Teil A:** `A_CHECKS` (`o:read`, `o:hear`, `i:pick`, `i:type`, `i:say`, `r:read`, `r:hear`), `A_MIN` 5, `A_MIN_M2T` 3, `openChecksA`, `partADone`, `checksHtml(s)` (Chips in Rückmeldung und Nachschlagen).
-- **Aufgaben:** `A_TASKS` (`{dir:"m2t"|"t2m", out, inp, gives}`), `doable`, `taskFor(t)` (meiste offene Häkchen, Gleichstand zufällig; `null` = nichts zu tun), `hasTask`, `waitsForSound`, `autoChecks()` (Gerät kann es nicht → gilt als erledigt, wird nicht gespeichert). **Hier hängt L2 Teil B an:** `taskFor` gibt bei `aDay` derzeit `null` zurück.
-- **Runde:** `planRound` (begonnene nach `t` aufsteigend, dann `freshTerms(≤3)` aus dem Thema mit höchstem `catScore`; jeder Begriff höchstens 2×, erst alle einmal, dann die zweiten Male), `findNext`/`countAhead`/`goQuestion` (Frage und Aufgabe erst beim Erreichen), `makeQuestion(t, task)`, `renderQuiz`, `answer`/`answerInput`/`heard` → `settle` (Häkchen, `askLog`, `aDay`), `renderQuizDone`, `noTasksText`.
-- **Ton:** `quiet`/`setQuiet` (`lernapp.quiet`), `canHear(lang)` → `yes`/`wait`/`no` (Stimmen laden verzögert; ohne Stimmen nach 3 s `no`), `voiceFor` (wählt passende Stimme, `de-AT` fällt auf `de-DE` zurück), `speak`, `sayable` („ / “ → „, “), `listen`. Sprechen: beste erkannte Variante ins Textfeld, unverändert abgeschickt = Sprechen, geändert = Schreiben.
-- **Sprache:** `MOD.lang` aus `langOf(d.lang)` in `ensureModule`; `langName(code)` für Texte („auf Englisch“).
-- **Behalten für L2:** `cloze`, `clozeDe`, `extraOf`, `nameVariants`, `maskNames`, `otherConfs`, `markTerm`, `highlight` (derzeit ungenutzt).
-- **Begründete Abweichungen von den Vorschlägen:** Schreiben und Sprechen erst, wenn der Begriff einmal richtig beantwortet wurde (sonst müsste man einen nie gesehenen Begriff gleich sprechen); Teil A bleibt trotzdem in genau 5 Antworten schaffbar. Antwortmöglichkeiten immer ganz sichtbar (das Anfangsbuchstaben-Spiel hing an den XP-Abzügen). „Gerade kein Ton“ als Schalter direkt unter der Quiz-Kachel. Kopf: gelernt-Zahl, Balken A/B/C, „Fragen heute“ (öffnet Kalender); die Übersicht zeigt pro Thema „A 3 · B 2 / 41“ und einen gestapelten Balken. Kalenderfarben: 1–9, 10–29, ab 30 Fragen.
-- **Getestet** (Playwright, Stimmen und Spracherkennung per Init-Skript nachgebildet; Chromium hat `SpeechRecognition` auch ohne Präfix, beide ersetzen): alter Lernstand verworfen; jeder fertige Begriff mit genau 5 Antworten; Runden ohne direkte Wiederholung und höchstens 2× pro Begriff; „Gerade kein Ton“ nur Lesen/Auswählen/Schreiben; ohne `SR` und ohne Stimmen werden die Häkchen automatisch erfüllt; Export v2, Import v1 abgelehnt; Kalender, Nachschlagen, Karteikarten, Modulwechsel; keine Konsolenfehler.
-
-### Umsetzung L2 (v19, erledigt)
-
-Was L3 wissen muss (alles in `app.js`):
-- **`P`:** pro Begriff zusätzlich `b:[…]` (Häkchen Teil B), `nb` (richtige Antworten in Teil B), `bDay`. `touch` legt `b` an, sobald `aDay` gesetzt ist; beim Abschluss von Teil A wird `b = []` gesetzt.
-- **Häkchen Teil B:** `c0` = Beispielsatz (Index 4, nur wenn `termRe` passt), `c1`/`c2` = `ex`-Sätze; `ci:pick/type/say`; `s0`–`s2`, `so:read/hear`, `si:pick/type/say`; `t0`/`t1`; `u0`/`u1` (Index in `extraOf(t).conf`). Fehlt Inhalt, fehlen die Häkchen. Eine `conf` zählt nur, wenn `confWrong` mindestens 3 verschiedene falsche Sätze findet.
-- **Inhalte und Aufgaben:** `bContent(t)` (pro Begriff und Modul gemerkt in `BCACHE`: `cloze`, `sit`, `tf`, `conf`, `checks`, `tasks`), `openChecksB`, `checkNameB`, `checksHtmlB`. Aufgaben `{part:"b", kind:"cloze"|"sit"|"tf"|"conf", ref, out, inp, gives}`; beim Abschicken ersetzt `settle` die Eingabe in `ci:`/`si:` durch die tatsächlich genutzte (gesprochen und geändert = Schreiben).
-- **Auswahl:** `taskForB` (Bremse über `afterDay(aDay)`; erst Frageart zufällig unter denen mit offenen Häkchen, darin die Aufgabe mit den meisten offenen Häkchen). So kommen die Fragearten gemischt und ein Begriff braucht trotzdem nur das Minimum an Antworten (mit allen Inhalten 10, ohne `conf` 8). Kein eigenes `B_MIN`, das Minimum ergibt sich aus den Häkchen. `planRound` sortiert begonnene Begriffe nach Teil (höher zuerst), dann nach `t`.
-- **Unterschied:** `confPairs` (alle Paare des Moduls mit maskiertem Satz, einmal pro Modul), `confWrong(t, p, own)` (gleiche Kategorie zuerst). `otherConfs` ist entfallen.
-- **Warten:** `waitsForSound` gilt für A und B, `waitsForDay` (Teil A heute geschafft). `noTasksText`: „Heute alles erledigt, morgen geht's weiter mit X Begriffen“, bei Teil B fertig „Teil C kommt bald“. `autoFinishB` (Startseite, Quizstart) schließt Teil B ab, wenn nach der Bremse nichts offen ist (keine Inhalte, nur Häkchen, die das Gerät nicht kann).
-- **Anzeige:** Lückensatz mit „Satz auf Deutsch zeigen“ (`hint`: `clozeDe` bzw. maskierter `ex`-Satz), Rückmeldung mit ganzem Satz; Situation hören in `MOD.lang.meaning` (`outLang`); Stimmt das? mit Begründung; Unterschied mit A/B wie früher. Kartenkopf „· Teil B“. Nachschlagen: „B 5/16“ bzw. „ab morgen“, Chips nach Frageart; Stand C mit Datum.
-- **Hier hängt L3 an:** `taskFor` gibt bei `bDay` `null` zurück; „Teil C kommt bald“ steht in `showHelp`, `noTasksText`, Rückmeldung (`a.doneB`), `renderQuizDone`, `stageTag`, `lexItem`.
-- **Nachbesserungen v20:** Schreiben und Sprechen sind pro Frage getrennt: über dem Feld steht „✍️ Schreib …“ oder „🎤 Sprich …“; bei Schreiben gibt es kein 🎤, bei Sprechen ist das Feld bis zur ersten Erkennung gesperrt (danach korrigierbar, geändert = Schreiben). `planRound` nimmt so viele neue Begriffe, dass die Runde 10 Fragen hat (`ceil(QUIZ_LEN/2) − begonnene`, sonst höchstens 3). Quiz-Karte `.note.qc`: dunkel im Modul-Schema mit wanderndem Schein der Modulfarbe (`qcDrift`), Kategorie nur als Punkt, Rand nach der Antwort grün/rot (`is-ok`/`is-bad`). `Q.leaving` verhindert Doppeltipps auf „Weiter“.
-- **Getestet** (Playwright, Uhr mit `page.clock.install` auf morgen gestellt, Stimmen und Spracherkennung nachgebildet): Bremse (Startseite und Quizstart sagen „Heute alles erledigt …“), am nächsten Tag nur Teil-B-Fragen, jeder Begriff mit genau dem Minimum (9–10, ohne `conf` 8) fertig, keine direkte Wiederholung, „Gerade kein Ton“ nur Lesen + Auswählen/Schreiben und danach Hinweis „brauchen nur noch Hören oder Sprechen“, ohne `SR` Sprechen automatisch erledigt, falsche Antworten bringen keine Häkchen, Situationen werden auf `de-AT` vorgelesen, Begriff ohne `conf` (nachgebildet, Agile hat für alle 507 eine gültige). Keine Konsolenfehler außer den im Test blockierten Google Fonts.
-
-### Umsetzung in drei Chats
-
-Jeder Chat liefert eine lauffähige App, testet mit `python3 -m http.server` und Playwright (keine Konsolenfehler), erhöht `VERSION`, ergänzt das Änderungsprotokoll und hakt seinen Punkt unter „Nächste Schritte“ ab.
-
-- **L1 – Aufräumen, Lernstand, Auswahl, Teil A:** Alles unter „Was wegfällt“ entfernen; neues `P` und `freshProgress`; Aufgabenlisten und Auswahl-Logik; Teil A mit allen Aus- und Eingabearten; Sprechen ins Textfeld; „Gerade kein Ton“; `lang` pro Modul; Kalender, Startseite, Nachschlagen, Rundenende, Export v2, Hilfe. Begriffe stehen danach bei „Teil A geschafft“, Teil B zeigt „kommt bald“. Test: Teil A eines Begriffs mit genau 5 Antworten abschließbar; ohne Ton nur Lesen/Auswählen/Schreiben; Gerät ohne `SR` hakt Sprechen automatisch ab.
-- **L2 – Teil B:** vier Fragearten mit Häkchen, Bremse für A → B, Hören der Situationen auf Deutsch. Test: Bremse mit vorgestelltem Datum (Uhr in Playwright verstellen), Begriff ohne `conf`.
-- **L3 – Teil C und Krönchen:** Blatt „KI-Prüfung“, Aufruf, Anzeige, Fehlerfälle, Bremse B → C, „gelernt“, Kategorie gemeistert → Krönchen. Test: Gemini-Antworten in Playwright mit `page.route` nachbilden (richtig, falsch, 429, kaputtes JSON, offline); einen echten Aufruf nur, wenn der Nutzer einen Schlüssel zum Testen gibt.
-- Danach in dieser Datei „Was die App ist“, „Spielregeln“, „Code-Landkarte“, „Gespeicherter Fortschritt“, „Datenformat“ (`lang`, ohne `levels`) und „Neues Modul anlegen“ (Schritt mit `levels` streichen) an den neuen Stand anpassen und diesen Abschnitt auf das Nötigste kürzen.
+Der Lernrahmen (v18–v21, in drei Chats L1–L3 umgesetzt) hat XP, Ränge, Punkte, Tagesbonus, Tagespflicht, Boxen/Profi/Meister, Meister-Regel, Pausen, Verwechslungen, Vormerkungen, Meisterrunde, Ränge-Fenster und Punkte-Erklärung ersetzt. Die Regeln stehen unter „Spielregeln“; hier nur, was beim Weiterbauen wichtig ist:
+- **Warum so:** Begriffe sollen verstanden und angewendet werden, nicht an immer denselben Texten wiedererkannt. Die Bremse verhindert Abhaken aus dem Kurzzeitgedächtnis. Keine Strafen, damit Fehler nicht abschrecken.
+- **Kein Übergang:** Der alte Lernstand wurde bewusst verworfen. Die `ls`-Schlüssel in `index.json` sind unverändert.
+- **Begründete Abweichungen vom ursprünglichen Plan:** Schreiben und Sprechen in Teil A erst nach einer richtigen Antwort (sonst müsste man einen nie gesehenen Begriff sprechen); Teil A bleibt in genau 5 Antworten schaffbar. Antwortmöglichkeiten immer ganz sichtbar (das Anfangsbuchstaben-Spiel hing an den XP-Abzügen). Teil B ohne eigenes Minimum, es ergibt sich aus den Häkchen. Teil-C-Begriffe kommen nur einmal pro Runde. Die KI-Anfrage nutzt kein `responseSchema`, nur den JSON-Modus.
+- **Tests** (Muster für künftige Änderungen, Playwright mit `python3 -m http.server`, `service_workers="block"`, Google Fonts blockieren): Stimmen (`speechSynthesis.getVoices`) und Spracherkennung (`SpeechRecognition` **und** `webkitSpeechRecognition`, Chromium hat beide) per Init-Skript nachbilden; Lernstand per Init-Skript in `localStorage` setzen; Bremse mit Lernstand von gestern bzw. `page.clock.install` testen; Gemini mit `context.route` auf `generativelanguage.googleapis.com` nachbilden (richtig, falsch, 429, 400 `API_KEY_INVALID`, kaputtes JSON, `route.abort`, 404 fürs Modell); offline mit `context.set_offline`. Erwartet: keine JS-Fehler (Meldungen zu absichtlich nachgebildeten HTTP-Fehlern und blockierten Schriften sind normal).
+- **Inhalte pro Begriff:** Bedeutung, 3 Erklärungen, Beispielsatz + 2 `ex`, 3 `sit`, 2 `tf`, `conf` optional. IT und Agile haben das für alle 1.812 Begriffe. Neue Module brauchen dasselbe (ohne `levels`).
 
 ## Änderungsprotokoll
 
@@ -400,3 +329,5 @@ Jeder Chat liefert eine lauffähige App, testet mit `python3 -m http.server` und
 | v20 | Pro Frage nur eine Eingabeart (Schreiben ohne 🎤, Sprechen mit gesperrtem Feld bis zur Erkennung, Hinweis über dem Feld). Runde in neuer Kategorie hat 10 Fragen (so viele neue Begriffe wie nötig). Quiz-Karte dunkel im Modul-Schema mit wanderndem Farbschein, Kategorie als Punkt, Rand grün/rot nach der Antwort. Seitenwechsel blenden nur aus und ein statt zu gleiten. Hilfe angepasst |
 | v19 | **Lernrahmen L2:** Teil B mit Lückensatz (nur Lesen; jeder Satz, jede Eingabeart), Situation (Lesen/Hören auf Deutsch, jede Eingabeart), Stimmt das? und Unterschied, gemischt abgefragt. Bremse: Teil B frühestens am Tag nach Teil A, Startseite sagt „Heute alles erledigt, morgen geht's weiter mit X Begriffen“. Häkchen von Teil B in Rückmeldung und Nachschlagen, Rundenende mit „Teil B geschafft“, Hilfe ergänzt. Teil C zeigt „kommt bald“ |
 | v17 | **IT-Kategorien aufgeteilt:** aus 14 werden 35 Kategorien mit 30–49 Begriffen (nur Index 0 der Begriffe geändert, `extra` unverändert). Die alten Keys bleiben beim Teil, zu dem ihr Krönchen passt, und haben teils neue Namen; 21 neue Kategorien mit eigenen Krönchen-Designs. Neuer Speicherschlüssel `lernapp.progress.dev` (`doc` `progress-dev`): IT startet auf Wunsch des Nutzers bei null, Agile unberührt |
+| v21 | **Lernrahmen L3:** Teil C: Begriff in eigenen Worten erklären (schreiben oder diktieren), Google Gemini prüft mit eigenem Schlüssel (Blatt „KI-Prüfung“, Schlüssel nur in `lernapp.aikey`). Bremse B → C, höchstens 2 Teil-C-Fragen pro Runde, Fehlerfälle ohne Wertung, Hinweis auf der Übersicht, wenn Begriffe auf die KI-Prüfung warten. Begriff gelernt, Kategorie gemeistert → Krönchen. Hilfe und Nachschlagen angepasst |
+| – | `CLAUDE.md` an den Lernrahmen angepasst: „Was die App ist“, „Spielregeln“ (jetzt der Lernrahmen samt KI-Prüfung), „Code-Landkarte“, „Gespeicherter Fortschritt“, „Datenformat“ (`lang`, `levels` bedeutungslos), „Gestaltung“, „Inhalte schreiben“ und „Neues Modul anlegen“ neu; Abschnitt „Vorhaben ‚Lernrahmen‘“ samt Umsetzungsnotizen L1–L3 zu „Lernrahmen: Hintergrund und Entscheidungen“ gekürzt (keine `VERSION`-Erhöhung) |

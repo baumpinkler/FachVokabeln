@@ -11,7 +11,7 @@
 
 1. ☑ **Schritt 2 für IT**: Zusatzinhalte für alle IT-Kategorien (Status unter „Ausbau ‚Verstehen statt Auswendiglernen‘“).
 2. ☑ **Schritt G für Agile**: Grunddaten für alle 13 Kategorien (Status unter „Neues Modul ‚Agile & Projekte‘“). Ein Chat pro Kategorie.
-3. ☐ **Schritt 2 für Agile**: Zusatzinhalte für alle 13 Kategorien (Status-Tabelle „Schritt 2 für Agile“). Schritt G ist komplett, es kann losgehen. Ein Chat pro Kategorie.
+3. ☑ **Schritt 2 für Agile**: Zusatzinhalte für alle 13 Kategorien (Status-Tabelle „Schritt 2 für Agile“).
 
 Phase 1 und 2 hängen nicht voneinander ab und dürfen sich auch überschneiden. Phase 3 muss warten, weil die `conf`-Partner auch aus anderen Agile-Kategorien kommen dürfen und diese Begriffe dann schon existieren müssen.
 
@@ -320,12 +320,12 @@ Ausliefern: nur `modules/agile.json` und diese Datei (Status abhaken). Eine `VER
 | `lean` Kanban & Lean | 42 | ☑ |
 | `produkt` Produktstrategie & Kennzahlen | 41 | ☑ |
 | `discovery` Nutzerforschung & Design Thinking | 39 | ☑ |
-| `orga` Agile Organisation & Führung | 37 | ☐ |
-| `plan` Projektplanung & Steuerung | 49 | ☐ |
-| `anf` Anforderungen & Scope | 34 | ☐ |
-| `kosten` Verträge, Kosten & Beschaffung | 35 | ☐ |
-| `risiko` Risiko, Qualität & Abschluss | 33 | ☐ |
-| `komm` Stakeholder, Kommunikation & Moderation | 36 | ☐ |
+| `orga` Agile Organisation & Führung | 37 | ☑ |
+| `plan` Projektplanung & Steuerung | 49 | ☑ |
+| `anf` Anforderungen & Scope | 34 | ☑ |
+| `kosten` Verträge, Kosten & Beschaffung | 35 | ☑ |
+| `risiko` Risiko, Qualität & Abschluss | 33 | ☑ |
+| `komm` Stakeholder, Kommunikation & Moderation | 36 | ☑ |
 
 ## Änderungsprotokoll
 
@@ -345,3 +345,4 @@ Ausliefern: nur `modules/agile.json` und diese Datei (Status abhaken). Eine `VER
 | v12 | Neues Modul **Agile & Projekte** (`agile`, weinrot, 13 Kategorien): 198 Begriffe aus `scrum`, `pm` und 2 aus `git` verschoben (nur Kategorie geändert); `team velocity`, `to do`, `in progress`, `done` gestrichen. IT-Modul heißt jetzt „IT“ (1.305 Begriffe, `key`/`ls` unverändert). 19 `conf`-Verweise in `modules/extra/dev/` auf verschobene Begriffe ersetzt bzw. gestrichen. Krönchen: `scrum` → `sprint`, `pm` → `plan`, 11 neue Designs |
 | – | Schritt G für Agile abgeschlossen: 309 neue Begriffe in allen 13 Kategorien, Modul jetzt 507 Begriffe (nur `modules/agile.json`, keine `VERSION`-Erhöhung) |
 | – | Schritt 2 für Agile: Zusatzinhalte für `agil`, `team`, `sprint`, `backlog`, `lean`, `produkt`, `discovery` (283 Begriffe, `modules/extra/agile/`, keine `VERSION`-Erhöhung) |
+| – | Schritt 2 für Agile abgeschlossen: Zusatzinhalte für `orga`, `plan`, `anf`, `kosten`, `risiko`, `komm` (224 Begriffe), damit alle 507 Agile-Begriffe mit Zusatzinhalten (keine `VERSION`-Erhöhung) |

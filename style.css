@@ -611,23 +611,11 @@ dialog textarea{width:100%;margin:8px 0;background:var(--board);color:var(--ink)
   animation:crArc 2s ease-in-out infinite}
 
 /* ---------- Übergänge zwischen den Bereichen ----------
-   Nur der Inhalt (#pager) gleitet, Hintergrund und Modulleiste bleiben stehen. */
-.pager{view-transition-name:page}
-::view-transition-old(root),::view-transition-new(root){animation:none}
-::view-transition-group(page){animation-duration:.34s;animation-timing-function:var(--ease)}
-::view-transition-old(page){animation:vtOut .2s cubic-bezier(.4,0,1,1) both}
-::view-transition-new(page){animation:vtIn .34s var(--ease) both}
-html[data-dir="back"]::view-transition-old(page){animation-name:vtOutBack}
-html[data-dir="back"]::view-transition-new(page){animation-name:vtInBack}
-@keyframes vtOut{to{opacity:0;transform:translateX(-28px)}}
-@keyframes vtIn{from{opacity:0;transform:translateX(36px)}}
-@keyframes vtOutBack{to{opacity:0;transform:translateX(28px)}}
-@keyframes vtInBack{from{opacity:0;transform:translateX(-36px)}}
+   Ausblenden und Einblenden in app.js (transit), nichts verschiebt sich. */
 
 @media (prefers-reduced-motion: reduce){
   :root{transition:none}
   *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
-  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none !important}
 }
 
 /* ---------- Lernrahmen: Teile A, B, C ---------- */
@@ -682,3 +670,34 @@ details.st-done{border-color:color-mix(in srgb, var(--ok) 70%, transparent)}
 .cal-legend i.l1{background:color-mix(in srgb, var(--ok) 12%, transparent);border-color:color-mix(in srgb, var(--ok) 35%, transparent)}
 .cal-legend i.l2{background:color-mix(in srgb, var(--ok) 28%, transparent);border-color:color-mix(in srgb, var(--ok) 60%, transparent)}
 .cal-legend i.l3{background:color-mix(in srgb, var(--ok) 50%, transparent);border-color:var(--ok)}
+
+/* ---------- Quiz-Karte: dunkel im Farbschema des Moduls ----------
+   Grund ist die Modulfläche, darüber der Schein der Modulfarbe (wie oben auf der Übersicht), der langsam wandert.
+   Die Kategorie zeigt nur noch ein kleiner Punkt; nach der Antwort leuchtet der Rand grün oder rot. */
+.note.qc{
+  color:var(--ink); overflow:hidden; isolation:isolate;
+  background:linear-gradient(165deg, color-mix(in srgb, var(--surface) 80%, var(--accent) 20%), color-mix(in srgb, var(--surface) 70%, var(--board) 30%));
+  border:1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07), 0 18px 40px -22px rgba(0,0,0,.9), 0 0 46px -20px color-mix(in srgb, var(--accent) 70%, transparent);
+  transition:border-color .35s var(--ease), box-shadow .35s var(--ease);
+}
+.note.qc::before{
+  content:""; position:absolute; inset:-40%; z-index:-1; pointer-events:none;
+  background:radial-gradient(40% 35% at 70% 30%, color-mix(in srgb, var(--accent) 55%, transparent), transparent 70%),
+    radial-gradient(35% 30% at 25% 75%, color-mix(in srgb, var(--m2) 22%, transparent), transparent 70%);
+  animation:qcDrift 14s ease-in-out infinite alternate;
+}
+@keyframes qcDrift{from{transform:translate(-6%,-4%) rotate(0deg)}to{transform:translate(6%,5%) rotate(25deg)}}
+.note.qc .cat-label{color:var(--ink-soft);opacity:1}
+.note.qc .cat-label::before{content:"";display:inline-block;width:.6em;height:.6em;border-radius:50%;background:var(--c);margin-right:7px;vertical-align:.02em}
+.note.qc .q-ask{color:var(--ink-soft);opacity:1}
+.note.qc .q-heard{color:var(--ink-soft);opacity:1}
+.note.qc.is-ok{border-color:color-mix(in srgb, var(--ok) 70%, transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,.07), 0 18px 40px -22px rgba(0,0,0,.9), 0 0 40px -16px var(--ok)}
+.note.qc.is-bad{border-color:color-mix(in srgb, var(--bad) 70%, transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,.07), 0 18px 40px -22px rgba(0,0,0,.9), 0 0 40px -16px var(--bad)}
+.note.qc .hear-btn{background:color-mix(in srgb, var(--accent) 45%, transparent);color:var(--ink);box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--accent) 70%, var(--line))}
+.note.qc .ab{background:color-mix(in srgb, var(--accent) 50%, transparent);color:var(--ink)}
+.note.qc mark{background:rgba(255,255,255,.18);color:var(--ink)}
+/* Eingabeart der Frage: Schreiben oder Sprechen */
+.inp-mode{margin:22px 0 -12px;font-weight:700;color:var(--ink-soft)}
+.inp-mode span{margin-right:4px}
+.type-row.say .type-in[readonly]{opacity:.7}

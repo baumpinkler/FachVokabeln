@@ -240,13 +240,26 @@ function initSwipe(){
   pager.addEventListener("click", e => { if (block) { e.preventDefault(); e.stopPropagation(); } }, true);
 }
 
-/* ---------- Übergänge zwischen den Bereichen (View Transitions, wo verfügbar) ---------- */
-function transit(fn, dir){
-  if (!document.startViewTransition || reduced() || document.hidden || swiping) { fn(); return; }
-  document.documentElement.dataset.dir = dir || "fwd";
-  try { document.startViewTransition(fn); } catch (e) { fn(); }
+/* ---------- Übergänge zwischen den Bereichen: ausblenden, wechseln, einblenden ----------
+   Nichts verschiebt sich. Kommt während des Ausblendens ein weiterer Wechsel, wird er danach gleich mit ausgeführt. */
+const FADE_OUT = 130, FADE_IN = 220;
+let fadeQueue = null;
+function transit(fn){
+  const els = [$("#modbar"), $("#pager")].filter(el => el && el.animate);
+  if (fadeQueue) { fadeQueue.push(fn); return; }
+  if (!els.length || reduced() || document.hidden || swiping) { fn(); return; }
+  fadeQueue = [fn];
+  const outs = els.map(el => el.animate([{opacity:1}, {opacity:0}], {duration:FADE_OUT, easing:"ease-in", fill:"forwards"}));
+  const done = () => {
+    const q = fadeQueue; fadeQueue = null;
+    try { q.forEach(f => f()); } finally {
+      outs.forEach(a => a.cancel());
+      els.forEach(el => { if (!el.hidden) el.animate([{opacity:0}, {opacity:1}], {duration:FADE_IN, easing:"ease-out"}); });
+    }
+  };
+  Promise.all(outs.map(a => a.finished)).then(done, done);
 }
-const goHome = () => transit(() => renderHome(), "back");
+const goHome = () => transit(() => renderHome());
 /* ---------- Zusatzinhalte: Feld "extra" in modules/<modul>/module.json ----------
    {begriffs-id: {ex, sit, conf, tf}}; kommen mit dem Modul, fehlen sie, gibt es nur "type" und "def2en". */
 const arr = a => Array.isArray(a) ? a : [];
@@ -557,7 +570,7 @@ function showHelp(){
       ${row("Bedeutung → Begriff", "lesen und hören; auswählen, schreiben und sprechen")}
       ${row("Begriff → Bedeutung", "einmal lesen, einmal hören, jeweils auswählen")}
       ${row("Geschafft", "alle 7 Häkchen, mindestens 5 richtige Antworten")}
-      <p class="hp-note">Eine richtige Antwort kann zwei Häkchen auf einmal bringen: Hörst du die Bedeutung und sprichst den Begriff, sind Hören und Sprechen erledigt. Schreiben und Sprechen kommen erst dran, wenn du den Begriff einmal richtig hattest. Welche Häkchen ein Begriff schon hat, siehst du nach jeder Antwort und im Nachschlagen.</p>
+      <p class="hp-note">Eine richtige Antwort kann zwei Häkchen auf einmal bringen: Hörst du die Bedeutung und sprichst den Begriff, sind Hören und Sprechen erledigt. Schreiben und Sprechen kommen erst dran, wenn du den Begriff einmal richtig hattest. Über dem Eingabefeld steht, ob du schreiben ✍️ oder sprechen 🎤 sollst; es gibt immer nur das eine. Welche Häkchen ein Begriff schon hat, siehst du nach jeder Antwort und im Nachschlagen.</p>
       <p class="hp-note">Beim Schreiben sind Groß- und Kleinschreibung, ein „to“ am Anfang, Bindestriche und Leerzeichen egal. Ein Tippfehler je angefangene 6 Buchstaben zählt als „fast richtig“ und damit als richtig. Tippst du genau einen anderen Begriff, ist es falsch.</p></section>
     <section class="hp"><h3>Teil B: anwenden</h3>
       ${row("Lückensatz", "jeder Satz einmal; auswählen, schreiben und sprechen")}
@@ -571,11 +584,11 @@ function showHelp(){
     <section class="hp"><h3>Ein Tag Abstand zwischen den Teilen</h3>
       <p class="hp-note">Teil B kommt frühestens am Tag nach Teil A dran, Teil C frühestens am Tag nach Teil B. So lernst du jeden Begriff an mindestens drei Tagen und nicht alles an einem Abend aus dem Kurzzeitgedächtnis.</p></section>
     <section class="hp"><h3>Sprechen 🎤</h3>
-      <p class="hp-note">Tippe auf 🎤 und sag den Begriff auf ${esc(T)}. Was erkannt wurde, landet im Textfeld. Du kannst neu aufnehmen oder korrigieren und schickst mit „Prüfen“ ab. Änderst du den Text von Hand, zählt die Antwort als Schreiben. Die Spracherkennung braucht in Chrome meist Internet.</p></section>
+      <p class="hp-note">Steht über dem Feld „Sprich den Begriff“, tippe auf 🎤 und sag ihn auf ${esc(T)}. Was erkannt wurde, landet im Textfeld. Du kannst neu aufnehmen oder korrigieren und schickst mit „Prüfen“ ab. Änderst du den Text von Hand, zählt die Antwort als Schreiben. Die Spracherkennung braucht in Chrome meist Internet.</p></section>
     <section class="hp"><h3>Gerade kein Ton 🔇</h3>
       <p class="hp-note">Im Bus oder im Büro? Schalte auf der Übersicht „Gerade kein Ton“ ein. Dann gibt es nichts zu hören und nichts zu sprechen, bis du es wieder ausschaltest. Diese Häkchen holst du später nach; Begriffe, die nur noch Hören oder Sprechen brauchen, warten so lange. Kann dein Gerät gar nicht vorlesen oder keine Sprache erkennen, gelten diese Häkchen als erledigt.</p></section>
     <section class="hp"><h3>Was die App auswählt</h3>
-      <p class="hp-note">Eine Runde hat bis zu 10 Fragen aus den angehakten Themen. Begonnene Begriffe kommen vor neuen, pro Runde höchstens 3 neue, und zwar aus dem Thema, in dem du am weitesten bist. Ein Begriff kommt höchstens zweimal pro Runde und nie zweimal hintereinander. Gibt es weniger zu tun, wird die Runde kürzer.</p></section>
+      <p class="hp-note">Eine Runde hat bis zu 10 Fragen aus den angehakten Themen. Begonnene Begriffe kommen vor neuen, und zwar Begriffe in einem höheren Teil zuerst. Neue kommen aus dem Thema, in dem du am weitesten bist: meist höchstens 3, aber so viele, dass die Runde voll wird. Ein Begriff kommt höchstens zweimal pro Runde und nie zweimal hintereinander. Gibt es weniger zu tun, wird die Runde kürzer.</p></section>
     <section class="hp"><h3>Und sonst?</h3>
       <p class="hp-note">Karteikarten und Nachschlagen helfen beim Lernen, ändern den Lernstand aber nicht. Der Kalender zeigt, wie viele Fragen du an jedem Tag beantwortet hast. Der Export enthält den Lernstand aller Module.</p></section>`;
   dlg.querySelector("#helpClose").onclick = () => dlg.close();
@@ -782,14 +795,17 @@ function freshTerms(n){
   }
   return out;
 }
-/* Runde planen: begonnene Begriffe zuerst (höherer Teil vor niedrigerem, dann am längsten nicht gefragt zuerst), dann höchstens 3 neue.
+/* Runde planen: begonnene Begriffe zuerst (höherer Teil vor niedrigerem, dann am längsten nicht gefragt zuerst), dann neue
+   (höchstens 3, außer es braucht mehr, damit die Runde 10 Fragen hat).
    Jeder Begriff höchstens 2×: erst alle einmal, dann die zweiten Male, nie derselbe direkt hintereinander.
    Welche Aufgabe kommt, entscheidet sich erst beim Erreichen der Frage (nextQuestion). */
 function planRound(){
   const started = shuffle(pool().filter(t => stageOf(t) !== "new" && hasTask(t)))
     .sort((a, b) => (STAGE_W[stageOf(b)] - STAGE_W[stageOf(a)]) || (stateOf(a).t || 0) - (stateOf(b).t || 0));
   const first = started.slice(0, QUIZ_LEN);
-  first.push(...freshTerms(Math.min(NEW_PER_ROUND, QUIZ_LEN - first.length)));
+  /* Neue Begriffe: mindestens so viele, dass die Runde voll wird (jeder Begriff kommt bis zu 2×), sonst höchstens 3 */
+  const fill = Math.ceil(QUIZ_LEN / 2) - first.length;
+  first.push(...freshTerms(Math.min(Math.max(NEW_PER_ROUND, fill), QUIZ_LEN - first.length)));
   const one = shuffle(first), two = shuffle(first.slice(0, Math.max(0, QUIZ_LEN - first.length)));
   if (two.length && one.length && two[0] === one[one.length - 1]) {
     const k = two.findIndex(x => x !== two[0]);
@@ -956,7 +972,7 @@ window.addEventListener("popstate", () => {
   if (ignorePop > 0) { ignorePop--; return; }
   const open = [...document.querySelectorAll("dialog[open]")];
   if (open.length) { open.forEach(d => { d.dataset.popClose = "1"; d.close(); }); return; }
-  if (screen !== "home" && screen !== "welcome") transit(() => renderHome(true), "back");
+  if (screen !== "home" && screen !== "welcome") transit(() => renderHome(true));
 });
 function renderHome(fromPop){
   if (fromPop !== true && history.state && history.state.nav === "screen") { ignorePop++; try { history.back(); } catch (e) { ignorePop--; } }
@@ -999,7 +1015,7 @@ function renderHome(fromPop){
   $("#quietBtn").onclick = () => { setQuiet(!quiet); renderHome(); toast(quiet ? "Gerade kein Ton: Hören und Sprechen pausieren 🔇" : "Ton wieder an 🔊"); };
   app.querySelectorAll("[data-go]").forEach(b => b.onclick = () => {
     const go = b.dataset.go;
-    if (go === "quiz") startQuiz(); else transit(go === "cards" ? startCards : renderLex, "fwd");
+    if (go === "quiz") startQuiz(); else transit(go === "cards" ? startCards : renderLex);
   });
   app.querySelectorAll("[data-cat]").forEach(b => b.onclick = () => {
     const k = b.dataset.cat, on = P.cats.includes(k);
@@ -1079,7 +1095,7 @@ function renderCardsDone(){
     ${missed.length ? `<div class="missed"><strong>Nochmal geübt</strong><ul>${missed.map(t => `<li><b>${esc(t.en)}</b> = ${esc(t.de)}</li>`).join("")}</ul></div>` : ""}
     <p class="sec-sub">Karteikarten ändern den Lernstand nicht. Im Quiz kommt dran, was als Nächstes nötig ist.</p>
     <div class="stack"><button class="btn primary wide" id="more">Neuen Stapel ziehen</button><button class="btn wide" data-home>Zur Übersicht</button></div></div>`;
-  $("#more").onclick = () => transit(startCards, "fwd"); app.querySelector("[data-home]").onclick = goHome; window.scrollTo(0,0);
+  $("#more").onclick = () => transit(startCards); app.querySelector("[data-home]").onclick = goHome; window.scrollTo(0,0);
 }
 
 /* ---------- Quiz ---------- */
@@ -1150,7 +1166,7 @@ function countAhead(from, prevId){
   return n;
 }
 function goQuestion(n){
-  Q.i = n.i; Q.q = makeQuestion(Q.items[n.i], n.task); Q.answered = null; Q.spoken = null; Q.hint = false;
+  Q.i = n.i; Q.q = makeQuestion(Q.items[n.i], n.task); Q.answered = null; Q.spoken = null; Q.hint = false; Q.leaving = false;
   Q.total = Q.asked + 1 + countAhead(n.i + 1, Q.items[n.i].id);
 }
 function startQuiz(){
@@ -1161,11 +1177,11 @@ function startQuiz(){
   const n = findNext(0, null);
   if (!n) { Q = null; toast(noTasksText(), 4500); return; }
   stopListen(); goQuestion(n);
-  transit(() => { screen = "quiz"; setFocus(true); navEnterScreen(); renderQuiz(); window.scrollTo(0,0); }, "fwd");
+  transit(() => { screen = "quiz"; setFocus(true); navEnterScreen(); renderQuiz(); window.scrollTo(0,0); });
 }
 function renderQuiz(){
   const q = Q.q, t = q.t, c = CATS[t.cat], a = Q.answered, TN = langName(MOD.lang.term), MN = langName(MOD.lang.meaning);
-  const hear = q.out === "hear", micOK = !!SR && !quiet, B = q.part === "b";
+  const hear = q.out === "hear", B = q.part === "b", say = q.inp === "say";
   const ask = (hear ? "Hör zu: " : "") + (!B ? (q.dir === "m2t" ? `Wie heißt das auf ${esc(TN)}?` : "Was bedeutet das?")
     : q.kind === "cloze" ? "Welches Wort fehlt im Satz?" : q.kind === "sit" ? "Welcher Begriff passt?"
     : q.kind === "tf" ? `Stimmt das? <span class="q-term">${esc(t.en)}</span>` : "Was unterscheidet A von B?");
@@ -1181,11 +1197,13 @@ function renderQuiz(){
     return `<button class="${cls}${q.dir === "t2m" || q.kind === "conf" ? " long" : ""}" data-k="${k}" ${a ? 'aria-disabled="true"' : ""}>${esc(o.label)}</button>`;
   }).join("");
   let input = "";
+  /* Schreiben und Sprechen sind getrennt: Die Frage sagt, wie geantwortet wird, und bietet nur das an */
   if (q.inp !== "pick") input = a
     ? `<div class="typed" style="--fb:var(${a.ok ? "--ok" : "--bad"})">${a.typed === null ? "Weiß ich nicht" : `Deine Antwort${a.spoken ? " (gesprochen)" : ""}: <b>${esc(a.typed)}</b>`}${a.ok && !a.near ? "" : `<br>Richtig: <b>${esc(t.en)}</b>`}</div>`
-    : `<div class="type-row"><input class="type-in" id="typed" type="text" lang="${esc(MOD.lang.term)}" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="done"
-         placeholder="${q.inp === "say" ? "🎤 antippen und sprechen" : "Begriff auf " + esc(TN)}" aria-label="Begriff auf ${esc(TN)}">${micOK ? `<button class="btn mic${q.inp === "say" ? " big" : ""}" id="mic" aria-label="Begriff auf ${esc(TN)} sprechen" aria-pressed="false">🎤</button>` : ""}</div>
-       ${q.inp === "say" ? `<p class="say-note">Sag den Begriff auf ${esc(TN)}. Danach kannst du neu aufnehmen oder korrigieren; von Hand geändert zählt es als Schreiben.</p>` : ""}
+    : `<p class="inp-mode"><span aria-hidden="true">${say ? "🎤" : "✍️"}</span> ${say ? `Sprich den Begriff auf ${esc(TN)}` : `Schreib den Begriff auf ${esc(TN)}`}</p>
+       <div class="type-row${say ? " say" : ""}">${say ? `<button class="btn mic big" id="mic" aria-label="Begriff auf ${esc(TN)} sprechen" aria-pressed="false">🎤</button>` : ""}<input class="type-in" id="typed" type="text" lang="${esc(MOD.lang.term)}" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="done"
+         ${say ? "readonly" : ""} placeholder="${say ? "🎤 antippen und sprechen" : "Begriff auf " + esc(TN)}" aria-label="Begriff auf ${esc(TN)}"></div>
+       ${say ? `<p class="say-note">Was erkannt wurde, steht danach im Feld. Du kannst neu aufnehmen; änderst du den Text von Hand, zählt es als Schreiben.</p>` : ""}
        <div class="type-btns"><button class="btn" id="dunno">Weiß ich nicht</button><button class="btn primary" id="check">Prüfen</button></div>`;
   const s = stateOf(t), last = a && Q.total <= Q.asked;
   const exEn = q.sent ? q.sent.en : t.exEn, exDe = q.sent ? q.sent.de : t.exDe;
@@ -1209,7 +1227,7 @@ function renderQuiz(){
     <div class="bar"><button class="back" aria-label="Quiz beenden" data-home>✕</button>
       <div class="progress"><i style="width:${(Q.asked / total) * 100}%"></i></div>
       <span class="xp-chip" aria-label="Häkchen in dieser Runde">✓ ${Q.checks}</span></div>
-    <div class="note${a ? " tap-next" : ""}" id="qcard" style="--c:${c.c}"${a ? ` title="Weiter zur nächsten Frage"` : ""}>
+    <div class="note qc${a ? " tap-next " + (a.ok ? "is-ok" : "is-bad") : ""}" id="qcard" style="--c:${c.c}"${a ? ` title="Weiter zur nächsten Frage"` : ""}>
       <div class="cat-label">${esc(c.name)}${q.fresh ? " · neu" : ""}${B ? " · Teil B" : ""} · Frage ${nr} von ${total}</div>
       <div class="q-ask">${ask}</div>${body}
     </div>
@@ -1230,9 +1248,9 @@ function renderQuiz(){
       $("#check").onclick = go;
       $("#dunno").onclick = () => { stopListen(); settle(false, {typed:null, inp:q.inp}); };
       const mic = $("#mic"), ph = inp.placeholder;
-      if (mic) mic.onclick = () => listen(MOD.lang.term, alts => heard(alts, inp),
+      if (mic) mic.onclick = () => listen(MOD.lang.term, alts => { heard(alts, inp); if (inp.value) inp.readOnly = false; },
         on => { mic.classList.toggle("on", on); mic.setAttribute("aria-pressed", on); inp.placeholder = on ? "Ich höre zu …" : ph; });
-      if (q.inp !== "say") inp.focus({preventScroll:true});
+      if (!say) inp.focus({preventScroll:true});
     }
   } else {
     const n = $("#next"); n.onclick = nextQuestion; n.focus({preventScroll:true});
@@ -1315,10 +1333,12 @@ function settle(ok, info){
   save(); renderQuiz();
 }
 function nextQuestion(){
+  if (Q.leaving) return;   /* Doppeltipp während des Ausblendens */
+  Q.leaving = true;
   stopListen();
   const n = findNext(Q.i + 1, Q.q.t.id);
-  if (!n) return transit(renderQuizDone, "fwd");
-  transit(() => { goQuestion(n); renderQuiz(); window.scrollTo(0,0); }, "fwd");
+  if (!n) return transit(renderQuizDone);
+  transit(() => { goQuestion(n); renderQuiz(); window.scrollTo(0,0); });
 }
 function renderQuizDone(){
   const perfect = Q.asked > 0 && Q.right === Q.asked;

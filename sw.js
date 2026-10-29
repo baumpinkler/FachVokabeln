@@ -10,7 +10,7 @@
    - fach-vokabeln-daten: alles unter modules/ außer index.json, also nur die gewählten Module und ihre Zusatzdateien.
      Wird nie automatisch gelöscht, damit gewählte Module ein App-Update offline überstehen.
      Beim Entfernen eines Moduls löscht die App dessen Einträge selbst (Cache-API). */
-const VERSION = "v13";
+const VERSION = "v14";
 const PREFIX = "fach-vokabeln-";
 const CACHE = PREFIX + VERSION;
 const DATA = PREFIX + "daten";

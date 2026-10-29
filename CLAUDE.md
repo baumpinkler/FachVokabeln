@@ -3,23 +3,18 @@
 > **Für Claude:** Lies diese Datei zuerst. Sie ersetzt das Durchlesen des gesamten Quellcodes.
 > Fordere nur die Dateien an, die für die gewünschte Änderung wirklich nötig sind (siehe „Welche Dateien für welche Änderung“).
 > Hochgeladene Dateien liegen unter `/mnt/user-data/uploads/`. Lies sie gezielt mit `grep -n` und `sed -n 'von,bisp'`, statt sie komplett anzuzeigen.
-> Liefere am Ende **nur die geänderten Dateien** aus, erhöhe `VERSION` in `sw.js` und ergänze das Änderungsprotokoll unten.
+> Liefere am Ende **nur die geänderten Dateien** aus. Bei Änderungen an App-Dateien (`app.js`, `style.css`, `index.html`, `sw.js`, `manifest.json`) `VERSION` in `sw.js` erhöhen; reine Inhaltsänderungen in `modules/` brauchen das nicht. Änderungsprotokoll unten ergänzen.
 
 ## Nächste Schritte
 
-> **Für Claude:** Fragt der Nutzer nach den nächsten Schritten („Was ist als Nächstes dran?“ o. Ä.), schau in die Status-Tabellen weiter unten und nenne die nächsten offenen Punkte (☐) in dieser Reihenfolge, jeweils mit Kategorie, Begriffszahl und kurzem Hinweis, was der Chat tun muss. Neue größere Vorhaben hier einreihen, erledigte Phasen abhaken.
+> **Für Claude:** Fragt der Nutzer nach den nächsten Schritten, nenne die offenen Punkte (☐) dieser Liste. Neue größere Vorhaben hier einreihen, erledigte abhaken und ihre Ergebnisse in die passenden Abschnitte dieser Datei übernehmen, statt lange Ablaufpläne stehen zu lassen.
 
-1. ☑ **Schritt 2 für IT**: Zusatzinhalte für alle IT-Kategorien (Status unter „Ausbau ‚Verstehen statt Auswendiglernen‘“).
-2. ☑ **Schritt G für Agile**: Grunddaten für alle 13 Kategorien (Status unter „Neues Modul ‚Agile & Projekte‘“). Ein Chat pro Kategorie.
-3. ☑ **Schritt 2 für Agile**: Zusatzinhalte für alle 13 Kategorien (Status-Tabelle „Schritt 2 für Agile“).
-4. ☑ **Modulsystem**: Module als Ordner, Nutzer wählt seine Module, nur gewählte werden geladen und offline gespeichert (Abschnitt „Vorhaben ‚Modulsystem‘“). Ein Chat.
-
-Phase 1 und 2 hängen nicht voneinander ab und dürfen sich auch überschneiden. Phase 3 muss warten, weil die `conf`-Partner auch aus anderen Agile-Kategorien kommen dürfen und diese Begriffe dann schon existieren müssen.
+Derzeit ist nichts offen. Angedachte, noch nicht definierte Vorhaben: „Lernrahmen“ (neue Fragearten, Fortschritt in Stufen statt XP) und eine Sprachprüfung mit KI. Beide erst mit dem Nutzer ausarbeiten, nicht vorwegnehmen.
 
 ## Was die App ist
 
 Installierbare Web-App (PWA) zum Lernen englischer Fachbegriffe mit deutscher Übersetzung. Zielgruppe: der Nutzer selbst (Österreich), Android-Handy, Chrome.
-Zwei Module: **IT** (`dev`, 1.305 Begriffe, violettes Schema) und **Agile & Projekte** (`agile`, 507 Begriffe, weinrotes Schema). Das Modul Glasfaser & FTTH (`ftth`) wurde in v16 entfernt.
+Zwei Module: **IT** (`dev`, 1.305 Begriffe, violettes Schema) und **Agile & Projekte** (`agile`, 507 Begriffe, weinrotes Schema), beide mit Zusatzinhalten für alle Begriffe.
 Bereiche: Quiz, Karteikarten, Nachschlagen. Dazu Ränge, Kalender, Punkte-Erklärung, Export/Import.
 Jeder Nutzer wählt im Katalog „Module verwalten“, welche Module er verwendet; nur diese werden geladen und offline gespeichert (seit v13).
 
@@ -29,7 +24,7 @@ Jeder Nutzer wählt im Katalog „Module verwalten“, welche Module er verwende
 - Adresse: `https://baumpinkler.github.io/FachVokabeln/`
 - Claude kann das Repo selbst klonen (`git clone https://github.com/baumpinkler/FachVokabeln.git`); der Nutzer muss dafür nichts hochladen.
 - Update = geänderte Dateien im Repository hochladen („Add file → Upload files“).
-- `sw.js` → `VERSION` bei jeder Auslieferung erhöhen (`"v2"` → `"v3"` …), damit Handys die Änderung sofort übernehmen.
+- `sw.js` → `VERSION` bei jeder Änderung an App-Dateien erhöhen (`"v16"` → `"v17"` …), damit Handys die Änderung sofort übernehmen. Module brauchen das nicht, sie aktualisieren sich im Hintergrund.
 - Alle Pfade sind relativ. Keine Build-Tools, keine Bibliotheken, kein Framework.
 
 ## Dateien
@@ -37,31 +32,30 @@ Jeder Nutzer wählt im Katalog „Module verwalten“, welche Module er verwende
 | Datei | Größe | Inhalt |
 |---|---|---|
 | `index.html` | 1 KB | Gerüst (`#modbar` Modulleiste, darunter `#pager` mit `#top` und `#app`), Manifest-Link, Fonts (Google Fonts), setzt gespeichertes Farbschema vor dem Laden |
-| `app.js` | 88 KB (~24.000 Tokens) | gesamte Logik |
-| `style.css` | 44 KB (~13.000 Tokens) | gesamte Gestaltung, Farben über CSS-Variablen |
-| `sw.js` | 2 KB | Service Worker: Offline-Cache, „sofort aus Cache, im Hintergrund aktualisieren“ |
+| `app.js` | 96 KB (~27.000 Tokens) | gesamte Logik |
+| `style.css` | 48 KB (~14.000 Tokens) | gesamte Gestaltung, Farben über CSS-Variablen |
+| `sw.js` | 3 KB | Service Worker: Offline-Cache, „sofort aus Cache, im Hintergrund aktualisieren“ |
 | `manifest.json` | 1 KB | App-Name, Symbole, Startfarbe `#0a0510` |
 | `icons/` | – | `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` |
-| `modules/index.json` | 2 KB | Katalog aller Module (`desc`, `count` für „Module verwalten“) |
+| `modules/index.json` | 1 KB | Katalog aller Module (`desc`, `count` für „Module verwalten“) |
 | `modules/<key>/module.json` | – | ein Modul, **genau eine Datei** inkl. Zusatzinhalte (`extra`); der Ordnername ist immer der `key` |
 | `modules/dev/module.json` | 2,1 MB (~600.000 Tokens) | Modul IT, **nie komplett lesen oder einfügen** |
 | `modules/agile/module.json` | 0,9 MB (~270.000 Tokens) | Modul Agile & Projekte, **nie komplett lesen oder einfügen** |
-
-Bis v12 hießen die Moduldateien `modules/it-scrum.json`, `modules/glasfaser.json`, `modules/agile.json` und die Zusatzdateien `modules/extra/<modul>/…`, von v13 bis v15 `modules/<key>/extra/<kategorie>.json`. Seit v16 gibt es keine Zusatzdateien mehr, alles steht im Feld `extra` der `module.json`. Ältere Abschnitte weiter unten nennen noch die alten Pfade; sinngemäß gilt dort immer das Feld `extra`.
-| `docs/agile-projekte-begriffe.md` | 28 KB | verbindliche Begriffsliste für Agile & Projekte |
+| `docs/agile-projekte-begriffe.md` | 28 KB | abgesegnete Begriffsliste für Agile & Projekte (Kategorie, Englisch, Deutsch); nicht eigenmächtig ändern |
 
 ## Welche Dateien für welche Änderung
 
-| Änderung | Mitschicken |
+| Änderung | Betroffene Dateien |
 |---|---|
 | Farben eines Moduls | `modules/index.json` + Hinweis, welches Modul. Claude erzeugt ein kleines Skript bzw. die `theme`-Werte; das große JSON wird per Skript geändert, nicht gelesen |
 | Aussehen, Abstände, Schriften | `style.css` |
 | Spielregeln, Punkte, Quiz, Kalender, neue Funktionen | `app.js` (+ ggf. `style.css`) |
-| Neue Begriffe / neues Modul | `modules/index.json` (`count` mitpflegen) + **nur die Liste der vorhandenen englischen Begriffe** (nicht die ganze Datei, siehe unten). Neues Modul = neuer Ordner `modules/<key>/`, keine Code-Änderung, keine `VERSION`-Erhöhung |
+| Neue Begriffe, Zusatzinhalte | die `module.json` nur per Skript bearbeiten (siehe „Inhalte schreiben“), `modules/index.json` (`count` mitpflegen). Keine `VERSION`-Erhöhung |
+| Neues Modul | neuer Ordner `modules/<key>/` mit `module.json` + Eintrag in `modules/index.json` (siehe „Neues Modul anlegen“). Keine Code-Änderung, keine `VERSION`-Erhöhung; nur eigene Krönchen-Designs brauchen `app.js` + `style.css` |
 | Katalog, Modulauswahl, Laden der Module | `app.js` (Bereich „Module laden“ und „Katalog“), `sw.js` (Daten-Cache) |
 | Offline-Verhalten | `sw.js` |
 
-Begriffsliste ohne ganze Datei erzeugen: Claude kann die Moduldatei hochgeladen bekommen und per Skript nur Spalte `[1]` (englischer Begriff) auslesen. Das kostet kaum Tokens, weil die Datei nicht in den Chat geladen wird.
+Moduldateien nie in den Chat laden: per Skript nur die nötigen Spalten auslesen (z. B. `[1]` englischer Begriff), Änderungen per Skript zurückschreiben.
 
 ## Datenformat
 
@@ -73,21 +67,21 @@ Begriffsliste ohne ganze Datei erzeugen: Claude kann die Moduldatei hochgeladen 
 ```
 Reihenfolge in `index.json` = Reihenfolge in Katalog, Modulleiste und beim Wischen. Die Moduldatei liegt immer unter `modules/<key>/module.json` (kein Feld `file` mehr).
 - `desc`: ein Satz für den Katalog. `count`: Zahl der Begriffe (per Skript aus `raw`), optional, bei Begriffsänderungen mitpflegen.
-- `ls` = Speicherschlüssel des Lernstands, **pro Modul eindeutig, nie ändern** (sonst ist der Fortschritt weg). Neue Module: `ls` = `lernapp.progress.<key>`, `doc` = `progress-<key>`. Die drei alten Module behalten ihre `devvokabeln.…`-Werte.
+- `ls` = Speicherschlüssel des Lernstands, **pro Modul eindeutig, nie ändern** (sonst ist der Fortschritt weg). Neue Module: `ls` = `lernapp.progress.<key>`, `doc` = `progress-<key>`. `dev` und `agile` behalten ihre alten `devvokabeln.…`-Werte.
 - Optional `format`/`version` wie in der Moduldatei: Braucht ein Modul eine neuere App, zeigt der Katalog das schon ohne Download an.
 - Ab 4 gewählten Modulen wird der Umschalter automatisch zum Auswahlmenü.
 
 ### Moduldatei `modules/<key>/module.json`
 ```
 { format:"fachvokabeln-modul", version:1, key, name, short, icon,
-  cats:   { "fgrund": {"name":"Glasfaser-Grundlagen","c":"var(--n-yellow)"}, … },
-  levels: [[0,"Praktikant:in"],[100,"Lehrling"], … 20 Einträge … ,[50000,"Glasfaser-Legende"]],
+  cats:   { "net": {"name":"Netzwerk","c":"var(--n-sky)"}, … },
+  levels: [[0,"Praktikant:in"],[100,"Lehrling"], … 20 Einträge … ,[50000,"IT-Legende"]],
   theme:  { board, board-dot, ink, ink-soft, surface, line, ok, bad, accent, m1, m2, m3 },
   raw:    [ Eintrag, Eintrag, … ],
   extra:  { "<begriffs-id>": {ex, sit, conf, tf}, … } }
 ```
 Kompakt gespeichert (`separators=(",",":")`, `ensure_ascii=False`, ohne Zeilenumbruch am Ende). Die App (`MOD_FORMAT`, `MOD_VERSION` in `app.js`) lädt nur `format` „fachvokabeln-modul“ mit `version` ≤ 1; sonst „braucht eine neuere App-Version“. Ohne gültiges JSON, `raw` oder `cats` gilt das Modul als fehlerhaft.
-`extra` (optional, seit v16, direkt nach `raw`): Zusatzinhalte für schwere Fragearten, Schlüssel = Begriffs-ID, Inhalt wie früher `terms` der Zusatzdateien (Format und Regeln unter „Schritt 2“). Fehlt das Feld, gibt es ab Profi nur `type` und `def2en`. Ändern immer per Skript: JSON laden, `extra[id]` setzen, kompakt zurückschreiben.
+`extra` (optional, seit v16, direkt nach `raw`): Zusatzinhalte für schwere Fragearten, Schlüssel = Begriffs-ID (Format und Regeln unter „Zusatzinhalte“). Fehlt das Feld, gibt es ab Profi nur `type` und `def2en`. Ändern immer per Skript: JSON laden, `extra[id]` setzen, kompakt zurückschreiben.
 `theme`: `board` Hintergrund (fast schwarz), `surface` Flächen, `accent` Modul-Schalter, `m1`/`m2`/`m3` die drei Startseiten-Kärtchen (Karteikarten/Quiz/Nachschlagen).
 XP-Grenzen der Ränge (alle Module gleich): 0, 100, 250, 400, 600, 900, 1.300, 1.800, 2.400, 3.200, 4.300, 5.700, 7.600, 10.000, 13.000, 17.000, 22.500, 29.500, 38.500, 50.000.
 
@@ -96,7 +90,7 @@ XP-Grenzen der Ränge (alle Module gleich): 0, 100, 250, 400, 600, 900, 1.300, 1
 |---|---|---|
 | 0 | Kategorie-Schlüssel | muss in `cats` existieren |
 | 1 | englischer Begriff | eindeutig im Modul; die ID wird daraus gebildet (Kleinbuchstaben, Sonderzeichen → `-`). Verben mit „to “ |
-| 2 | deutsch, mit Artikel | z. B. `die Glasfaser / die optische Faser`; gegendert mit `:in` |
+| 2 | deutsch, mit Artikel | z. B. `die Datenbank / die DB`; gegendert mit `:in` |
 | 3 | Erklärung 1 | darf den englischen Begriff **nicht** enthalten |
 | 4 | englischer Beispielsatz | soll den Begriff wörtlich enthalten (ohne „to “), sonst keine Lückentext-Frage |
 | 5 | deutscher Beispielsatz | österreichischer Arbeitsalltag |
@@ -165,245 +159,69 @@ Entfernen eines Moduls löscht nur `lernapp.chosen`-Eintrag und Daten-Cache, nie
 - Fenster immer über `sheet(id)` + `openDialog(dlg)` öffnen, damit die Zurück-Taste funktioniert.
 - Testen: lokal mit `python3 -m http.server` im Projektordner und Playwright; `file://` funktioniert wegen `fetch` nicht.
 
-## Ausbau „Verstehen statt Auswendiglernen“ (in Arbeit)
+## Inhalte schreiben
 
-Ziel: Profi-Begriffe nicht mehr an immer denselben Texten wiedererkennen, sondern anwenden und abgrenzen. Umsetzung in **getrennten Chats**: zuerst ein Code-Chat, dann ein Chat pro Kategorie für die Inhalte. Jeder Chat klont das Repo, liest diese Datei und hakt seinen Schritt unten im Status ab.
+Gilt für alle Module. Moduldateien nie komplett lesen: per Skript die nötigen Spalten auslesen, neue Inhalte in Blöcken von etwa 25 Begriffen schreiben und per Skript einfügen, kompakt zurückschreiben (`separators=(",",":")`, `ensure_ascii=False`). Danach das jeweilige Prüfskript laufen lassen und nur die geänderte `module.json` (+ ggf. `index.json`, diese Datei) ausliefern.
 
-### Schritt 1: Code-Chat (wirkt für alle Module)
+### Neue Begriffe
 
-Dateien: `app.js`, `style.css`, `sw.js`. Moduldateien nie komplett lesen.
+1. Vorhandene Begriffe der Kategorie per Skript auslesen (Index 1, 2, 3), damit Erklärungen zusammenpassen und sich nicht wiederholen.
+2. Neue Einträge im vollen Format (Index 0–8, siehe „Ein Begriff“) an `raw` anhängen.
+3. Für Agile gilt `docs/agile-projekte-begriffe.md`: neue Begriffe dort zuerst mit dem Nutzer abstimmen, Deutsch aus der Liste übernehmen.
+4. `count` in `index.json` anpassen. Neue Begriffe brauchen auch Zusatzinhalte (nächster Abschnitt), sonst gibt es für sie ab Profi nur `type` und `def2en`.
 
-1. **Schwierigkeit nach Lernstand** (`makeQuestion`): Box 0–4 wie bisher. Ab Box 5 (Profi) nur noch schwere Fragearten: `type` (eintippen), `sit`, `conf`, `tf`, `cloze` mit Zusatzsatz, `def2en` mit Verwechslungs-Ablenkern. Fehlen für einen Begriff Zusatzinhalte, nur die vorhandenen schweren Arten verwenden.
-2. **Eintippen** (`type`): Erklärung oder deutsches Wort wird gezeigt, englischer Begriff wird eingetippt. Toleranz: Groß/Klein, führendes „to “, Bindestrich/Leerzeichen egal; Levenshtein-Abstand ≤ 1 je angefangene 6 Buchstaben zählt als richtig (Hinweis „fast richtig: …“). Eingabefeld mit `autocapitalize="off" autocorrect="off" spellcheck="false"`, Enter bestätigt. Button „Weiß ich nicht“ = falsch.
-3. **Ablenker aus eigenen Fehlern**: bei falscher Antwort Paar speichern in `P.mix = {id: {andereId: anzahl}}`. `distractors` nimmt für Profi-Begriffe zuerst diese, dann `conf`-Partner aus der Zusatzdatei, dann wie bisher.
-4. **Meister-Regel**: Box 15 nur, wenn seit dem letzten Fehler mindestens 3 richtige Antworten aus `type`, `sit` oder `conf` dabei waren (`P.hard = {id: anzahl}`, wird bei Fehler auf 0 gesetzt). Sonst bleibt der Begriff auf Box 14, bis das erfüllt ist.
-5. **Neue Fragearten anzeigen**: `sit` (Situation → welcher Begriff? 5 Antworten), `conf` („Was unterscheidet A von B?“ → richtige Unterschied-Aussage gegen 3 falsche aus anderen Paaren), `tf` (Aussage → „Stimmt“ / „Stimmt nicht“, danach Begründung). Nach jeder Antwort wie bisher Erklärung und Beispielsatz zeigen.
-6. **Punkte**: wie bisher (+5 / −2 / Profi −10). Ausnahme `tf`: richtig +3, falsch −2 (Raten bringt sonst zu viel). Hilfe-Fenster (`showHelp`) um die neuen Fragearten und die Meister-Regel ergänzen.
-7. **Zusatzdateien laden**: Pfad `modules/extra/<modul-key>/<kategorie-key>.json`, beim Quizstart nur für aktive Kategorien per `fetch`, fehlende Dateien (404) still ignorieren. Im Speicher pro Modul zwischenhalten. `sw.js`: nichts vorab laden, der Fetch-Handler cacht sie beim ersten Abruf.
-8. Testdaten für 3–5 Begriffe nur lokal anlegen, **nicht** ausliefern. `VERSION` erhöhen, Änderungsprotokoll ergänzen.
+Regeln: Erklärungen 1–3 ohne den englischen Begriff, Beispielsatz enthält ihn wörtlich (ohne „to “), deutscher Satz aus dem österreichischen Arbeitsalltag, Gendern mit `:in`. Eine Kategorie hat idealerweise 30–50 Begriffe.
 
-### Schritt 2: Inhalte-Chats (zuerst IT, später Agile; ein Chat pro Kategorie)
+**Prüfskript** (muss ohne Fehler laufen):
+- Gültiges JSON; alle IDs im Modul eindeutig.
+- Jeder Eintrag hat 8–9 Felder, Index 0 existiert in `cats`.
+- Index 3, 6 und 7 enthalten den englischen Begriff nicht (Groß/Klein egal).
+- Index 4 enthält den Begriff (ohne „to “).
+- Index 8, falls vorhanden, besteht nur aus exakten Teilstrings von Index 5.
 
-Gilt für **beide** Module. Für Agile erst starten, wenn Schritt G für alle Agile-Kategorien erledigt ist (siehe „Nächste Schritte“). Unterschiede bei Agile: Begriffe aus `modules/agile/module.json` lesen und die Inhalte in deren Feld `extra` schreiben, `conf`-IDs müssen in `modules/agile/module.json` existieren (die App sucht Partner nur im eigenen Modul), Status in der Tabelle „Schritt 2 für Agile“ abhaken. Alles andere (Format, Regeln, Prüfskript) wie unten beschrieben.
+### Zusatzinhalte (Feld `extra`)
 
-Ablauf: Repo klonen, per Skript nur die Begriffe der Kategorie auslesen (Index 1, 2, 3, 6, 7 – Begriff, Deutsch, Erklärungen), Inhalte in Blöcken von ca. 25 Begriffen schreiben, per Skript in das Feld `extra` von `modules/<modul>/module.json` schreiben (Datei nie komplett lesen), per Skript prüfen (siehe unten), nur diese `module.json` und diese Datei (Status abhaken) ausliefern. **Keine** `VERSION`-Erhöhung nötig.
+Ziel: Profi-Begriffe nicht an immer denselben Texten wiedererkennen, sondern anwenden und abgrenzen. Ablauf: per Skript die Begriffe der Kategorie auslesen (Index 1, 2, 3, 6, 7), Inhalte schreiben, per Skript als `extra[id]` eintragen.
 
-**Format der Zusatzinhalte** (seit v16 im Feld `extra` der `module.json`, dort nur der Inhalt von `terms`, ohne die Hülle mit `format`/`module`/`cat`; bis v15 eigene Datei `modules/<modul>/extra/<kategorie>.json` wie hier gezeigt):
 ```json
-{"format":"fachvokabeln-extra","version":1,"module":"dev","cat":"net",
- "terms":{
+"extra":{
   "latency":{
    "ex":[["High latency made every video call stutter.","Durch die hohe Latenz hat jeder Videocall geruckelt."],["…","…"]],
    "sit":["Situation 1","Situation 2","Situation 3"],
    "conf":[["bandwidth","Latenz ist die Verzögerung pro Paket, Bandbreite die Datenmenge pro Sekunde."]],
    "tf":[[false,"Mehr Bandbreite senkt automatisch die Latenz.","Die Leitung kann breit und trotzdem langsam im Antworten sein."],[true,"…","…"]]
-  }}}
+  }}
 ```
-Schlüssel in `terms` = Begriffs-ID wie in `buildTerms` (Kleinbuchstaben, Sonderzeichen → `-`).
+Schlüssel = Begriffs-ID wie in `buildTerms` (Kleinbuchstaben, Sonderzeichen → `-`, z. B. `World Café` → `world-caf-`).
 
-**Regeln für die Inhalte**
 - `ex`: genau 2 neue Satzpaare (englisch, deutsch). Englischer Satz enthält den Begriff wörtlich (ohne „to “), anders als der vorhandene Beispielsatz. Achtung: Die App prüft mit Wortgrenzen (`termRe`), Plural oder angehängte Endungen („tasks“, „user interviews“) zählen **nicht**, der Satz fällt dann still weg. Deutsch: österreichischer Arbeitsalltag.
 - `sit`: genau 3 Situationen auf Deutsch, je 2–3 Sätze, aus dem österreichischen Arbeitsalltag (Lehrling, Kolleg:in, Kund:in, Daily, Krankenstand …). Enthalten **weder** den englischen Begriff **noch** die deutsche Übersetzung oder deren Wortstamm. Keine Frage am Ende (die App fragt „Welcher Begriff passt?“). Die Situation muss eindeutig sein, auch gegenüber naheliegenden Begriffen derselben Kategorie. Die drei Situationen zeigen verschiedene Blickwinkel (Ursache, Folge, Einsatz).
-- `conf`: 1–2 Verwechslungspartner (ID muss im Modul existieren, darf aus anderer Kategorie sein) mit **einem** Satz zum Unterschied, in dem beide Begriffe vorkommen dürfen. Gibt es keinen sinnvollen Partner, leeres Array. Die App ersetzt im Satz beide Begriffe durch „A“ (Begriff selbst) und „B“ (Partner), daher: beide mit dem englischen Begriff oder dem deutschen Hauptwort aus Index 2 nennen (keine Umschreibungen), Begriff zuerst, und der Satz muss auch mit A/B ohne die Namen verständlich sein.
+- `conf`: 1–2 Verwechslungspartner (ID muss **im selben Modul** existieren, darf aus anderer Kategorie sein) mit **einem** Satz zum Unterschied. Gibt es keinen sinnvollen Partner, leeres Array. Die App ersetzt im Satz beide Begriffe durch „A“ (Begriff selbst) und „B“ (Partner), daher: beide mit dem englischen Begriff oder dem deutschen Hauptwort aus Index 2 nennen (keine Umschreibungen), Begriff zuerst, und der Satz muss auch mit A/B ohne die Namen verständlich sein.
 - `tf`: genau 2 Aussagen auf Deutsch, eine wahr, eine falsch. Die falsche greift eine **typische Fehlvorstellung** auf, nicht etwas offensichtlich Absurdes. Begründung ein Satz. Hier darf der Begriff vorkommen.
 - Gendern mit `:in`, österreichische Wörter, fachlich korrekt und passend zu den vorhandenen Erklärungen.
 
-**Prüfskript vor der Auslieferung** (muss ohne Fehler laufen; am sichersten mit `termRe`, `buildTerms`, `nameVariants` und `maskNames` direkt aus `app.js` in Node, weil die App mit Wortgrenzen und deklinierten Formen arbeitet): jede Begriffs-ID der Kategorie vorhanden; `ex` = 2 Paare und englischer Satz enthält den Begriff; `sit` = 3 und keine enthält Begriff oder deutsche Übersetzung (ohne Artikel, Groß/Klein egal); `conf`-IDs existieren im Modul; `tf` = 2 mit genau einem `true`; gültiges JSON.
+**Prüfskript** (muss ohne Fehler laufen; am sichersten mit `termRe`, `buildTerms`, `nameVariants` und `maskNames` direkt aus `app.js` in Node, weil die App mit Wortgrenzen und deklinierten Formen arbeitet): jeder Begriff der Kategorie hat einen Eintrag; `ex` = 2 Paare und englischer Satz enthält den Begriff; `sit` = 3 und keine enthält Begriff oder deutsche Übersetzung (ohne Artikel, Groß/Klein egal); `conf`-IDs existieren im Modul; `tf` = 2 mit genau einem `true`; gültiges JSON.
 
-### Status
+**Begriffe streichen oder verschieben:** `extra[id]` mitnehmen bzw. löschen und per Skript alle `conf`-Einträge suchen, die auf die ID zeigen. Die bekommen einen neuen Partner mit neuem Satz oder werden gestrichen.
 
-| Schritt | Begriffe | Erledigt |
-|---|---|---|
-| Code-Chat | – | ☑ (v6) |
-| `code` Programmiergrundlagen | 122 | ☑ |
-| `oop` Objektorientierung & Muster | 84 | ☑ |
-| `algo` Algorithmen & Datenstrukturen | 74 | ☑ |
-| `web` Web, UI & Apps | 105 | ☑ |
-| `arch` Architektur & APIs | 103 | ☑ |
-| `data` Datenbanken & Daten | 90 | ☑ |
-| `net` Netzwerk | 80 | ☑ |
-| `sec` IT-Sicherheit | 92 | ☑ |
-| `ops` Betrieb, Cloud & DevOps | 104 | ☑ |
-| `git` Git & Werkzeuge | 74 | ☑ |
-| `test` Testen & Qualität | 81 | ☑ |
-| `ai` KI & Machine Learning | 66 | ☑ |
-| `talk` Kommunikation im Job | 125 | ☑ |
-| `it` IT-Alltag & Hardware | 105 | ☑ |
+## Neues Modul anlegen
 
-## Neues Modul „Agile & Projekte“ (Umbau und Grunddaten erledigt)
+1. Ordner `modules/<key>/` mit `module.json` (Format siehe „Moduldatei“).
+2. `cats` mit Pastellfarben `var(--n-…)` (siehe `style.css`), `levels` mit den üblichen XP-Grenzen und eigenen Rangnamen passend zum Fach.
+3. `theme` im Aufbau wie die anderen Module, gut unterscheidbar von Violett (IT) und Weinrot (Agile). `bad` muss sich deutlich von `accent` abheben, die Pastellkarten müssen auf `board` lesbar bleiben.
+4. Eintrag in `modules/index.json` (Felder siehe „Katalog“), `ls` = `lernapp.progress.<key>`, `doc` = `progress-<key>`, `accent`/`board` wie im Theme.
+5. Inhalte nach „Inhalte schreiben“, inklusive `extra`.
+6. Optional eigene Krönchen-Designs pro Kategorie (`CROWN_DESIGNS` + `style.css`, siehe „Gestaltung“), sonst greifen die allgemeinen. Nur dann `VERSION` erhöhen.
 
-Ziel: Scrum (`scrum`) und Projektmanagement (`pm`) aus dem IT-Modul (früher „IT & Scrum“) in ein eigenes Modul verschieben und auf 507 Begriffe in 13 Kategorien (je 30–50) ausbauen. Die verbindliche Begriffsliste mit Kategorie, Englisch, Deutsch und Herkunft (B = Bestand, N = neu) steht in **`docs/agile-projekte-begriffe.md`**. Diese Liste ist abgesegnet, nicht eigenmächtig ändern.
-Umsetzung in **getrennten Chats**: zuerst der Umbau-Chat, dann ein Chat pro Kategorie für die neuen Begriffe. Jeder Chat klont das Repo, liest diese Datei und hakt seinen Schritt im Status unten ab.
-**Keine Migration des Lernstands nötig**: In den Kategorien `scrum` und `pm` gibt es noch keinen Fortschritt.
+## Modulverwaltung: Verhalten im Detail
 
-### Schritt U: Umbau-Chat
-
-Dateien: `modules/it-scrum.json` (nur per Skript, nie lesen), `modules/index.json`, neues `modules/agile.json`, `modules/extra/dev/*.json` (nur `conf` per Skript), `app.js` (`CROWN_DESIGNS`), `style.css` (Krönchen), `sw.js`, `README.md`, diese Datei.
-
-1. **Neues Modul `modules/agile.json`** anlegen: `key` `agile`, `name` „Agile & Projekte“, `short` „Agile“, `icon` 🧭.
-   - `cats` in dieser Reihenfolge mit Farben: `agil` Agile Grundlagen & Frameworks (mint), `team` Scrum-Rollen & Teamdynamik (teal), `sprint` Events & Sprint-Alltag (orange), `backlog` Backlog, Schätzen & Planen (butter), `lean` Kanban & Lean (sage), `produkt` Produktstrategie & Kennzahlen (sky), `discovery` Nutzerforschung & Design Thinking (rose), `orga` Agile Organisation & Führung (lilac), `plan` Projektplanung & Steuerung (pink), `anf` Anforderungen & Scope (peri), `kosten` Verträge, Kosten & Beschaffung (sand), `risiko` Risiko, Qualität & Abschluss (coral), `komm` Stakeholder, Kommunikation & Moderation (aqua). Farbe jeweils als `var(--n-…)`.
-   - `levels` mit den üblichen XP-Grenzen. Namen: Praktikant:in, Lehrling, Projektassistent:in, Teammitglied, Story-Schreiber:in, Schätzprofi, Retro-Moderator:in, Kanban-Kenner:in, Requirements Engineer, Scrum Master, Product Owner, Projektleiter:in, Agile Coach, Release Train Engineer, Programmmanager:in, Portfolio-Manager:in, Head of PMO, Transformationslead, Chief Agile Officer, Agile-Legende.
-   - `theme`: eigenes weinrotes Schema (`accent` etwa `#8a2342`, `board` fast schwarz mit Weinrot-Stich, etwa `#0d0407`), im Aufbau wie die anderen Module. Gut unterscheidbar von Violett (IT) und Grün (Glasfaser). `bad` (falsche Antwort) muss sich deutlich vom Weinrot abheben, z. B. ein helleres, wärmeres Rot oder Orange-Rot, und die Pastellkarten `coral`/`rose` müssen auf dem Hintergrund gut lesbar bleiben.
-2. **Bestand verschieben** (198 Begriffe, alle mit Herkunft B in der Liste): per Skript aus `it-scrum.json` nach `agile.json` kopieren. Dabei nur Index 0 auf den neuen Kategorie-Key setzen, alles andere unverändert lassen. Danach aus `it-scrum.json` entfernen.
-3. **IT-Modul bereinigen**:
-   - Zusätzlich entfernen: `team velocity`, `to do`, `in progress`, `done`. Diese wandern nicht mit.
-   - `cats` ohne `scrum` und `pm`.
-   - `name` und `short` werden „IT“, in `it-scrum.json` und in `index.json`. `key`, `file` und `ls` bleiben, die Rangnamen auch.
-   - Danach 1.305 Begriffe.
-4. **Kaputte Verweise reparieren** (19 `conf`-Einträge in `modules/extra/dev/`). Ersatz:
-   - `data.json`: kpi → `metric` (statt okr)
-   - `talk.json`:
-     - meeting → `all-hands meeting` (statt workshop)
-     - availability → `high availability` (statt capacity)
-     - knowledge-transfer → `onboarding` (statt handover)
-     - concern → `to raise an issue` (statt risk)
-     - to-raise-an-issue → `concern` (statt escalate)
-     - use-case → `user flow` (statt user-story)
-     - end-user → `client` (statt customer)
-     - checklist → `runbook` (statt definition-of-done)
-     - showstopper → `bug` (statt blocker)
-     - out-of-scope → Eintrag streichen (statt scope-creep)
-   - `algo.json`: iterative → `recursion` (statt iteration)
-   - `web.json`: prototype → `proof of concept` (statt mvp)
-   - `arch.json`:
-     - third-party → `library` (statt vendor)
-     - proof-of-concept → ein Eintrag `prototype` (statt mvp und spike)
-     - non-functional-requirement → beide Einträge streichen (requirement, acceptance-criteria)
-     - system-boundary → `bounded context` (statt scope)
-
-   Jeder Ersatz bekommt einen neuen Unterschied-Satz nach den `conf`-Regeln (Begriff zuerst, beide mit englischem Begriff oder deutschem Hauptwort). Ist der Partner beim Begriff schon vorhanden, nur den alten Eintrag streichen. Danach per Skript prüfen, dass jede `conf`-ID im Modul existiert.
-5. **`modules/index.json`**: dritten Eintrag ergänzen: `key` `agile`, `file` `agile.json`, `name` „Agile & Projekte“, `short` „Agile“, `icon` 🧭, `ls` `devvokabeln.progress.agile`, `doc` `progress-agile`, `accent`/`board` wie im Theme.
-6. **Krönchen**:
-   - In `CROWN_DESIGNS` und `style.css` den Key `scrum` in `sprint` und `pm` in `plan` umbenennen. Die Designs bleiben gleich.
-   - Für die übrigen 11 Kategorien eigene Designs im Stil der vorhandenen ergänzen. Die Designs nicht im Chat zeigen oder beschreiben, sie sind die Belohnung.
-7. **Testen** mit `python3 -m http.server` und Playwright: Modulleiste mit drei Modulen, Wischen, Quiz und Nachschlagen in beiden betroffenen Modulen, keine Konsolenfehler. Kategorien, die anfangs nur wenige Begriffe haben (z. B. `discovery` mit 2), sind erlaubt.
-8. **Abschluss**:
-   - `VERSION` in `sw.js` erhöhen.
-   - README und diese Datei aktualisieren: Modulliste und Begriffszahlen, Tabelle „Dateien“; im Status von „Verstehen statt Auswendiglernen“ die Zeilen `scrum` und `pm` streichen, `git` auf 74.
-   - Änderungsprotokoll ergänzen und Schritt U unten abhaken.
-
-### Schritt G: Grunddaten-Chats (ein Chat pro Kategorie von `agile`)
-
-Ablauf:
-1. Repo klonen.
-2. Aus `docs/agile-projekte-begriffe.md` die Begriffe der Kategorie mit Herkunft N lesen.
-3. Per Skript die schon vorhandenen Begriffe der Kategorie aus `modules/agile.json` auslesen (nur Index 1, 2, 3), damit Erklärungen zusammenpassen und sich nicht wiederholen.
-4. Die neuen Einträge im vollen Format (Index 0–8, siehe „Ein Begriff“) in Blöcken von etwa 25 Begriffen schreiben und per Skript an `raw` anhängen. Die Datei nie komplett lesen.
-5. Das Deutsch aus der Liste übernehmen. Kleine Korrekturen sind erlaubt, wenn sie fachlich nötig sind; dann auch die Liste anpassen.
-
-Inhaltliche Regeln wie überall: Erklärungen 1–3 ohne den englischen Begriff, Beispielsatz enthält ihn wörtlich (ohne „to “), deutscher Satz aus dem österreichischen Arbeitsalltag, Gendern mit `:in`.
-
-**Prüfskript vor der Auslieferung** (muss ohne Fehler laufen):
-- Gültiges JSON.
-- Jeder N-Begriff der Kategorie ist genau einmal vorhanden; alle IDs im Modul sind eindeutig.
-- Jeder Eintrag hat 8–9 Felder, Index 0 ist der Kategorie-Key.
-- Index 3, 6 und 7 enthalten den englischen Begriff nicht (Groß/Klein egal).
-- Index 4 enthält den Begriff (ohne „to “).
-- Index 8, falls vorhanden, besteht nur aus exakten Teilstrings von Index 5.
-- Kategorie danach 30–50 Begriffe.
-
-Ausliefern: nur `modules/agile.json` und diese Datei (Status abhaken). Eine `VERSION`-Erhöhung ist nicht nötig.
-**Danach Schritt 2:** Sobald alle Zeilen der Tabelle unten abgehakt sind, kommen die Zusatzinhalte für jede Agile-Kategorie (`modules/extra/agile/<kategorie>.json`, Ablauf und Regeln wie in Schritt 2 oben, Status in der Tabelle „Schritt 2 für Agile“).
-
-### Status
-
-| Schritt | Begriffe (B + N) | Erledigt |
-|---|---|---|
-| U Umbau-Chat | 198 verschoben | ☑ (v12) |
-| G `agil` Agile Grundlagen & Frameworks | 23 + 20 = 43 | ☑ |
-| G `team` Scrum-Rollen & Teamdynamik | 14 + 23 = 37 | ☑ |
-| G `sprint` Events & Sprint-Alltag | 14 + 24 = 38 | ☑ |
-| G `backlog` Backlog, Schätzen & Planen | 28 + 15 = 43 | ☑ |
-| G `lean` Kanban & Lean | 11 + 31 = 42 | ☑ |
-| G `produkt` Produktstrategie & Kennzahlen | 5 + 36 = 41 | ☑ |
-| G `discovery` Nutzerforschung & Design Thinking | 2 + 37 = 39 | ☑ |
-| G `orga` Agile Organisation & Führung | 6 + 31 = 37 | ☑ |
-| G `plan` Projektplanung & Steuerung | 38 + 11 = 49 | ☑ |
-| G `anf` Anforderungen & Scope | 10 + 24 = 34 | ☑ |
-| G `kosten` Verträge, Kosten & Beschaffung | 17 + 18 = 35 | ☑ |
-| G `risiko` Risiko, Qualität & Abschluss | 15 + 18 = 33 | ☑ |
-| G `komm` Stakeholder, Kommunikation & Moderation | 15 + 21 = 36 | ☑ |
-
-### Status Schritt 2 für Agile (erst nach Schritt G)
-
-| Kategorie | Begriffe | Erledigt |
-|---|---|---|
-| `agil` Agile Grundlagen & Frameworks | 43 | ☑ |
-| `team` Scrum-Rollen & Teamdynamik | 37 | ☑ |
-| `sprint` Events & Sprint-Alltag | 38 | ☑ |
-| `backlog` Backlog, Schätzen & Planen | 43 | ☑ |
-| `lean` Kanban & Lean | 42 | ☑ |
-| `produkt` Produktstrategie & Kennzahlen | 41 | ☑ |
-| `discovery` Nutzerforschung & Design Thinking | 39 | ☑ |
-| `orga` Agile Organisation & Führung | 37 | ☑ |
-| `plan` Projektplanung & Steuerung | 49 | ☑ |
-| `anf` Anforderungen & Scope | 34 | ☑ |
-| `kosten` Verträge, Kosten & Beschaffung | 35 | ☑ |
-| `risiko` Risiko, Qualität & Abschluss | 33 | ☑ |
-| `komm` Stakeholder, Kommunikation & Moderation | 36 | ☑ |
-
-## Vorhaben „Modulsystem“ (erledigt, v13)
-
-Ziel: Die App ist der feste Lernrahmen, Module sind austauschbare Inhalte im Repo. Jeder Nutzer wählt, welche Module er verwendet. **Nur gewählte Module werden geladen und offline gespeichert.** Hintergrund: Später sollen viele, auch kleine Module dazukommen (z. B. Biologie oder Geographie für einen Schultest, von Claude erstellt). Dann darf nicht jedes Handy alles herunterladen.
-
-**Abgrenzung:** Dieser Schritt ändert nichts an Inhalten, Fragearten, Punkten, Rängen oder Lernstand-Regeln. Neue Fragearten, Fortschritt in Stufen statt XP und die dafür nötigen neuen Modulinhalte gehören zum späteren Vorhaben „Lernrahmen“, eine Sprachprüfung mit KI zu einem eigenen Vorhaben. Beide sind noch nicht definiert und werden hier nicht vorweggenommen.
-
-**Ein Chat.** Dateien: `app.js`, `sw.js`, `style.css` (Katalog), `modules/` (nur verschieben und per Skript ergänzen, große JSON-Dateien nie lesen), `README.md`, diese Datei.
-
-### Ist-Zustand vor v13: warum damals alles geladen wurde
-
-- `sw.js` lädt beim Installieren alle Module aus `index.json` in den Cache.
-- `boot` lädt nach 1,5 s alle übrigen Module vor (`MODULE_ORDER.forEach(ensureModule)`).
-- Modulleiste, Wischen, Pfeiltasten und `showModulePicker` zeigen immer alle Module aus `MODULE_ORDER`.
-
-### Schritte
-
-1. **Ein Ordner pro Modul** (mit `git mv`, damit die Historie bleibt):
-   - `modules/<key>/module.json` und `modules/<key>/extra/<kategorie>.json`. Der Ordnername ist immer der `key`.
-   - `it-scrum.json` → `modules/dev/module.json`, `modules/extra/dev/` → `modules/dev/extra/`; ebenso `glasfaser.json` → `modules/ftth/`, `agile.json` → `modules/agile/`.
-   - `ensureModule` lädt `modules/<key>/module.json`, `loadExtras` lädt `modules/<key>/extra/<kat>.json`. Das Feld `file` in `index.json` entfällt.
-   - Jede `module.json` bekommt vorne `"format":"fachvokabeln-modul","version":1` (per Skript, kompakt wie bisher, `ensure_ascii=False`, sonst nichts ändern). Damit kann der spätere Lernrahmen alte und neue Module unterscheiden.
-2. **`index.json` wird zum Katalog.** Felder wie bisher (`key`, `name`, `short`, `icon`, `ls`, `doc`, `accent`, `board`), ohne `file`, dazu neu:
-   - `desc`: ein Satz für den Katalog, z. B. „Englische Fachbegriffe rund um Glasfaserausbau und FTTH“.
-   - `count`: Zahl der Begriffe (per Skript aus `raw` ermitteln). Optional; fehlt es, zeigt der Katalog keine Zahl. Bei Begriffsänderungen mitpflegen.
-   - Regeln für neue Module: `ls` = `lernapp.progress.<key>`, `doc` = `progress-<key>`. Bestehende `ls`-Werte **nie ändern**.
-3. **Auswahl speichern:** `localStorage["lernapp.chosen"]` = Array der gewählten Keys. Reihenfolge in Leiste und Wischen = Reihenfolge in `index.json`.
-   - Empfehlung für den Code: `CATALOG_ORDER` = alle Module aus dem Index, `MODULE_ORDER` = nur gewählte. Dann bleiben die meisten Stellen, die `MODULE_ORDER` nutzen (Leiste, Wischen, Pfeiltasten, `modIdx`, `loadModule`), unverändert richtig.
-   - **Übergang für bestehende Nutzer:** Fehlt `lernapp.chosen`, werden alle Module gewählt, für die schon Lernstand in `localStorage[ls]` liegt. Niemand verliert ein Modul.
-   - **Neues Gerät** (nichts gewählt, kein Lernstand): Die App öffnet den Katalog statt der Übersicht.
-   - Gewählte Keys, die nicht mehr im Index stehen, still aus der Auswahl entfernen.
-4. **Katalog „Module verwalten“** (neues Blatt, ersetzt die Auswahlfunktion von `showModulePicker`):
-   - Alle Module aus `index.json`: Symbol, Name, `desc`, `count`, Knopf „Hinzufügen“ bzw. „Entfernen“.
-   - Erreichbar über ein ＋ am Ende der Modulleiste und im Menü bei Export/Import.
-   - **Hinzufügen:** Modul laden (Ladeanzeige; ohne Netz klare Meldung), zur Auswahl ergänzen, direkt dorthin wechseln. Im Hintergrund danach alle Zusatzdateien seiner Kategorien laden (404 still ignorieren), damit das Modul vollständig offline läuft.
-   - **Entfernen:** Rückfrage mit Hinweis „Dein Fortschritt bleibt gespeichert, falls du das Modul wieder hinzufügst“. Lernstand in `localStorage` bleibt, die Dateien des Moduls werden aus dem Daten-Cache gelöscht. Das letzte gewählte Modul kann nicht entfernt werden.
-   - Das Auswahlmenü ab 4 Modulen (`showModulePicker`) zeigt weiterhin zum Wechseln, aber nur gewählte Module.
-5. **Nur Gewähltes laden:** `boot` nimmt das Startmodul aus der Auswahl (zuletzt offenes, sonst erstes gewähltes) und lädt nach 1,5 s nur die übrigen **gewählten** Module vor. Kein Code darf mehr über alle Module des Katalogs `ensureModule` aufrufen.
-6. **Tagespflicht bei Pause:** Beim Wieder-Hinzufügen eines Moduls mit vorhandenem Lernstand `checkedUntil` auf gestern setzen, bevor `dailyCheck` läuft. Die Zeit, in der das Modul abgewählt war, bringt keine Abzüge.
-7. **Export/Import:** Export bleibt wie er ist (liest `localStorage`, lädt keine Module), enthält also auch abgewählte Module mit Lernstand. Import eines nicht gewählten Moduls nimmt es in die Auswahl auf.
-8. **Service Worker:**
-   - Beim Installieren nur noch `CORE` (inkl. `modules/index.json`), keine Module mehr.
-   - Zwei Caches: `fach-vokabeln-<VERSION>` für die App-Dateien und `fach-vokabeln-daten` für alles unter `modules/` außer `index.json`. `activate` löscht nur alte App-Caches, **nie den Daten-Cache**, damit gewählte Module ein App-Update offline überstehen.
-   - Strategie unverändert: sofort aus dem Cache, im Hintergrund aktualisieren.
-   - Löschen beim Entfernen macht die App selbst über die Cache-API (`caches.open("fach-vokabeln-daten")`, alle Einträge unter `modules/<key>/`), ohne Nachricht an den Service Worker.
-   - Hinweis: Nach dem Update mit den neuen Pfaden müssen gewählte Module einmal mit Internet neu geladen werden; die alten Pfade verschwinden mit dem alten Cache.
-9. **Fehlerfälle:** Fehlt eine Moduldatei oder ist sie kaputt (kein gültiges JSON, kein `raw`, keine `cats`), zeigt die App eine Meldung und läuft mit den übrigen Modulen weiter; ist das Startmodul betroffen, startet das nächste gewählte. Hat ein Modul ein unbekanntes `format` oder eine höhere `version`, meldet der Katalog „Dieses Modul braucht eine neuere App-Version“ und bietet es nicht zum Hinzufügen an.
-10. **Doku:** README-Abschnitt „Ein neues Modul hinzufügen“ neu (Ordner `modules/<key>/` mit `module.json`, optional `extra/`, Eintrag in `index.json` mit `desc`; keine `VERSION`-Erhöhung nötig). In dieser Datei „Dateien“, „Welche Dateien für welche Änderung“, „Datenformat“, „Code-Landkarte“ und „Gespeicherter Fortschritt“ (`lernapp.chosen`) anpassen.
-11. **Testen** mit `python3 -m http.server` und Playwright:
-    - Leerer Speicher → Katalog erscheint; nach Hinzufügen eines Moduls lädt das Netzwerkprotokoll **nur** dessen Dateien.
-    - Vorhandener Lernstand für alle drei Module → alle drei gewählt, alles wie vorher.
-    - Hinzufügen, Entfernen, Wieder-Hinzufügen: Lernstand bleibt, keine Tagespflicht-Abzüge für die Pause.
-    - Offline (Playwright `offline`) nach dem Hinzufügen: Quiz inklusive schwerer Fragearten aus den Zusatzdateien funktioniert.
-    - Wischen, Leiste und Pfeiltasten nur über gewählte Module; Export/Import; keine Konsolenfehler.
-12. **Abschluss:** `VERSION` in `sw.js` erhöhen, Änderungsprotokoll ergänzen, Punkt 4 unter „Nächste Schritte“ abhaken.
-
-**Umsetzung (v13), Abweichungen und Ergänzungen:**
-- Die Modulleiste ist jetzt auch bei nur einem gewählten Modul sichtbar, damit das ＋ erreichbar bleibt. Im Auswahlmodus (ab 4) steht ＋ neben dem Auswahlknopf; das Auswahlmenü hat unten „Module verwalten“.
 - Neues Gerät: Willkommen-Seite mit Katalog und „Importieren“ (Fortschritt von einem anderen Gerät übernehmen, die enthaltenen Module werden gewählt).
-- Ist kein gewähltes Modul ladbar (z. B. offline direkt nach dem Update): Seite „Module nicht geladen“ mit „Nochmal versuchen“ und „Module verwalten“.
-- Ein kaputtes Modul bleibt gewählt (kann ein vorübergehendes Problem sein); beim Wechseln dorthin kommt die Meldung, die übrigen Module laufen weiter.
-- Entfernen des gerade offenen Moduls wechselt zuerst zum nächsten ladbaren gewählten Modul; geht das nicht (offline), wird nichts entfernt.
-- Getestet mit Playwright: leerer Speicher (nur Dateien des gewählten Moduls geladen), Übergang mit Lernstand in allen drei Modulen, Entfernen/Wieder-Hinzufügen ohne Abzüge, echter Offline-Betrieb (Server gestoppt) mit schweren Fragearten aus dem Daten-Cache, Hinzufügen offline (Meldung), Wischen/Pfeiltasten, Export/Import, kaputtes und zu neues Modul.
+- Fehlt `lernapp.chosen` (alte Installation), werden alle Module mit vorhandenem Lernstand gewählt. Gewählte Keys, die nicht mehr im Katalog stehen, fallen still weg.
+- Hinzufügen: Modul laden (ohne Netz Meldung), wählen, hinwechseln. Damit liegt es samt Zusatzinhalten offline vor.
+- Entfernen: Rückfrage, Lernstand bleibt, Datei wird aus dem Daten-Cache gelöscht. Das letzte Modul kann nicht entfernt werden. Ist das Modul gerade offen, wird zuerst zum nächsten ladbaren gewechselt; geht das nicht (offline), wird nichts entfernt.
+- Die Modulleiste ist auch bei nur einem Modul sichtbar (wegen ＋). Ab 4 Modulen: Auswahlknopf mit ＋ daneben, Auswahlmenü unten mit „Module verwalten“.
+- Ist kein gewähltes Modul ladbar: Seite „Module nicht geladen“ mit „Nochmal versuchen“ und „Module verwalten“. Ein kaputtes Modul bleibt gewählt; beim Wechseln dorthin kommt eine Meldung, die übrigen laufen weiter.
+- Service Worker: App-Cache `fach-vokabeln-<VERSION>` (wird bei jeder Version ersetzt) und Daten-Cache `fach-vokabeln-daten` (alles unter `modules/` außer `index.json`, übersteht App-Updates). Strategie: sofort aus dem Cache, im Hintergrund aktualisieren, Laden immer mit `cache:"no-cache"` wegen der 10-Minuten-Zwischenspeicherung von GitHub Pages.
 
 ## Änderungsprotokoll
 
@@ -427,4 +245,5 @@ Ziel: Die App ist der feste Lernrahmen, Module sind austauschbare Inhalte im Rep
 | v13 | **Modulsystem:** ein Ordner pro Modul (`modules/<key>/module.json`, `modules/<key>/extra/`), Moduldateien mit `format`/`version`; `index.json` ist der Katalog (`desc`, `count`, kein `file`). Nutzer wählt seine Module im neuen Katalog „Module verwalten“ (＋ in der Modulleiste und bei Export/Import), Auswahl in `lernapp.chosen`; bestehende Nutzer behalten alle Module mit Lernstand, neue Geräte starten mit dem Katalog. Nur gewählte Module werden geladen und offline gespeichert, beim Hinzufügen auch alle Zusatzdateien. Service Worker mit eigenem Daten-Cache, der App-Updates übersteht; beim Entfernen werden die Dateien gelöscht, der Lernstand bleibt. Keine Tagespflicht-Abzüge für die Zeit, in der ein Modul abgewählt war. Meldungen für fehlende, kaputte oder zu neue Module. Nach dem Update müssen gewählte Module einmal mit Internet geladen werden |
 | v14 | **Vorübergehend:** Vorschau der Krönchen-Designs. Erste Kategorie von IT (`code`) und Agile (`agil`) wird auf Übersicht und Nachschlagen als gemeistert und gekrönt angezeigt (`PREVIEW_CROWN`/`preview` in `app.js`), nur Anzeige, Lernstand unverändert; Meisterrunde-Knopf zeigt nur einen Hinweis. Wird wieder entfernt |
 | v15 | Vorschau aus v14 wieder entfernt, `app.js` wie in v13 |
-| v16 | Modul **Glasfaser & FTTH** (`ftth`) entfernt: Ordner, Katalogeintrag, Krönchen-Designs (`CROWN_DESIGNS`, `style.css`). Ein vorhandener Lernstand bleibt im `localStorage`, das Modul verschwindet still aus `lernapp.chosen`. **Zusatzdateien aufgelöst:** alle `modules/<key>/extra/*.json` stecken jetzt im Feld `extra` der `module.json` (1.305 + 507 Einträge, unverändert), ein Modul = eine Datei. `fetchExtras`/`loadExtras`/`preloadExtras` entfallen, Quiz und Meisterrunde starten ohne Warten. Service Worker räumt alte `extra/`- und `ftth/`-Einträge aus dem Daten-Cache |
+| v16 | Ein Modul aus Katalog und Repo entfernt (inkl. Krönchen-Designs). **Zusatzdateien aufgelöst:** alle `modules/<key>/extra/*.json` stecken jetzt im Feld `extra` der `module.json` (1.305 + 507 Einträge, unverändert), ein Modul = eine Datei. `fetchExtras`/`loadExtras`/`preloadExtras` entfallen, Quiz und Meisterrunde starten ohne Warten. Service Worker räumt alte Einträge aus dem Daten-Cache |
+| – | `CLAUDE.md` aufgeräumt: erledigte Ablaufpläne (Ausbau „Verstehen statt Auswendiglernen“, Umbau Agile, Modulsystem) durch die Abschnitte „Inhalte schreiben“, „Neues Modul anlegen“ und „Modulverwaltung“ ersetzt |

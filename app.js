@@ -40,8 +40,8 @@ const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ---------- Fortschritt (pro Modul getrennt) ----------
    v2 (Lernrahmen): jeder Begriff durchläuft Teil A, B, C.
-   P = {v:2, terms:{id:{a:[Häkchen], na, nm, t, aDay, b:[], bDay, cDay}}, crowns:{kat:{day}}, cats:[], askLog:{tag:anzahl}, updatedAt}
-   na = richtige Antworten in Teil A, nm = davon Richtung Bedeutung → Begriff, t = zuletzt gefragt (ms) */
+   P = {v:2, terms:{id:{a:[Häkchen], na, nm, t, aDay, b:[Häkchen], nb, bDay, cDay}}, crowns:{kat:{day}}, cats:[], askLog:{tag:anzahl}, updatedAt}
+   na = richtige Antworten in Teil A, nm = davon Richtung Bedeutung → Begriff, nb = richtige Antworten in Teil B, t = zuletzt gefragt (ms) */
 const MODULE_KEY = "devvokabeln.module";
 const P_VERSION = 2;
 function freshProgress(){ return {v:P_VERSION, terms:{}, crowns:{}, cats:Object.keys(CATS), askLog:{}, updatedAt:0}; }
@@ -321,6 +321,8 @@ async function connectCloud(){
 
 /* ---------- Kalender: beantwortete Fragen pro Tag (richtig und falsch, pro Modul) ---------- */
 const parseDay = d => { const [y, m, dd] = d.split("-").map(Number); return new Date(y, m - 1, dd); };
+/* Bremse: true, wenn heute ein späterer Kalendertag ist als d */
+const afterDay = d => !!d && parseDay(today()) > parseDay(d);
 const asksOn = key => (P.askLog && +P.askLog[key]) || 0;
 const asksToday = () => asksOn(today());
 const askLevel = n => n >= 30 ? 3 : n >= 10 ? 2 : n > 0 ? 1 : 0;
@@ -557,11 +559,13 @@ function showHelp(){
       ${row("Geschafft", "alle 7 Häkchen, mindestens 5 richtige Antworten")}
       <p class="hp-note">Eine richtige Antwort kann zwei Häkchen auf einmal bringen: Hörst du die Bedeutung und sprichst den Begriff, sind Hören und Sprechen erledigt. Schreiben und Sprechen kommen erst dran, wenn du den Begriff einmal richtig hattest. Welche Häkchen ein Begriff schon hat, siehst du nach jeder Antwort und im Nachschlagen.</p>
       <p class="hp-note">Beim Schreiben sind Groß- und Kleinschreibung, ein „to“ am Anfang, Bindestriche und Leerzeichen egal. Ein Tippfehler je angefangene 6 Buchstaben zählt als „fast richtig“ und damit als richtig. Tippst du genau einen anderen Begriff, ist es falsch.</p></section>
-    <section class="hp"><h3>Teil B: anwenden (kommt bald)</h3>
-      ${row("Lückensatz", "welches Wort fehlt?")}
-      ${row("Situation", "welcher Begriff passt?")}
-      ${row("Stimmt das?", "eine Aussage prüfen")}
-      ${row("Unterschied", "zwei ähnliche Begriffe auseinanderhalten")}</section>
+    <section class="hp"><h3>Teil B: anwenden</h3>
+      ${row("Lückensatz", "jeder Satz einmal; auswählen, schreiben und sprechen")}
+      ${row("Situation", "jede Situation einmal; lesen und hören; auswählen, schreiben und sprechen")}
+      ${row("Stimmt das?", "beide Aussagen einmal")}
+      ${row("Unterschied", "jeder Unterschied einmal")}
+      ${row("Geschafft", "alle Häkchen, meist 9 bis 10 richtige Antworten")}
+      <p class="hp-note">Die vier Fragearten kommen gemischt. Eine richtige Antwort kann mehrere Häkchen bringen: Hörst du eine Situation und sprichst den Begriff, sind die Situation, Hören und Sprechen erledigt. Situationen werden auf ${esc(langName(MOD.lang.meaning))} vorgelesen; Lückensätze gibt es nur zum Lesen. Beim Unterschied stehen A und B für die beiden Begriffe. Was ein Begriff nicht hat (etwa keinen Unterschied), wird nicht verlangt.</p></section>
     <section class="hp"><h3>Teil C: in eigenen Worten (kommt bald)</h3>
       <p class="hp-note">Du erklärst den Begriff selbst, geschrieben oder gesprochen, und eine KI prüft, ob du ihn verstanden hast. Dafür trägst du einen eigenen, kostenlosen Schlüssel von Google ein. Danach ist der Begriff gelernt. Sind alle Begriffe eines Themas gelernt, bekommt das Thema ein Krönchen mit eigenem Design.</p></section>
     <section class="hp"><h3>Ein Tag Abstand zwischen den Teilen</h3>
@@ -591,6 +595,7 @@ function touch(t){
   P.terms = P.terms || {};
   const s = P.terms[t.id] || (P.terms[t.id] = {a:[], na:0, nm:0});
   if (!Array.isArray(s.a)) s.a = [];
+  if (s.aDay && !Array.isArray(s.b)) s.b = [];
   return s;
 }
 /* Stand: new (nie gefragt), a (Teil A läuft), b (A geschafft, B offen), c (B geschafft), done (gelernt) */
@@ -629,13 +634,14 @@ const QUIZ_LEN = 10, NEW_PER_ROUND = 3;
 const A_TASKS = [];
 for (const out of ["read", "hear"]) for (const inp of ["pick", "type", "say"]) A_TASKS.push({dir:"m2t", out, inp, gives:["o:" + out, "i:" + inp]});
 for (const out of ["read", "hear"]) A_TASKS.push({dir:"t2m", out, inp:"pick", gives:["r:" + out]});
-const outLang = task => task.dir === "m2t" ? MOD.lang.meaning : MOD.lang.term;
+/* Sprache der Ausgabe: Bedeutung und Situationen in der Bedeutungs-Sprache, alles andere in der Begriffs-Sprache */
+const outLang = task => (task.dir === "m2t" || task.kind === "sit") ? MOD.lang.meaning : MOD.lang.term;
 /* Häkchen, die dieses Gerät gar nicht erfüllen kann, gelten als erfüllt (sonst bliebe der Begriff für immer hängen) */
 function autoChecks(){
   const out = [];
-  if (canHear(MOD.lang.meaning) === "no") out.push("o:hear");
+  if (canHear(MOD.lang.meaning) === "no") out.push("o:hear", "so:hear");
   if (canHear(MOD.lang.term) === "no") out.push("r:hear");
-  if (!SR) out.push("i:say");
+  if (!SR) out.push("i:say", "ci:say", "si:say");
   return out;
 }
 /* Gerade machbar? Bei „Gerade kein Ton“ kein Hören und kein Sprechen; Schreiben und Sprechen erst nach einer richtigen Antwort */
@@ -647,10 +653,103 @@ function doable(task, s){
 }
 function openChecksA(s){ const have = new Set((s ? s.a : []).concat(autoChecks())); return A_CHECKS.filter(c => !have.has(c)); }
 const partADone = s => !!s && !openChecksA(s).length && (s.na || 0) >= A_MIN && (s.nm || 0) >= A_MIN_M2T;
+
+/* ---------- Teil B: anwenden (Lückensatz, Situation, Stimmt das?, Unterschied) ----------
+   Häkchen: c0…c2 (Sätze: c0 = Beispielsatz, c1/c2 = Zusatzsätze), ci:pick/type/say (Eingabe beim Lückensatz);
+   s0…s2 (Situationen), so:read/hear, si:pick/type/say; t0/t1 (Stimmt das?); u0/u1 (Unterschied).
+   Was ein Begriff an Inhalten nicht hat, wird nicht verlangt. */
+const INPUTS = ["pick", "type", "say"];
+const INP_LABEL = {pick:"Auswählen", type:"Schreiben", say:"Sprechen"}, OUT_LABEL = {read:"Lesen", hear:"Hören"};
+const B_KIND_NAME = {cloze:"Lückensatz", sit:"Situation", tf:"Stimmt das?", conf:"Unterschied"};
+/* Alle Unterschied-Paare des Moduls mit maskiertem Satz (einmal pro Modul berechnet) */
+let PAIRS = null, PAIRS_MOD = null;
+function confPairs(){
+  if (PAIRS_MOD === MOD && PAIRS) return PAIRS;
+  const out = [], seen = new Set();
+  for (const [id, x] of Object.entries(MOD.extra || {})) {
+    const a = BYID[id]; if (!a) continue;
+    for (const c of arr(x && x.conf)) {
+      const b = Array.isArray(c) && BYID[c[0]];
+      if (!b || b === a || typeof c[1] !== "string" || !c[1].trim()) continue;
+      const k = [a.id, b.id].sort().join("|"); if (seen.has(k)) continue; seen.add(k);
+      out.push({a, b, label:maskNames(c[1], [[a, "A"], [b, "B"]])});
+    }
+  }
+  PAIRS = out; PAIRS_MOD = MOD; return out;
+}
+/* Falsche Antworten für eine Unterschied-Frage: maskierte Sätze anderer Paare, gleiche Kategorie zuerst, alle verschieden */
+function confWrong(t, p, own){
+  const list = shuffle(confPairs().filter(o => o.a !== t && o.b !== t && o.a !== p && o.b !== p));
+  const labels = new Set([own]), wrong = [];
+  for (const o of list.filter(o => o.a.cat === t.cat).concat(list.filter(o => o.a.cat !== t.cat))) {
+    if (wrong.length >= 3) break;
+    if (labels.has(o.label)) continue; labels.add(o.label); wrong.push(o.label);
+  }
+  return wrong;
+}
+/* Inhalte und mögliche Aufgaben von Teil B (pro Begriff einmal berechnet) */
+const BCACHE = new WeakMap();
+function bContent(t){
+  let c = BCACHE.get(t); if (c && c.mod === MOD) return c;
+  const x = extraOf(t);
+  const cloze = [];
+  if (termRe(t).test(t.exEn)) cloze.push({id:"c0", en:t.exEn, de:t.exDe, hint:clozeDe(t)});
+  x.ex.slice(0, 2).forEach((e, i) => cloze.push({id:"c" + (i + 1), en:e[0], de:e[1], hint:maskNames(e[1], [[t, "_____"]])}));
+  const sit = x.sit.slice(0, 3).map((text, i) => ({id:"s" + i, text}));
+  const tf = x.tf.slice(0, 2).map((f, i) => ({id:"t" + i, f}));
+  const conf = [];
+  x.conf.slice(0, 2).forEach((cf, i) => {
+    const p = BYID[cf[0]], label = maskNames(cf[1], [[t, "A"], [p, "B"]]);
+    if (confWrong(t, p, label).length >= 3) conf.push({id:"u" + i, p, text:cf[1], label});
+  });
+  const checks = [], tasks = [];
+  if (cloze.length) checks.push(...cloze.map(o => o.id), ...INPUTS.map(i => "ci:" + i));
+  if (sit.length) checks.push(...sit.map(o => o.id), "so:read", "so:hear", ...INPUTS.map(i => "si:" + i));
+  checks.push(...tf.map(o => o.id), ...conf.map(o => o.id));
+  for (const ref of cloze) for (const inp of INPUTS) tasks.push({part:"b", kind:"cloze", ref, out:"read", inp, gives:[ref.id, "ci:" + inp]});
+  for (const ref of sit) for (const out of ["read", "hear"]) for (const inp of INPUTS) tasks.push({part:"b", kind:"sit", ref, out, inp, gives:[ref.id, "so:" + out, "si:" + inp]});
+  for (const ref of tf) tasks.push({part:"b", kind:"tf", ref, out:"read", inp:"pick", gives:[ref.id]});
+  for (const ref of conf) tasks.push({part:"b", kind:"conf", ref, out:"read", inp:"pick", gives:[ref.id]});
+  c = {mod:MOD, cloze, sit, tf, conf, checks, tasks};
+  BCACHE.set(t, c); return c;
+}
+function openChecksB(t, s){ const have = new Set(arr(s && s.b).concat(autoChecks())); return bContent(t).checks.filter(c => !have.has(c)); }
+/* Name eines Häkchens von Teil B (für „Neu abgehakt“) */
+function checkNameB(t, g){
+  const [k, v] = g.split(":");
+  if (v) return B_KIND_NAME[k === "ci" ? "cloze" : "sit"] + ": " + (INP_LABEL[v] || OUT_LABEL[v]);
+  const c = bContent(t), num1 = list => list.findIndex(o => o.id === g) + 1;
+  if (g[0] === "c") return "Lückensatz " + num1(c.cloze);
+  if (g[0] === "s") return "Situation " + num1(c.sit);
+  if (g[0] === "t") return "Stimmt das? " + num1(c.tf);
+  return "Unterschied " + num1(c.conf);
+}
+/* Teil B: erst am Tag nach Teil A (Bremse). Erst die Frageart zufällig unter denen mit offenen Häkchen,
+   dann darin die Aufgabe mit den meisten offenen Häkchen (Gleichstand: zufällig). So kommen die Fragearten gemischt. */
+function taskForB(t, s){
+  if (!afterDay(s.aDay)) return null;
+  const open = new Set(openChecksB(t, s)), kinds = {};
+  for (const k of bContent(t).tasks) {
+    if (!doable(k, s)) continue;
+    const n = k.gives.filter(g => open.has(g)).length; if (!n) continue;
+    const b = kinds[k.kind] || (kinds[k.kind] = {best:0, list:[]});
+    if (n > b.best) { b.best = n; b.list = [k]; } else if (n === b.best) b.list.push(k);
+  }
+  const ks = Object.keys(kinds);
+  return ks.length ? pickOne(kinds[pickOne(ks)].list) : null;
+}
+/* Teil B ohne offene Häkchen (keine Inhalte oder nur Häkchen, die das Gerät nicht kann): nach der Bremse gleich abschließen */
+function autoFinishB(){
+  let n = 0;
+  for (const t of TERMS) { const s = stateOf(t); if (s && s.aDay && !s.bDay && afterDay(s.aDay) && !openChecksB(t, s).length) { s.bDay = today(); n++; } }
+  if (n) save();
+}
+
 /* Aufgabe für einen Begriff: die mit den meisten offenen Häkchen (Gleichstand: zufällig). null = gerade nichts zu tun */
 function taskFor(t){
   const s = stateOf(t);
-  if (s && s.aDay) return null;   /* Teil B kommt in einer späteren Version */
+  if (s && s.bDay) return null;   /* Teil C kommt in einer späteren Version */
+  if (s && s.aDay) return taskForB(t, s);
   const open = new Set(openChecksA(s)), can = A_TASKS.filter(k => doable(k, s));
   let best = 0, list = [];
   for (const k of can) {
@@ -664,7 +763,12 @@ function taskFor(t){
   return need.length ? pickOne(need) : null;
 }
 const hasTask = t => !!taskFor(t);
-const waitsForSound = t => { const s = stateOf(t); return !!s && !s.aDay && !hasTask(t) && openChecksA(s).length > 0; };
+/* Wartet auf eine Runde mit Ton: offen sind nur noch Hören oder Sprechen */
+const waitsForSound = t => { const s = stateOf(t); if (!s || s.bDay) return false;
+  if (s.aDay) return afterDay(s.aDay) && !hasTask(t) && openChecksB(t, s).length > 0;
+  return !hasTask(t) && openChecksA(s).length > 0; };
+/* Wartet auf morgen: Teil A heute geschafft, Teil B erst ab dem nächsten Tag */
+const waitsForDay = t => { const s = stateOf(t); return !!s && !!s.aDay && !s.bDay && !afterDay(s.aDay); };
 
 function pool(){ return TERMS.filter(t => P.cats.includes(t.cat)); }
 const catScore = k => { const ts = catTerms(k); return ts.length ? ts.reduce((s, t) => s + STAGE_W[stageOf(t)], 0) / ts.length : 0; };
@@ -678,12 +782,12 @@ function freshTerms(n){
   }
   return out;
 }
-/* Runde planen: begonnene Begriffe zuerst (am längsten nicht gefragt zuerst), dann höchstens 3 neue.
+/* Runde planen: begonnene Begriffe zuerst (höherer Teil vor niedrigerem, dann am längsten nicht gefragt zuerst), dann höchstens 3 neue.
    Jeder Begriff höchstens 2×: erst alle einmal, dann die zweiten Male, nie derselbe direkt hintereinander.
    Welche Aufgabe kommt, entscheidet sich erst beim Erreichen der Frage (nextQuestion). */
 function planRound(){
   const started = shuffle(pool().filter(t => stageOf(t) !== "new" && hasTask(t)))
-    .sort((a, b) => (stateOf(a).t || 0) - (stateOf(b).t || 0));
+    .sort((a, b) => (STAGE_W[stageOf(b)] - STAGE_W[stageOf(a)]) || (stateOf(a).t || 0) - (stateOf(b).t || 0));
   const first = started.slice(0, QUIZ_LEN);
   first.push(...freshTerms(Math.min(NEW_PER_ROUND, QUIZ_LEN - first.length)));
   const one = shuffle(first), two = shuffle(first.slice(0, Math.max(0, QUIZ_LEN - first.length)));
@@ -708,9 +812,11 @@ function distractors(t, field){
 }
 /* Was die Übersicht und das Rundenende sagen, wenn es gerade nichts zu fragen gibt */
 function noTasksText(){
-  const p = pool(), w = p.filter(waitsForSound).length, b = p.filter(t => stageOf(t) === "b").length;
+  const p = pool(), w = p.filter(waitsForSound).length, d = p.filter(waitsForDay).length, c = p.filter(t => stageOf(t) === "c").length;
+  const more = TERMS.some(t => !P.cats.includes(t.cat) && stageOf(t) === "new") ? " Hak weitere Themen an, um neue Begriffe zu lernen." : "";
   if (w && quiet) return `${num(w)} ${w === 1 ? "Begriff braucht" : "Begriffe brauchen"} nur noch Hören oder Sprechen. Schalte „Gerade kein Ton“ aus, sobald das wieder geht.`;
-  if (b) return "In den angehakten Themen haben alle Begriffe Teil A geschafft. Teil B kommt bald. Hak weitere Themen an, um neue Begriffe zu lernen.";
+  if (d) return `Heute alles erledigt, morgen geht's weiter mit ${num(d)} ${d === 1 ? "Begriff" : "Begriffen"}.` + more;
+  if (c) return "In den angehakten Themen haben alle Begriffe Teil B geschafft. Teil C kommt bald." + more;
   return "Gerade gibt es nichts zu fragen. Probier es gleich noch einmal.";
 }
 
@@ -855,6 +961,7 @@ window.addEventListener("popstate", () => {
 function renderHome(fromPop){
   if (fromPop !== true && history.state && history.state.nav === "screen") { ignorePop++; try { history.back(); } catch (e) { ignorePop--; } }
   screen = "home";
+  autoFinishB();
   setFocus(false); renderTop();
   const all = TERMS.length, p = pool(), active = p.length;
   const rows = Object.entries(CATS).map(([k, c]) => {
@@ -978,20 +1085,6 @@ function renderCardsDone(){
 /* ---------- Quiz ---------- */
 let Q = null;
 const pickOne = a => a[Math.floor(Math.random() * a.length)];
-/* Unterschied-Aussagen anderer Paare (gleiche Kategorie zuerst) als falsche Antworten */
-function otherConfs(t, p){
-  const out = [], seenPair = new Set();
-  for (const [id, x] of Object.entries(MOD.extra || {})) {
-    const a = BYID[id]; if (!a || a === t || a === p) continue;
-    for (const c of arr(x && x.conf)) {
-      const b = Array.isArray(c) && BYID[c[0]];
-      if (!b || b === t || b === p || b === a || typeof c[1] !== "string") continue;
-      const k = [a.id, b.id].sort().join("|"); if (seenPair.has(k)) continue; seenPair.add(k);
-      out.push({a, b, text:c[1], same:a.cat === t.cat});
-    }
-  }
-  const s = shuffle(out); return s.filter(o => o.same).concat(s.filter(o => !o.same));
-}
 /* Beispielsatz mit markiertem Begriff (Standard- oder Zusatzsatz) */
 const markTerm = (t, en) => esc(en).replace(termRe(t), "$1<mark>$2</mark>");
 
@@ -1019,12 +1112,31 @@ function checkTyped(t, text){
 }
 /* ---------- Quiz-Ablauf: Fragen werden erst beim Erreichen gebaut, damit der Lernstand aktuell ist ---------- */
 function makeQuestion(t, task){
-  const q = {t, dir:task.dir, out:task.out, inp:task.inp, fresh:stageOf(t) === "new", played:false};
-  q.prompt = task.dir === "m2t" ? t.de : t.en; q.lang = outLang(task);
+  const q = {t, task, part:task.part || "a", kind:task.kind || "", dir:task.dir, out:task.out, inp:task.inp, fresh:stageOf(t) === "new", played:false};
+  q.lang = outLang(task);
+  if (q.part === "b") return makeQuestionB(q, t, task);
+  q.prompt = task.dir === "m2t" ? t.de : t.en;
   if (task.inp === "pick") {
     const field = task.dir === "m2t" ? "en" : "de";
     q.opts = shuffle([t].concat(distractors(t, field))).map(o => ({id:o.id, label:o[field]})); q.answer = t.id;
   }
+  return q;
+}
+/* Teil B: Lückensatz und Situation mit Begriffen als Antwort (oder Eintippen/Sprechen), Stimmt das? mit Stimmt/Stimmt nicht,
+   Unterschied mit maskierten Sätzen (A = Begriff, B = Partner) */
+function makeQuestionB(q, t, task){
+  const ref = task.ref;
+  if (task.kind === "tf") {
+    q.tf = ref.f; q.prompt = ref.f[1]; q.answer = String(ref.f[0]);
+    q.opts = [{id:"true", label:"Stimmt"}, {id:"false", label:"Stimmt nicht"}]; return q;
+  }
+  if (task.kind === "conf") {
+    q.partner = ref.p; q.conf = ref.text; q.answer = "ok";
+    q.opts = shuffle([{id:"ok", label:ref.label}].concat(confWrong(t, ref.p, ref.label).map((l, i) => ({id:"x" + i, label:l})))); return q;
+  }
+  if (task.kind === "cloze") { q.sent = ref; q.prompt = ref.en.replace(termRe(t), "$1_____"); }
+  else q.prompt = ref.text;
+  if (task.inp === "pick") { q.opts = shuffle([t].concat(distractors(t, "en"))).map(o => ({id:o.id, label:o.en})); q.answer = t.id; }
   return q;
 }
 /* Nächste machbare Frage ab Position from; nie derselbe Begriff wie zuletzt */
@@ -1038,13 +1150,14 @@ function countAhead(from, prevId){
   return n;
 }
 function goQuestion(n){
-  Q.i = n.i; Q.q = makeQuestion(Q.items[n.i], n.task); Q.answered = null; Q.spoken = null;
+  Q.i = n.i; Q.q = makeQuestion(Q.items[n.i], n.task); Q.answered = null; Q.spoken = null; Q.hint = false;
   Q.total = Q.asked + 1 + countAhead(n.i + 1, Q.items[n.i].id);
 }
 function startQuiz(){
   if (!pool().length) { toast("Wähle mindestens ein Thema."); return; }
+  autoFinishB();
   const items = planRound();
-  Q = {items, i:-1, q:null, asked:0, right:0, checks:0, total:items.length, doneA:[], missed:[], answered:null, spoken:null};
+  Q = {items, i:-1, q:null, asked:0, right:0, checks:0, total:items.length, doneA:[], doneB:[], missed:[], answered:null, spoken:null, hint:false};
   const n = findNext(0, null);
   if (!n) { Q = null; toast(noTasksText(), 4500); return; }
   stopListen(); goQuestion(n);
@@ -1052,14 +1165,20 @@ function startQuiz(){
 }
 function renderQuiz(){
   const q = Q.q, t = q.t, c = CATS[t.cat], a = Q.answered, TN = langName(MOD.lang.term), MN = langName(MOD.lang.meaning);
-  const hear = q.out === "hear", micOK = !!SR && !quiet;
-  const ask = (hear ? "Hör zu: " : "") + (q.dir === "m2t" ? `Wie heißt das auf ${esc(TN)}?` : "Was bedeutet das?");
-  const body = hear && !a
+  const hear = q.out === "hear", micOK = !!SR && !quiet, B = q.part === "b";
+  const ask = (hear ? "Hör zu: " : "") + (!B ? (q.dir === "m2t" ? `Wie heißt das auf ${esc(TN)}?` : "Was bedeutet das?")
+    : q.kind === "cloze" ? "Welches Wort fehlt im Satz?" : q.kind === "sit" ? "Welcher Begriff passt?"
+    : q.kind === "tf" ? `Stimmt das? <span class="q-term">${esc(t.en)}</span>` : "Was unterscheidet A von B?");
+  const big = B ? "q-mid" : "q-big";
+  let body = hear && !a
     ? `<button class="hear-btn" id="hear"><span aria-hidden="true">🔊</span> Nochmal anhören</button>`
-    : `<div class="q-big">${esc(q.prompt)}</div>${hear ? `<p class="q-heard">Das war zu hören.</p>` : ""}`;
+    : `<div class="${big}">${esc(q.prompt)}</div>${hear ? `<p class="q-heard">Das war zu hören.</p>` : ""}`;
+  if (q.kind === "cloze") body = `<div class="q-mid" lang="${esc(MOD.lang.term)}">${esc(q.prompt)}</div>
+      <div class="q-hint">${a ? "" : Q.hint ? esc(q.sent.hint) : `<button id="hint">Satz auf ${esc(MN)} zeigen</button>`}</div>`;
+  if (q.kind === "conf") body = `<div class="conf-pair"><div><b class="ab">A</b><span>${esc(t.en)}</span></div><div><b class="ab">B</b><span>${esc(q.partner.en)}</span></div></div>`;
   const opts = (q.opts || []).map((o, k) => {
     const cls = !a ? "opt" : o.id === q.answer ? "opt right" : a.pick === k ? "opt wrong" : "opt dim";
-    return `<button class="${cls}${q.dir === "t2m" ? " long" : ""}" data-k="${k}" ${a ? 'aria-disabled="true"' : ""}>${esc(o.label)}</button>`;
+    return `<button class="${cls}${q.dir === "t2m" || q.kind === "conf" ? " long" : ""}" data-k="${k}" ${a ? 'aria-disabled="true"' : ""}>${esc(o.label)}</button>`;
   }).join("");
   let input = "";
   if (q.inp !== "pick") input = a
@@ -1069,16 +1188,20 @@ function renderQuiz(){
        ${q.inp === "say" ? `<p class="say-note">Sag den Begriff auf ${esc(TN)}. Danach kannst du neu aufnehmen oder korrigieren; von Hand geändert zählt es als Schreiben.</p>` : ""}
        <div class="type-btns"><button class="btn" id="dunno">Weiß ich nicht</button><button class="btn primary" id="check">Prüfen</button></div>`;
   const s = stateOf(t), last = a && Q.total <= Q.asked;
+  const exEn = q.sent ? q.sent.en : t.exEn, exDe = q.sent ? q.sent.de : t.exDe;
   const fb = a ? `<div class="feedback tap-next" id="fbox" style="--fb:var(${a.ok ? "--ok" : "--bad"})">
       <h3>${a.ok ? "Richtig!" : "Leider nicht."}</h3>
       ${a.note ? `<p><b>${esc(a.note)}</b></p>` : ""}
-      ${a.got.length ? `<p class="fb-got">Neu abgehakt: ${a.got.map(g => CHECK_FULL[g]).join(", ")}</p>` : ""}
-      ${a.doneA ? `<p class="fb-done"><b>Teil A geschafft! 🎉</b> Teil B kommt bald.</p>` : ""}
-      ${s && !s.aDay ? checksHtml(s) : ""}
+      ${a.got.length ? `<p class="fb-got">Neu abgehakt: ${a.got.map(g => B ? checkNameB(t, g) : CHECK_FULL[g]).join(", ")}</p>` : ""}
+      ${a.doneA ? `<p class="fb-done"><b>Teil A geschafft! 🎉</b> Ab morgen kommt Teil B.</p>` : ""}
+      ${a.doneB ? `<p class="fb-done"><b>Teil B geschafft! 🎉</b> Teil C kommt bald.</p>` : ""}
+      ${!B && s && !s.aDay ? checksHtml(s) : B && s && !s.bDay ? checksHtmlB(t, s) : ""}
+      ${q.kind === "tf" ? `<p><b>Die Aussage ${q.tf[0] ? "stimmt" : "stimmt nicht"}.</b> ${esc(q.tf[2] || "")}</p>` : ""}
+      ${q.kind === "conf" ? `<p><b>Unterschied:</b> ${esc(q.conf)}</p><p><b>${esc(q.partner.en)}</b> = ${esc(q.partner.de)}</p>` : ""}
       <p><b>${esc(t.en)}</b> = ${esc(t.de)}</p>
       <p>${esc(t.expl)}</p>
-      <p class="fb-ex"><i>${markTerm(t, t.exEn)}</i><br>${esc(t.exDe)}</p>
-      <div>${speakBtn(t.en, "Begriff")} ${speakBtn(t.exEn, TN)} ${speakBtn(t.exDe, MN, MOD.lang.meaning)}</div>
+      <p class="fb-ex"><i>${markTerm(t, exEn)}</i><br>${esc(exDe)}</p>
+      <div>${speakBtn(t.en, "Begriff")} ${speakBtn(exEn, TN)} ${speakBtn(exDe, MN, MOD.lang.meaning)}</div>
     </div>
     <button class="btn primary wide" id="next">${last ? "Ergebnis ansehen" : "Weiter"}</button>` : "";
   const nr = Q.asked + (a ? 0 : 1), total = Math.max(Q.total, nr);
@@ -1087,11 +1210,12 @@ function renderQuiz(){
       <div class="progress"><i style="width:${(Q.asked / total) * 100}%"></i></div>
       <span class="xp-chip" aria-label="Häkchen in dieser Runde">✓ ${Q.checks}</span></div>
     <div class="note${a ? " tap-next" : ""}" id="qcard" style="--c:${c.c}"${a ? ` title="Weiter zur nächsten Frage"` : ""}>
-      <div class="cat-label">${esc(c.name)}${q.fresh ? " · neu" : ""} · Frage ${nr} von ${total}</div>
+      <div class="cat-label">${esc(c.name)}${q.fresh ? " · neu" : ""}${B ? " · Teil B" : ""} · Frage ${nr} von ${total}</div>
       <div class="q-ask">${ask}</div>${body}
     </div>
-    ${input}${opts ? `<div class="opts">${opts}</div>` : ""}${fb}`;
+    ${input}${opts ? `<div class="opts${q.kind === "tf" ? " tf" : ""}">${opts}</div>` : ""}${fb}`;
   app.querySelector("[data-home]").onclick = () => { stopListen(); if (Q.asked) save(); goHome(); };
+  const hb = $("#hint"); if (hb) hb.onclick = () => { Q.hint = true; renderQuiz(); };
   if (!a) {
     if (hear) {
       const play = () => speak(sayable(q.prompt), q.lang);
@@ -1128,6 +1252,20 @@ function checksHtml(s){
     <span aria-hidden="true">Bedeutung → Begriff</span><div aria-hidden="true">${A_M2T.map(chip).join("")}</div>
     <span aria-hidden="true">Begriff → Bedeutung</span><div aria-hidden="true">${A_T2M.map(chip).join("")}</div></div>`;
 }
+/* Häkchen von Teil B als Chips, nach Frageart gruppiert */
+function checksHtmlB(t, s){
+  const c = bContent(t), auto = autoChecks(), mine = g => arr(s && s.b).includes(g), on = g => mine(g) || auto.includes(g);
+  const chip = (g, l) => `<i class="${on(g) ? "on" : ""}"${auto.includes(g) && !mine(g) ? ' title="Auf diesem Gerät nicht möglich, gilt als erledigt"' : ""}>${esc(l)}</i>`;
+  const nums = list => list.map((o, i) => chip(o.id, (list === c.cloze ? "Satz " : list === c.sit ? "Situation " : list === c.tf ? "Aussage " : "Satz ") + (i + 1))).join("");
+  const row = (name, html) => `<span aria-hidden="true">${name}</span><div aria-hidden="true">${html}</div>`;
+  let h = "";
+  if (c.cloze.length) h += row("Lückensatz", nums(c.cloze) + INPUTS.map(i => chip("ci:" + i, INP_LABEL[i])).join(""));
+  if (c.sit.length) h += row("Situation", nums(c.sit) + ["read", "hear"].map(o => chip("so:" + o, OUT_LABEL[o])).join("") + INPUTS.map(i => chip("si:" + i, INP_LABEL[i])).join(""));
+  if (c.tf.length) h += row("Stimmt das?", nums(c.tf));
+  if (c.conf.length) h += row("Unterschied", nums(c.conf));
+  const n = c.checks.filter(on).length;
+  return h ? `<div class="chk" role="img" aria-label="Teil B: ${n} von ${c.checks.length} Häkchen">${h}</div>` : "";
+}
 function answer(k){ const q = Q.q; settle(q.opts[k].id === q.answer, {pick:k, inp:"pick"}); }
 /* Gesprochen: die beste erkannte Variante kommt ins Textfeld (richtig vor fast richtig vor Verwechslung vor falsch) */
 function heard(alts, inp){
@@ -1148,23 +1286,32 @@ function answerInput(text){
 }
 function settle(ok, info){
   if (!Q || Q.answered) return;
-  const q = Q.q, t = q.t, s = touch(t), d = today(), wasDone = !!s.aDay, got = [];
+  const q = Q.q, t = q.t, s = touch(t), d = today(), wasDone = !!s.aDay, wasDoneB = !!s.bDay, got = [];
   s.t = Date.now();
   P.askLog = P.askLog || {}; P.askLog[d] = (+P.askLog[d] || 0) + 1;
   Q.asked++;
   let note = info.near ? (info.spoken ? `Fast richtig: verstanden habe ich „${info.typed}“, gemeint ist „${t.en}“.` : `Fast richtig: „${info.typed}“, richtig geschrieben „${t.en}“.`) : "";
   if (ok) {
     Q.right++;
-    const gives = q.dir === "m2t" ? ["o:" + q.out, "i:" + info.inp] : ["r:" + q.out];
-    for (const g of gives) if (!s.a.includes(g)) { s.a.push(g); got.push(g); }
-    s.na = (s.na || 0) + 1; if (q.dir === "m2t") s.nm = (s.nm || 0) + 1;
+    if (q.part === "b") {
+      /* Eingabe: tatsächlich genutzt (gesprochen und von Hand geändert = Schreiben) */
+      const gives = q.task.gives.map(g => /^(ci|si):/.test(g) ? g.slice(0, 3) + info.inp : g);
+      for (const g of gives) if (!s.b.includes(g)) { s.b.push(g); got.push(g); }
+      s.nb = (s.nb || 0) + 1;
+    } else {
+      const gives = q.dir === "m2t" ? ["o:" + q.out, "i:" + info.inp] : ["r:" + q.out];
+      for (const g of gives) if (!s.a.includes(g)) { s.a.push(g); got.push(g); }
+      s.na = (s.na || 0) + 1; if (q.dir === "m2t") s.nm = (s.nm || 0) + 1;
+    }
     Q.checks += got.length;
     if (info.edited && q.inp === "say") note = (note ? note + " " : "") + "Von Hand geändert, darum zählt es als Schreiben.";
   } else if (!Q.missed.includes(t)) Q.missed.push(t);
   const doneA = !wasDone && partADone(s);
-  if (doneA) { s.aDay = d; Q.doneA.push(t); confetti(); }
+  if (doneA) { s.aDay = d; s.b = []; Q.doneA.push(t); confetti(); }
+  const doneB = q.part === "b" && !wasDoneB && !openChecksB(t, s).length;
+  if (doneB) { s.bDay = d; Q.doneB.push(t); confetti(); }
   Q.total = Q.asked + countAhead(Q.i + 1, t.id);
-  Q.answered = {pick:info.pick, typed:info.typed, spoken:!!info.spoken, near:info.near, ok, got, doneA, note, at:Date.now()};
+  Q.answered = {pick:info.pick, typed:info.typed, spoken:!!info.spoken, near:info.near, ok, got, doneA, doneB, note, at:Date.now()};
   save(); renderQuiz();
 }
 function nextQuestion(){
@@ -1182,7 +1329,8 @@ function renderQuizDone(){
     <h1>${perfect ? "Fehlerfrei!" : "Runde geschafft"}</h1>
     <div class="note" style="--c:var(--m2)"><div class="big-num">${Q.right} / ${Q.asked}</div>
       <div>richtig · ${Q.checks} ${Q.checks === 1 ? "neues Häkchen" : "neue Häkchen"}</div></div>
-    ${Q.doneA.length ? `<div class="missed"><strong>Teil A geschafft 🎉</strong>${list(Q.doneA)}<p class="hp-note">Teil B kommt bald.</p></div>` : ""}
+    ${Q.doneB.length ? `<div class="missed"><strong>Teil B geschafft 🎉</strong>${list(Q.doneB)}<p class="hp-note">Teil C kommt bald.</p></div>` : ""}
+    ${Q.doneA.length ? `<div class="missed"><strong>Teil A geschafft 🎉</strong>${list(Q.doneA)}<p class="hp-note">Teil B kommt ab morgen dran.</p></div>` : ""}
     ${Q.missed.length ? `<div class="missed"><strong>Daneben, kommt wieder dran:</strong>${list(Q.missed)}</div>` : ""}
     ${wait ? `<div class="missed">🔇 ${num(wait)} ${wait === 1 ? "Begriff wartet" : "Begriffe warten"} auf eine Runde mit Ton.</div>` : ""}
     ${!more && !wait ? `<div class="missed">${esc(noTasksText())}</div>` : ""}
@@ -1196,13 +1344,18 @@ function stageTag(t){
   const st = stageOf(t), s = stateOf(t);
   if (st === "new") return "";
   if (st === "a") { const n = A_CHECKS.length - openChecksA(s).length; return `<span class="st-tag" title="Teil A: ${n} von ${A_CHECKS.length} Häkchen">A ${n}/${A_CHECKS.length}</span>`; }
-  if (st === "b") return `<span class="st-tag b" title="Teil A geschafft, Teil B kommt bald">B</span>`;
-  if (st === "c") return `<span class="st-tag c" title="Teil B geschafft">C</span>`;
+  if (st === "b") {
+    if (!afterDay(s.aDay)) return `<span class="st-tag b" title="Teil A geschafft, Teil B ab morgen">B</span>`;
+    const all = bContent(t).checks.length, n = all - openChecksB(t, s).length;
+    return `<span class="st-tag b" title="Teil B: ${n} von ${all} Häkchen">B ${n}/${all}</span>`;
+  }
+  if (st === "c") return `<span class="st-tag c" title="Teil B geschafft, Teil C kommt bald">C</span>`;
   return `<span class="st-tag done">✓ gelernt</span>`;
 }
 const lexItem = t => { const st = stageOf(t), s = stateOf(t); return `
   <details class="st-${st}"><summary><span class="s-en">${esc(t.en)}${stageTag(t)}</span><span class="s-de">${esc(t.de)}</span></summary>
-  <div class="lex-body">${st === "a" ? checksHtml(s) : st === "b" ? `<p class="lex-st">Teil A geschafft am ${esc(parseDay(s.aDay).toLocaleDateString("de-AT"))}. Teil B kommt bald.</p>` : ""}
+  <div class="lex-body">${st === "a" ? checksHtml(s) : st === "b" ? (afterDay(s.aDay) ? checksHtmlB(t, s) : `<p class="lex-st">Teil A geschafft am ${esc(parseDay(s.aDay).toLocaleDateString("de-AT"))}. Teil B kommt ab morgen dran.</p>`)
+    : st === "c" ? `<p class="lex-st">Teil B geschafft am ${esc(parseDay(s.bDay).toLocaleDateString("de-AT"))}. Teil C kommt bald.</p>` : ""}
   ${t.expls.length > 1 ? `<ol class="expls">${t.expls.map(e => `<li>${esc(e)}</li>`).join("")}</ol>` : `<p>${esc(t.expl)}</p>`}
   <div class="ex"><div class="en">${highlight(t)}</div><div class="tr">${esc(t.exDe)}</div>${speakBtn(t.exEn, langName(MOD.lang.term))} ${speakBtn(t.exDe, langName(MOD.lang.meaning), MOD.lang.meaning)}</div></div></details>`; };
 function renderLex(){

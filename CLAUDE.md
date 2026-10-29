@@ -12,6 +12,7 @@
 1. ☑ **Schritt 2 für IT**: Zusatzinhalte für alle IT-Kategorien (Status unter „Ausbau ‚Verstehen statt Auswendiglernen‘“).
 2. ☑ **Schritt G für Agile**: Grunddaten für alle 13 Kategorien (Status unter „Neues Modul ‚Agile & Projekte‘“). Ein Chat pro Kategorie.
 3. ☑ **Schritt 2 für Agile**: Zusatzinhalte für alle 13 Kategorien (Status-Tabelle „Schritt 2 für Agile“).
+4. ☐ **Modulsystem**: Module als Ordner, Nutzer wählt seine Module, nur gewählte werden geladen und offline gespeichert (Abschnitt „Vorhaben ‚Modulsystem‘“). Ein Chat.
 
 Phase 1 und 2 hängen nicht voneinander ab und dürfen sich auch überschneiden. Phase 3 muss warten, weil die `conf`-Partner auch aus anderen Agile-Kategorien kommen dürfen und diese Begriffe dann schon existieren müssen.
 
@@ -326,6 +327,61 @@ Ausliefern: nur `modules/agile.json` und diese Datei (Status abhaken). Eine `VER
 | `kosten` Verträge, Kosten & Beschaffung | 35 | ☑ |
 | `risiko` Risiko, Qualität & Abschluss | 33 | ☑ |
 | `komm` Stakeholder, Kommunikation & Moderation | 36 | ☑ |
+
+## Vorhaben „Modulsystem“ (offen)
+
+Ziel: Die App ist der feste Lernrahmen, Module sind austauschbare Inhalte im Repo. Jeder Nutzer wählt, welche Module er verwendet. **Nur gewählte Module werden geladen und offline gespeichert.** Hintergrund: Später sollen viele, auch kleine Module dazukommen (z. B. Biologie oder Geographie für einen Schultest, von Claude erstellt). Dann darf nicht jedes Handy alles herunterladen.
+
+**Abgrenzung:** Dieser Schritt ändert nichts an Inhalten, Fragearten, Punkten, Rängen oder Lernstand-Regeln. Neue Fragearten, Fortschritt in Stufen statt XP und die dafür nötigen neuen Modulinhalte gehören zum späteren Vorhaben „Lernrahmen“, eine Sprachprüfung mit KI zu einem eigenen Vorhaben. Beide sind noch nicht definiert und werden hier nicht vorweggenommen.
+
+**Ein Chat.** Dateien: `app.js`, `sw.js`, `style.css` (Katalog), `modules/` (nur verschieben und per Skript ergänzen, große JSON-Dateien nie lesen), `README.md`, diese Datei.
+
+### Ist-Zustand: warum heute alles geladen wird
+
+- `sw.js` lädt beim Installieren alle Module aus `index.json` in den Cache.
+- `boot` lädt nach 1,5 s alle übrigen Module vor (`MODULE_ORDER.forEach(ensureModule)`).
+- Modulleiste, Wischen, Pfeiltasten und `showModulePicker` zeigen immer alle Module aus `MODULE_ORDER`.
+
+### Schritte
+
+1. **Ein Ordner pro Modul** (mit `git mv`, damit die Historie bleibt):
+   - `modules/<key>/module.json` und `modules/<key>/extra/<kategorie>.json`. Der Ordnername ist immer der `key`.
+   - `it-scrum.json` → `modules/dev/module.json`, `modules/extra/dev/` → `modules/dev/extra/`; ebenso `glasfaser.json` → `modules/ftth/`, `agile.json` → `modules/agile/`.
+   - `ensureModule` lädt `modules/<key>/module.json`, `loadExtras` lädt `modules/<key>/extra/<kat>.json`. Das Feld `file` in `index.json` entfällt.
+   - Jede `module.json` bekommt vorne `"format":"fachvokabeln-modul","version":1` (per Skript, kompakt wie bisher, `ensure_ascii=False`, sonst nichts ändern). Damit kann der spätere Lernrahmen alte und neue Module unterscheiden.
+2. **`index.json` wird zum Katalog.** Felder wie bisher (`key`, `name`, `short`, `icon`, `ls`, `doc`, `accent`, `board`), ohne `file`, dazu neu:
+   - `desc`: ein Satz für den Katalog, z. B. „Englische Fachbegriffe rund um Glasfaserausbau und FTTH“.
+   - `count`: Zahl der Begriffe (per Skript aus `raw` ermitteln). Optional; fehlt es, zeigt der Katalog keine Zahl. Bei Begriffsänderungen mitpflegen.
+   - Regeln für neue Module: `ls` = `lernapp.progress.<key>`, `doc` = `progress-<key>`. Bestehende `ls`-Werte **nie ändern**.
+3. **Auswahl speichern:** `localStorage["lernapp.chosen"]` = Array der gewählten Keys. Reihenfolge in Leiste und Wischen = Reihenfolge in `index.json`.
+   - Empfehlung für den Code: `CATALOG_ORDER` = alle Module aus dem Index, `MODULE_ORDER` = nur gewählte. Dann bleiben die meisten Stellen, die `MODULE_ORDER` nutzen (Leiste, Wischen, Pfeiltasten, `modIdx`, `loadModule`), unverändert richtig.
+   - **Übergang für bestehende Nutzer:** Fehlt `lernapp.chosen`, werden alle Module gewählt, für die schon Lernstand in `localStorage[ls]` liegt. Niemand verliert ein Modul.
+   - **Neues Gerät** (nichts gewählt, kein Lernstand): Die App öffnet den Katalog statt der Übersicht.
+   - Gewählte Keys, die nicht mehr im Index stehen, still aus der Auswahl entfernen.
+4. **Katalog „Module verwalten“** (neues Blatt, ersetzt die Auswahlfunktion von `showModulePicker`):
+   - Alle Module aus `index.json`: Symbol, Name, `desc`, `count`, Knopf „Hinzufügen“ bzw. „Entfernen“.
+   - Erreichbar über ein ＋ am Ende der Modulleiste und im Menü bei Export/Import.
+   - **Hinzufügen:** Modul laden (Ladeanzeige; ohne Netz klare Meldung), zur Auswahl ergänzen, direkt dorthin wechseln. Im Hintergrund danach alle Zusatzdateien seiner Kategorien laden (404 still ignorieren), damit das Modul vollständig offline läuft.
+   - **Entfernen:** Rückfrage mit Hinweis „Dein Fortschritt bleibt gespeichert, falls du das Modul wieder hinzufügst“. Lernstand in `localStorage` bleibt, die Dateien des Moduls werden aus dem Daten-Cache gelöscht. Das letzte gewählte Modul kann nicht entfernt werden.
+   - Das Auswahlmenü ab 4 Modulen (`showModulePicker`) zeigt weiterhin zum Wechseln, aber nur gewählte Module.
+5. **Nur Gewähltes laden:** `boot` nimmt das Startmodul aus der Auswahl (zuletzt offenes, sonst erstes gewähltes) und lädt nach 1,5 s nur die übrigen **gewählten** Module vor. Kein Code darf mehr über alle Module des Katalogs `ensureModule` aufrufen.
+6. **Tagespflicht bei Pause:** Beim Wieder-Hinzufügen eines Moduls mit vorhandenem Lernstand `checkedUntil` auf gestern setzen, bevor `dailyCheck` läuft. Die Zeit, in der das Modul abgewählt war, bringt keine Abzüge.
+7. **Export/Import:** Export bleibt wie er ist (liest `localStorage`, lädt keine Module), enthält also auch abgewählte Module mit Lernstand. Import eines nicht gewählten Moduls nimmt es in die Auswahl auf.
+8. **Service Worker:**
+   - Beim Installieren nur noch `CORE` (inkl. `modules/index.json`), keine Module mehr.
+   - Zwei Caches: `fach-vokabeln-<VERSION>` für die App-Dateien und `fach-vokabeln-daten` für alles unter `modules/` außer `index.json`. `activate` löscht nur alte App-Caches, **nie den Daten-Cache**, damit gewählte Module ein App-Update offline überstehen.
+   - Strategie unverändert: sofort aus dem Cache, im Hintergrund aktualisieren.
+   - Löschen beim Entfernen macht die App selbst über die Cache-API (`caches.open("fach-vokabeln-daten")`, alle Einträge unter `modules/<key>/`), ohne Nachricht an den Service Worker.
+   - Hinweis: Nach dem Update mit den neuen Pfaden müssen gewählte Module einmal mit Internet neu geladen werden; die alten Pfade verschwinden mit dem alten Cache.
+9. **Fehlerfälle:** Fehlt eine Moduldatei oder ist sie kaputt (kein gültiges JSON, kein `raw`, keine `cats`), zeigt die App eine Meldung und läuft mit den übrigen Modulen weiter; ist das Startmodul betroffen, startet das nächste gewählte. Hat ein Modul ein unbekanntes `format` oder eine höhere `version`, meldet der Katalog „Dieses Modul braucht eine neuere App-Version“ und bietet es nicht zum Hinzufügen an.
+10. **Doku:** README-Abschnitt „Ein neues Modul hinzufügen“ neu (Ordner `modules/<key>/` mit `module.json`, optional `extra/`, Eintrag in `index.json` mit `desc`; keine `VERSION`-Erhöhung nötig). In dieser Datei „Dateien“, „Welche Dateien für welche Änderung“, „Datenformat“, „Code-Landkarte“ und „Gespeicherter Fortschritt“ (`lernapp.chosen`) anpassen.
+11. **Testen** mit `python3 -m http.server` und Playwright:
+    - Leerer Speicher → Katalog erscheint; nach Hinzufügen eines Moduls lädt das Netzwerkprotokoll **nur** dessen Dateien.
+    - Vorhandener Lernstand für alle drei Module → alle drei gewählt, alles wie vorher.
+    - Hinzufügen, Entfernen, Wieder-Hinzufügen: Lernstand bleibt, keine Tagespflicht-Abzüge für die Pause.
+    - Offline (Playwright `offline`) nach dem Hinzufügen: Quiz inklusive schwerer Fragearten aus den Zusatzdateien funktioniert.
+    - Wischen, Leiste und Pfeiltasten nur über gewählte Module; Export/Import; keine Konsolenfehler.
+12. **Abschluss:** `VERSION` in `sw.js` erhöhen, Änderungsprotokoll ergänzen, Punkt 4 unter „Nächste Schritte“ abhaken.
 
 ## Änderungsprotokoll
 

@@ -683,10 +683,6 @@ const QUIZ_LEN = 10, MASTER_SEC = 20, MASTER_XP = 5;
 const catTerms = k => TERMS.filter(t => t.cat === k);
 const catMastered = k => { const ts = catTerms(k); return ts.length > 0 && ts.every(isMaster); };
 const crowned = k => !!(P.crowns && own(P.crowns, k));
-/* VORSCHAU, nur vorübergehend (zum Zurücksetzen diesen Block und alle Stellen mit preview( entfernen):
-   zeigt die erste Kategorie von IT und Agile als gemeistert und gekrönt an. Nur Anzeige, Lernstand bleibt unverändert. */
-const PREVIEW_CROWN = {dev:"code", agile:"agil"};
-const preview = k => PREVIEW_CROWN[MODKEY] === k;
 const allMastered = () => TERMS.length > 0 && TERMS.every(isMaster);
 /* Gekrönte Themen: jedes hat ein eigenes Design (CSS: .crown[data-crown=…]). Unbekannte Themen bekommen eines der allgemeinen. */
 const CROWN_DESIGNS = {code:["Terminal","💻"], oop:["Baukasten","🧩"], algo:["Sortierwerk","📊"], web:["Neonlicht","🌐"], arch:["Blaupause","📐"],
@@ -919,14 +915,14 @@ function renderHome(fromPop){
   const active = TERMS.filter(t => P.cats.includes(t.cat)).length;
   const rows = Object.entries(CATS).map(([k,c]) => {
     const ts = TERMS.filter(t => t.cat === k), m = ts.filter(isPro).length, on = P.cats.includes(k);
-    const done = catMastered(k) || preview(k), cr = crowned(k) || preview(k) ? crownOf(k) : null;
+    const done = catMastered(k), cr = crowned(k) ? crownOf(k) : null;
     const row = `<button class="trow${cr ? " crown" : ""}"${cr ? ` data-crown="${cr.id}"` : ""} style="--c:${c.c}" aria-pressed="${on}" data-cat="${k}">
       <span class="tbox" aria-hidden="true"></span>
       <span class="tname">${esc(c.name)}</span>
       <span class="tnum">${done ? "🏆 " + ts.length : m} / ${ts.length}</span>
       ${cr ? `<span class="tcrown">${cr.icon} ${esc(cr.name)} · gekrönt</span>` : `<span class="tbar" aria-hidden="true"><i style="width:${m/ts.length*100}%"></i></span>`}</button>`;
     if (!done) return row;
-    const best = cr && P.crowns && P.crowns[k] && P.crowns[k].best ? ` · Bestzeit ${clock(P.crowns[k].best)}` : "";
+    const best = cr && P.crowns[k].best ? ` · Bestzeit ${clock(P.crowns[k].best)}` : "";
     const mt = (P.mtries && P.mtries[k]) || {n:0, best:0};
     const stats = mt.n ? `Rekord: ${cr ? ts.length : Math.min(mt.best || 0, ts.length)} von ${ts.length} richtig · ${mt.n} ${mt.n === 1 ? "Versuch" : "Versuche"}` : "Noch kein Versuch";
     return `<div class="tgroup">${row}<button class="master-btn" data-master="${k}"><b>🏆 Meisterrunde${cr ? "" : " starten"}</b>
@@ -1146,7 +1142,6 @@ async function startQuiz(){
 /* ---------- Meisterrunde ---------- */
 function masterQ(t){ const q = makeQuestion(t); q.full = true; return q; }   /* alle Antworten ganz sichtbar, keine XP */
 async function startMaster(k){
-  if (preview(k) && !catMastered(k)) { toast("Nur Vorschau: Die Meisterrunde gibt es erst, wenn das Thema wirklich gemeistert ist.", 3500); return; }
   if (quizBusy) return;
   const key = MODKEY;
   quizBusy = true;
@@ -1469,7 +1464,7 @@ function renderLex(){
     if (!s) {
       html = Object.entries(CATS).map(([k,c]) => {
         const ts = TERMS.filter(t => t.cat === k), n = ts.length, pn = ts.filter(isPro).length;
-        const cr = crowned(k) || preview(k) ? crownOf(k) : null;
+        const cr = crowned(k) ? crownOf(k) : null;
         return `<div class="lex-group" style="--c:${c.c}"><details data-lexcat="${k}"><summary${cr ? ` class="crown" data-crown="${cr.id}"` : ""}><h3><span class="dot"></span>${esc(c.name)}<span class="lex-count">${pn ? `⭐ ${pn} · ` : ""}${n}</span></h3></summary><div class="lex-items"></div></details></div>`;
       }).join("");
     } else {

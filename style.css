@@ -508,30 +508,6 @@ dialog textarea{width:100%;margin:8px 0;background:var(--board);color:var(--ink)
   background:radial-gradient(circle,#e8c35a 3px,transparent 3.5px) 20px 20px/40px 40px,
     linear-gradient(90deg,transparent 19px,rgba(232,195,90,.55) 19px 21px,transparent 21px) 0 0/40px 80px,
     linear-gradient(transparent 19px,rgba(232,195,90,.55) 19px 21px,transparent 21px) 0 0/80px 40px,#0f4a2a}
-/* Glasfaser */
-.crown[data-crown="fgrund"]{--cr-ink:#dff7ff;--cr-base:#050b1a;--cr-glow:#5fd8ff;
-  background:linear-gradient(90deg,transparent,rgba(180,240,255,.95) 50%,transparent) -100% 86%/40% 3px no-repeat,
-    linear-gradient(rgba(120,200,255,.3),rgba(120,200,255,.3)) 0 86%/100% 1px no-repeat,radial-gradient(120% 140% at 100% 100%,#0e2c4f,#050b1a 70%);
-  animation:crPulse 2.6s ease-in infinite}
-@keyframes crPulse{to{background-position:250% 86%,0 86%,0 0}}
-.crown[data-crown="fnetz"]{--cr-ink:#eafff1;--cr-base:#14532d;--cr-glow:#4ade80;
-  background:repeating-conic-gradient(from 60deg at 0% 50%,rgba(255,255,255,.2) 0 2deg,transparent 2deg 8deg),linear-gradient(90deg,#14532d,#22844c)}
-.crown[data-crown="fbau"]{--cr-ink:#fff3e0;--cr-base:#5e3d22;--cr-glow:#c58a4a;
-  background:radial-gradient(circle,rgba(0,0,0,.18) 1px,transparent 1.5px) 0 0/9px 7px,
-    linear-gradient(180deg,#6b8f3a 0 12%,#7a5230 12% 38%,#5e3d22 38% 62%,#8a6a45 62% 80%,#4a3322 80%)}
-.crown[data-crown="fspleiss"]{--cr-base:#0c1e3d;--cr-glow:#ff9a3d;
-  background:radial-gradient(circle at 90% 50%,#fff 0,#ffe08a 5%,#ff8a1f 12%,rgba(255,80,0,.25) 22%,transparent 34%),linear-gradient(90deg,#0c1e3d,#1a1040 55%,#0c1e3d);
-  animation:crArc 1.3s ease-in-out infinite}
-@keyframes crArc{50%{filter:brightness(1.25) saturate(1.2)}}
-.crown[data-crown="fmess"]{--cr-ink:#d2fff0;--cr-base:#04201a;--cr-glow:#7dffcf;
-  background:linear-gradient(174deg,transparent 0 80%,rgba(125,255,207,.75) 80% 82.5%,transparent 82.5%),
-    linear-gradient(rgba(125,255,207,.1) 1px,transparent 1px) 0 0/100% 14px,linear-gradient(90deg,rgba(125,255,207,.1) 1px,transparent 1px) 0 0/20px 100%,#04201a}
-.crown[data-crown="fhaus"]{--cr-ink:#ffe7b0;--cr-base:#141a33;--cr-glow:#ffcf6b;
-  background:conic-gradient(from 90deg at 9px 11px,rgba(20,26,51,.85) 25%,transparent 0) 0 0/72px 60px,
-    conic-gradient(from 90deg at 9px 11px,rgba(255,207,107,.75) 25%,transparent 0) 0 0/24px 30px,#141a33}
-.crown[data-crown="fplan"]{--cr-ink:#e9fff7;--cr-base:#1d4d4f;--cr-glow:#5fd3a0;
-  background:repeating-radial-gradient(ellipse at 30% 60%,transparent 0 9px,rgba(255,255,255,.18) 9px 10px),
-    repeating-radial-gradient(ellipse at 92% 10%,transparent 0 12px,rgba(255,255,255,.12) 12px 13px),linear-gradient(135deg,#1d4d4f,#2c6e57)}
 /* Agile & Projekte */
 .crown[data-crown="agil"]{--cr-ink:#eafff5;--cr-base:#0f3d33;--cr-glow:#5fe0b4;
   background:repeating-radial-gradient(circle at 90% 50%,transparent 0 12px,rgba(141,255,210,.22) 12px 14px),

@@ -7,10 +7,10 @@
 
    Zwei Caches:
    - fach-vokabeln-<VERSION>: App-Dateien (CORE inkl. modules/index.json), wird bei jeder neuen VERSION ersetzt.
-   - fach-vokabeln-daten: alles unter modules/ außer index.json, also nur die gewählten Module und ihre Zusatzdateien.
+   - fach-vokabeln-daten: alles unter modules/ außer index.json, also nur die gewählten Module (je eine module.json).
      Wird nie automatisch gelöscht, damit gewählte Module ein App-Update offline überstehen.
      Beim Entfernen eines Moduls löscht die App dessen Einträge selbst (Cache-API). */
-const VERSION = "v15";
+const VERSION = "v16";
 const PREFIX = "fach-vokabeln-";
 const CACHE = PREFIX + VERSION;
 const DATA = PREFIX + "daten";
@@ -36,12 +36,16 @@ self.addEventListener("install", event => {
 self.addEventListener("activate", event => {
   event.waitUntil((async () => {
     for (const key of await caches.keys()) if (key.startsWith(PREFIX) && key !== CACHE && key !== DATA) await caches.delete(key);
+    /* Seit v16: keine Zusatzdateien mehr (stecken in module.json), Modul ftth entfernt → Reste aus dem Daten-Cache räumen */
+    try {
+      const data = await caches.open(DATA);
+      for (const r of await data.keys()) if (r.url.includes("/extra/") || r.url.startsWith(MODULES_BASE + "ftth/")) await data.delete(r);
+    } catch (e) {}
     await self.clients.claim();
   })());
 });
 
-/* Moduldateien und Zusatzdateien landen beim ersten Abruf im Daten-Cache.
-   Fehlende Dateien (404) landen nicht im Cache, die App ignoriert sie still. */
+/* Moduldateien landen beim ersten Abruf im Daten-Cache. Fehlende Dateien (404) landen nicht im Cache. */
 self.addEventListener("fetch", event => {
   const req = event.request;
   if (req.method !== "GET") return;

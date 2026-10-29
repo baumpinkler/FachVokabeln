@@ -81,6 +81,7 @@ async function ensureModule(key){
       if (!d || typeof d !== "object") throw modError("broken");
       if (needsNewerApp(d)) { m.tooNew = true; throw modError("newer"); }
       if (!Array.isArray(d.raw) || !d.raw.length || !d.cats || typeof d.cats !== "object" || !Object.keys(d.cats).length) throw modError("broken");
+      if (!d.extra || typeof d.extra !== "object") d.extra = {};
       Object.assign(m, d);
     })().catch(e => { m.loading = null; throw e; });
     await m.loading;
@@ -226,30 +227,8 @@ function transit(fn, dir){
   try { document.startViewTransition(fn); } catch (e) { fn(); }
 }
 const goHome = () => transit(() => renderHome(), "back");
-/* ---------- Zusatzinhalte: modules/<modul>/extra/<kategorie>.json ----------
-   Werden beim Quizstart nur für aktive Kategorien geladen und pro Modul im Speicher gehalten.
-   Beim Hinzufügen eines Moduls werden alle im Hintergrund geladen, damit es offline vollständig läuft.
-   Fehlende Dateien (404) werden still ignoriert und nicht erneut angefragt. */
-function fetchExtras(m, key, cats){
-  m.extra = m.extra || {}; m.extraDone = m.extraDone || {}; m.extraBusy = m.extraBusy || {};
-  const one = c => m.extraBusy[c] || (m.extraBusy[c] = (async () => {
-    try {
-      const r = await fetch("modules/" + key + "/extra/" + c + ".json");
-      if (r.status === 404) { m.extraDone[c] = true; return; }
-      if (!r.ok) return;
-      const d = await r.json();
-      if (d && d.terms && typeof d.terms === "object") Object.assign(m.extra, d.terms);
-      m.extraDone[c] = true;
-    } catch (e) {}                                   /* offline und nicht im Cache: beim nächsten Quiz wieder versuchen */
-    finally { delete m.extraBusy[c]; }
-  })());
-  return Promise.all(cats.filter(c => !m.extraDone[c]).map(one));
-}
-async function loadExtras(){
-  /* Nicht länger als 2,5 s warten; was später eintrifft, gilt ab dem nächsten Quiz */
-  await Promise.race([fetchExtras(MOD, MODKEY, P.cats), new Promise(res => setTimeout(res, 2500))]);
-}
-function preloadExtras(key){ const m = MODULES[key]; if (m && m.cats) fetchExtras(m, key, Object.keys(m.cats)).catch(() => {}); }
+/* ---------- Zusatzinhalte: Feld "extra" in modules/<modul>/module.json ----------
+   {begriffs-id: {ex, sit, conf, tf}}; kommen mit dem Modul, fehlen sie, gibt es nur "type" und "def2en". */
 const arr = a => Array.isArray(a) ? a : [];
 /* Geprüfte Zusatzinhalte eines Begriffs (fehlerhafte Einträge fallen still weg) */
 function extraOf(t){
@@ -490,7 +469,7 @@ function showImport(){
     if (fresh.length) setChosen(MODULE_ORDER.concat(fresh));
     dlg.close();
     if (!MOD) { startChosen(); toast("Fortschritt importiert ✅"); return; }
-    fresh.forEach(k => ensureModule(k).then(() => preloadExtras(k)).catch(() => {}));
+    fresh.forEach(k => ensureModule(k).catch(() => {}));
     loadModule(MODKEY); renderTop(); renderHome(); toast("Fortschritt importiert ✅");
   };
   openDialog(dlg);
@@ -567,7 +546,6 @@ async function enterModule(key){
   /* Pause ohne Abzüge: Tagespflicht erst ab heute wieder prüfen */
   try { const s = localStorage.getItem(m.ls); if (s) { const d = JSON.parse(s); d.checkedUntil = yesterday(); localStorage.setItem(m.ls, JSON.stringify(d)); } } catch (e) {}
   setChosen(MODULE_ORDER.concat(key));
-  preloadExtras(key);
   if (!MOD) { startApp(key); return; }
   await swipeTo(key);
 }
@@ -688,8 +666,6 @@ const allMastered = () => TERMS.length > 0 && TERMS.every(isMaster);
 const CROWN_DESIGNS = {code:["Terminal","💻"], oop:["Baukasten","🧩"], algo:["Sortierwerk","📊"], web:["Neonlicht","🌐"], arch:["Blaupause","📐"],
   data:["Datenstrom","🗄️"], net:["Lichtnetz","🛰️"], sec:["Tresor","🛡️"], ops:["Wolkenmeer","☁️"], git:["Verzweigung","🌿"], test:["Prüfsiegel","✅"],
   ai:["Synapsen","🧠"], talk:["Funkwelle","📡"], it:["Schaltkreis","🔌"],
-  fgrund:["Lichtleiter","✨"], fnetz:["Splitterbaum","🌳"], fbau:["Erdschichten","⛏️"], fspleiss:["Lichtbogen","⚡"], fmess:["Messkurve","📈"],
-  fhaus:["Fensterlicht","🏠"], fplan:["Ausbaukarte","🗺️"],
   agil:["Kreislauf","🔄"], team:["Schulterschluss","🤝"], sprint:["Sprint","🏃"], backlog:["Kartenstapel","🗂️"], lean:["Taktstraße","🏭"],
   produkt:["Nordstern","⭐"], discovery:["Ideenwand","💡"], orga:["Räderwerk","⚙️"], plan:["Meilenstein","🏁"], anf:["Lastenheft","📝"],
   kosten:["Münzschatz","🪙"], risiko:["Warnband","🚧"], komm:["Sprechblasen","💬"]};
@@ -1045,7 +1021,7 @@ function renderCardsDone(){
 }
 
 /* ---------- Quiz ---------- */
-let Q = null, quizBusy = false;
+let Q = null;
 const pickOne = a => a[Math.floor(Math.random() * a.length)];
 /* Meister-Regel: für 🏆 braucht es seit dem letzten Fehler mindestens HARD_NEED richtige Antworten aus diesen Fragearten */
 const HARD = ["type", "sit", "conf"], HARD_NEED = 3;
@@ -1123,12 +1099,7 @@ function makeQuestion(t){
   }
   return hardQuestion(t, "type");
 }
-async function startQuiz(){
-  if (quizBusy) return;
-  const key = MODKEY;
-  quizBusy = true;
-  try { await loadExtras(); } finally { quizBusy = false; }
-  if (key !== MODKEY) return;
+function startQuiz(){
   const qp = quizPool();
   if (!qp.length) { toast(pool().length ? "Alle gewählten Themen sind gemeistert 🏆 Wähl weitere Themen oder starte eine Meisterrunde." : "Wähle mindestens ein Thema.", 4000); return; }
   /* Unter 3 offenen Begriffen: diese wiederholen, bis 10 Fragen zusammen sind */
@@ -1141,12 +1112,8 @@ async function startQuiz(){
 }
 /* ---------- Meisterrunde ---------- */
 function masterQ(t){ const q = makeQuestion(t); q.full = true; return q; }   /* alle Antworten ganz sichtbar, keine XP */
-async function startMaster(k){
-  if (quizBusy) return;
-  const key = MODKEY;
-  quizBusy = true;
-  try { await loadExtras(); } finally { quizBusy = false; }
-  if (key !== MODKEY || !catMastered(k)) return;
+function startMaster(k){
+  if (!catMastered(k)) return;
   const ts = shuffle(catTerms(k));
   stopMaster();
   Q = {master:k, items:ts.map(t => ({t})), terms:ts, total:ts.length, i:0, combo:0, best:0, xp:0, right:0, missed:[], answered:null,

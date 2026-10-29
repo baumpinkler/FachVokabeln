@@ -19,7 +19,7 @@ Phase 1 und 2 hängen nicht voneinander ab und dürfen sich auch überschneiden.
 ## Was die App ist
 
 Installierbare Web-App (PWA) zum Lernen englischer Fachbegriffe mit deutscher Übersetzung. Zielgruppe: der Nutzer selbst (Österreich), Android-Handy, Chrome.
-Drei Module: **IT** (`dev`, 1.305 Begriffe, violettes Schema), **Glasfaser & FTTH** (`ftth`, 500 Begriffe, grünes Schema) und **Agile & Projekte** (`agile`, 507 Begriffe, weinrotes Schema).
+Zwei Module: **IT** (`dev`, 1.305 Begriffe, violettes Schema) und **Agile & Projekte** (`agile`, 507 Begriffe, weinrotes Schema). Das Modul Glasfaser & FTTH (`ftth`) wurde in v16 entfernt.
 Bereiche: Quiz, Karteikarten, Nachschlagen. Dazu Ränge, Kalender, Punkte-Erklärung, Export/Import.
 Jeder Nutzer wählt im Katalog „Module verwalten“, welche Module er verwendet; nur diese werden geladen und offline gespeichert (seit v13).
 
@@ -43,13 +43,11 @@ Jeder Nutzer wählt im Katalog „Module verwalten“, welche Module er verwende
 | `manifest.json` | 1 KB | App-Name, Symbole, Startfarbe `#0a0510` |
 | `icons/` | – | `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` |
 | `modules/index.json` | 2 KB | Katalog aller Module (`desc`, `count` für „Module verwalten“) |
-| `modules/<key>/module.json` | – | ein Modul; der Ordnername ist immer der `key` |
-| `modules/dev/module.json` | 440 KB (~130.000 Tokens) | Modul IT, **nie komplett lesen oder einfügen** |
-| `modules/ftth/module.json` | 172 KB (~50.000 Tokens) | Modul Glasfaser & FTTH, **nie komplett lesen oder einfügen** |
-| `modules/agile/module.json` | 203 KB (~60.000 Tokens) | Modul Agile & Projekte, **nie komplett lesen oder einfügen** |
-| `modules/<key>/extra/<kategorie>.json` | je 50–160 KB | Zusatzinhalte für schwere Fragearten (siehe „Verstehen statt Auswendiglernen“), optional |
+| `modules/<key>/module.json` | – | ein Modul, **genau eine Datei** inkl. Zusatzinhalte (`extra`); der Ordnername ist immer der `key` |
+| `modules/dev/module.json` | 2,1 MB (~600.000 Tokens) | Modul IT, **nie komplett lesen oder einfügen** |
+| `modules/agile/module.json` | 0,9 MB (~270.000 Tokens) | Modul Agile & Projekte, **nie komplett lesen oder einfügen** |
 
-Bis v12 hießen die Moduldateien `modules/it-scrum.json`, `modules/glasfaser.json`, `modules/agile.json` und die Zusatzdateien `modules/extra/<modul>/…`. Ältere Abschnitte weiter unten nennen noch diese Pfade.
+Bis v12 hießen die Moduldateien `modules/it-scrum.json`, `modules/glasfaser.json`, `modules/agile.json` und die Zusatzdateien `modules/extra/<modul>/…`, von v13 bis v15 `modules/<key>/extra/<kategorie>.json`. Seit v16 gibt es keine Zusatzdateien mehr, alles steht im Feld `extra` der `module.json`. Ältere Abschnitte weiter unten nennen noch die alten Pfade; sinngemäß gilt dort immer das Feld `extra`.
 | `docs/agile-projekte-begriffe.md` | 28 KB | verbindliche Begriffsliste für Agile & Projekte |
 
 ## Welche Dateien für welche Änderung
@@ -85,9 +83,11 @@ Reihenfolge in `index.json` = Reihenfolge in Katalog, Modulleiste und beim Wisch
   cats:   { "fgrund": {"name":"Glasfaser-Grundlagen","c":"var(--n-yellow)"}, … },
   levels: [[0,"Praktikant:in"],[100,"Lehrling"], … 20 Einträge … ,[50000,"Glasfaser-Legende"]],
   theme:  { board, board-dot, ink, ink-soft, surface, line, ok, bad, accent, m1, m2, m3 },
-  raw:    [ Eintrag, Eintrag, … ] }
+  raw:    [ Eintrag, Eintrag, … ],
+  extra:  { "<begriffs-id>": {ex, sit, conf, tf}, … } }
 ```
 Kompakt gespeichert (`separators=(",",":")`, `ensure_ascii=False`, ohne Zeilenumbruch am Ende). Die App (`MOD_FORMAT`, `MOD_VERSION` in `app.js`) lädt nur `format` „fachvokabeln-modul“ mit `version` ≤ 1; sonst „braucht eine neuere App-Version“. Ohne gültiges JSON, `raw` oder `cats` gilt das Modul als fehlerhaft.
+`extra` (optional, seit v16, direkt nach `raw`): Zusatzinhalte für schwere Fragearten, Schlüssel = Begriffs-ID, Inhalt wie früher `terms` der Zusatzdateien (Format und Regeln unter „Schritt 2“). Fehlt das Feld, gibt es ab Profi nur `type` und `def2en`. Ändern immer per Skript: JSON laden, `extra[id]` setzen, kompakt zurückschreiben.
 `theme`: `board` Hintergrund (fast schwarz), `surface` Flächen, `accent` Modul-Schalter, `m1`/`m2`/`m3` die drei Startseiten-Kärtchen (Karteikarten/Quiz/Nachschlagen).
 XP-Grenzen der Ränge (alle Module gleich): 0, 100, 250, 400, 600, 900, 1.300, 1.800, 2.400, 3.200, 4.300, 5.700, 7.600, 10.000, 13.000, 17.000, 22.500, 29.500, 38.500, 50.000.
 
@@ -131,13 +131,13 @@ XP-Grenzen der Ränge (alle Module gleich): 0, 100, 250, 400, 600, 900, 1.300, 1
 | Start | `boot` (ganz unten): `loadIndex` → `initChosen` → `renderWelcome` (nichts gewählt) oder `startChosen` (Startmodul, kaputte überspringen, sonst `renderNoModule`) → `startApp` (lädt nach 1,5 s nur die übrigen gewählten Module vor) |
 | Modulwechsel & Wischen | `renderModbar` (Leiste mit Marker `--pos`, Pfeiltasten), `initSwipe` (Wischgeste nur auf der Übersicht, nur Finger/Stift), `swipeTo` (raus-/reinschieben), `snapBack`, `slide`, `settleAnim`; Hinweis einmalig über `lernapp.swipehint` |
 | Übergänge | `transit(fn, dir)` (View Transitions, `dir` = `fwd`/`back`), `goHome`; Karteikarten fliegen nach rechts (gewusst) oder links (nochmal) weg (`advance` in `renderCard`) |
-| Zusatzinhalte | `fetchExtras` (gemeinsamer Lader, merkt laufende Downloads), `loadExtras` (beim Quizstart, max. 2,5 s warten, 404 still), `preloadExtras` (alle Kategorien nach dem Hinzufügen), `extraOf` (geprüfte Inhalte eines Begriffs), `nameVariants`, `maskNames`; im Speicher `MOD.extra`, `MOD.extraDone`; `BYID` = Begriffe nach ID |
+| Zusatzinhalte | kommen mit der Moduldatei (`MOD.extra`, `ensureModule` setzt `{}`, falls das Feld fehlt), `extraOf` (geprüfte Inhalte eines Begriffs), `nameVariants`, `maskNames`; `BYID` = Begriffe nach ID |
 | Begriffe | `buildTerms`, `cloze`, `clozeDe`, `keyLetter`, `shortLabel`, `highlight` |
 | Speicher | `freshProgress`, `save`, `fixCats`; Cloud-Funktionen (`pushCloud`, `syncCloud`, `connectCloud`) sind Altlast aus claude.ai und außerhalb inaktiv |
 | Punkte & Ränge | `addXP`, `levelInfo`, `levels`, `dailyCheck`, `dayBonus`, `setBox` |
 | Auswahl | `pool`, `pickQuizTerms` (Quiz), `pickTerms` (Karteikarten), `distractors`, `gapFor` |
-| Meisterrunde | `catTerms`, `catMastered`, `crowned`, `allMastered`, `startMaster` (async), `masterQ`, `masterTick`/`stopMaster`, `settleMaster` (aus `settle` abgezweigt), `masterTry`/`masterRecord`, `masterEnd`, `renderMasterEnd`, `crownOf` + `CROWN_DESIGNS`/`CROWN_GENERIC`, `clock` |
-| Quiz | `startQuiz` (async), `quizPool`, `repeatFill`, `makeQuestion`, `easyQuestion`, `hardQuestion`, `hardTypes`, `otherConfs`, `renderQuiz`, `answer`/`answerTyped` → `settle` (Punkte, Lernstand), `checkTyped`, `nextQuestion`, `renderQuizDone` |
+| Meisterrunde | `catTerms`, `catMastered`, `crowned`, `allMastered`, `startMaster`, `masterQ`, `masterTick`/`stopMaster`, `settleMaster` (aus `settle` abgezweigt), `masterTry`/`masterRecord`, `masterEnd`, `renderMasterEnd`, `crownOf` + `CROWN_DESIGNS`/`CROWN_GENERIC`, `clock` |
+| Quiz | `startQuiz`, `quizPool`, `repeatFill`, `makeQuestion`, `easyQuestion`, `hardQuestion`, `hardTypes`, `otherConfs`, `renderQuiz`, `answer`/`answerTyped` → `settle` (Punkte, Lernstand), `checkTyped`, `nextQuestion`, `renderQuizDone` |
 | Karteikarten | `startCards`, `renderCard`, `renderCardsDone` |
 | Nachschlagen | `renderLex`, `proTag` |
 | Startseite & Kopf | `renderHome` (Knopf „Module verwalten“ bei Export/Import), `renderTop`, `renderModbar` (nur gewählte Module, ＋ am Ende) |
@@ -184,11 +184,11 @@ Dateien: `app.js`, `style.css`, `sw.js`. Moduldateien nie komplett lesen.
 
 ### Schritt 2: Inhalte-Chats (zuerst IT, später Agile; ein Chat pro Kategorie)
 
-Gilt für **beide** Module. Für Agile erst starten, wenn Schritt G für alle Agile-Kategorien erledigt ist (siehe „Nächste Schritte“). Unterschiede bei Agile: Begriffe aus `modules/agile/module.json` lesen, Datei `modules/agile/extra/<kategorie>.json` mit `"module":"agile"`, `conf`-IDs müssen in `modules/agile/module.json` existieren (die App sucht Partner nur im eigenen Modul), Status in der Tabelle „Schritt 2 für Agile“ abhaken. Alles andere (Format, Regeln, Prüfskript) wie unten beschrieben.
+Gilt für **beide** Module. Für Agile erst starten, wenn Schritt G für alle Agile-Kategorien erledigt ist (siehe „Nächste Schritte“). Unterschiede bei Agile: Begriffe aus `modules/agile/module.json` lesen und die Inhalte in deren Feld `extra` schreiben, `conf`-IDs müssen in `modules/agile/module.json` existieren (die App sucht Partner nur im eigenen Modul), Status in der Tabelle „Schritt 2 für Agile“ abhaken. Alles andere (Format, Regeln, Prüfskript) wie unten beschrieben.
 
-Ablauf: Repo klonen, per Skript nur die Begriffe der Kategorie auslesen (Index 1, 2, 3, 6, 7 – Begriff, Deutsch, Erklärungen), Inhalte in Blöcken von ca. 25 Begriffen schreiben, Datei per Skript prüfen (siehe unten), nur `modules/<modul>/extra/<kategorie>.json` und diese Datei (Status abhaken) ausliefern. **Keine** `VERSION`-Erhöhung nötig.
+Ablauf: Repo klonen, per Skript nur die Begriffe der Kategorie auslesen (Index 1, 2, 3, 6, 7 – Begriff, Deutsch, Erklärungen), Inhalte in Blöcken von ca. 25 Begriffen schreiben, per Skript in das Feld `extra` von `modules/<modul>/module.json` schreiben (Datei nie komplett lesen), per Skript prüfen (siehe unten), nur diese `module.json` und diese Datei (Status abhaken) ausliefern. **Keine** `VERSION`-Erhöhung nötig.
 
-**Dateiformat** `modules/<modul>/extra/<kategorie>.json` (bis v12: `modules/extra/<modul>/…`):
+**Format der Zusatzinhalte** (seit v16 im Feld `extra` der `module.json`, dort nur der Inhalt von `terms`, ohne die Hülle mit `format`/`module`/`cat`; bis v15 eigene Datei `modules/<modul>/extra/<kategorie>.json` wie hier gezeigt):
 ```json
 {"format":"fachvokabeln-extra","version":1,"module":"dev","cat":"net",
  "terms":{
@@ -427,3 +427,4 @@ Ziel: Die App ist der feste Lernrahmen, Module sind austauschbare Inhalte im Rep
 | v13 | **Modulsystem:** ein Ordner pro Modul (`modules/<key>/module.json`, `modules/<key>/extra/`), Moduldateien mit `format`/`version`; `index.json` ist der Katalog (`desc`, `count`, kein `file`). Nutzer wählt seine Module im neuen Katalog „Module verwalten“ (＋ in der Modulleiste und bei Export/Import), Auswahl in `lernapp.chosen`; bestehende Nutzer behalten alle Module mit Lernstand, neue Geräte starten mit dem Katalog. Nur gewählte Module werden geladen und offline gespeichert, beim Hinzufügen auch alle Zusatzdateien. Service Worker mit eigenem Daten-Cache, der App-Updates übersteht; beim Entfernen werden die Dateien gelöscht, der Lernstand bleibt. Keine Tagespflicht-Abzüge für die Zeit, in der ein Modul abgewählt war. Meldungen für fehlende, kaputte oder zu neue Module. Nach dem Update müssen gewählte Module einmal mit Internet geladen werden |
 | v14 | **Vorübergehend:** Vorschau der Krönchen-Designs. Erste Kategorie von IT (`code`) und Agile (`agil`) wird auf Übersicht und Nachschlagen als gemeistert und gekrönt angezeigt (`PREVIEW_CROWN`/`preview` in `app.js`), nur Anzeige, Lernstand unverändert; Meisterrunde-Knopf zeigt nur einen Hinweis. Wird wieder entfernt |
 | v15 | Vorschau aus v14 wieder entfernt, `app.js` wie in v13 |
+| v16 | Modul **Glasfaser & FTTH** (`ftth`) entfernt: Ordner, Katalogeintrag, Krönchen-Designs (`CROWN_DESIGNS`, `style.css`). Ein vorhandener Lernstand bleibt im `localStorage`, das Modul verschwindet still aus `lernapp.chosen`. **Zusatzdateien aufgelöst:** alle `modules/<key>/extra/*.json` stecken jetzt im Feld `extra` der `module.json` (1.305 + 507 Einträge, unverändert), ein Modul = eine Datei. `fetchExtras`/`loadExtras`/`preloadExtras` entfallen, Quiz und Meisterrunde starten ohne Warten. Service Worker räumt alte `extra/`- und `ftth/`-Einträge aus dem Daten-Cache |

@@ -13,18 +13,6 @@
       "board": "#0a0510"
     },
     {
-      "key": "ftth",
-      "name": "Glasfaser & FTTH",
-      "short": "Glasfaser",
-      "icon": "🔦",
-      "desc": "Englische Fachbegriffe rund um Glasfaserausbau und FTTH",
-      "count": 500,
-      "ls": "devvokabeln.progress.ftth",
-      "doc": "progress-ftth",
-      "accent": "#2a7f52",
-      "board": "#030a06"
-    },
-    {
       "key": "agile",
       "name": "Agile & Projekte",
       "short": "Agile",

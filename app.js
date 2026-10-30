@@ -1398,6 +1398,18 @@ function qfxEl(){
 /* Quiz-Aufbau (style.css, body.qmode): Frage oben fest, Antworten und Rückmeldung scrollen in .q-body, Fußzeile unten.
    Beim Neuaufbau derselben Frage (Antwort, KI-Prüfung) bleibt die Scrollposition in .q-body erhalten. */
 let qScroll = {q:null, top:0};
+/* Bildschirmtastatur erkennen: ein Eingabefeld ist aktiv UND der sichtbare Bereich ist deutlich kleiner als sonst
+   (am Computer gibt es keine Tastatur, dort bleibt die Fußzeile). Setzt body.kbd. */
+let kbdFull = window.visualViewport ? visualViewport.height : innerHeight;
+function kbdWatch(){
+  const h = window.visualViewport ? visualViewport.height : innerHeight;
+  const el = document.activeElement, typing = !!el && el.matches("input:not([type=checkbox]):not([type=radio]), textarea");
+  if (!typing || h > kbdFull) kbdFull = Math.max(h, typing ? kbdFull : 0);
+  document.body.classList.toggle("kbd", typing && h < kbdFull * .8);
+}
+(window.visualViewport || window).addEventListener("resize", kbdWatch);
+document.addEventListener("focusin", () => setTimeout(kbdWatch, 300));
+document.addEventListener("focusout", () => setTimeout(kbdWatch, 50));
 function qfxShow(a){
   const el = qfxEl();
   document.body.classList.add("qmode");

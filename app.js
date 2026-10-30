@@ -1159,7 +1159,7 @@ window.addEventListener("popstate", () => {
 });
 function renderHome(fromPop){
   if (fromPop !== true && history.state && history.state.nav === "screen") { ignorePop++; try { history.back(); } catch (e) { ignorePop--; } }
-  screen = "home"; qfxOff();
+  screen = "home"; qfxCalm();
   autoFinishB();
   setFocus(false); renderTop();
   const all = TERMS.length, p = pool(), active = p.length;
@@ -1367,25 +1367,26 @@ function startQuiz(){
   stopListen(); goQuestion(n);
   transit(() => { screen = "quiz"; setFocus(true); navEnterScreen(); renderQuiz(); window.scrollTo(0,0); });
 }
-/* Lichtfäden hinter der Quiz-Frage (style.css, #qfx): eigenes Element in <body>, damit es beim Fragenwechsel
-   nicht mit #pager ausgeblendet wird. Feste Höhe ab Seitenanfang (CSS). Nach der Antwort
-   grün/rot (Klassen is-ok/is-bad, Übergang in CSS) und ein Schub: --qc-b zählt die Antworten hoch. */
+/* Lichtfäden als Hintergrund der ganzen App (style.css, #qfx): eigenes Element in <body>, läuft bei jedem
+   Seitenwechsel weiter. Im Quiz nach der Antwort grün/rot (is-ok/is-bad, Übergang in CSS) und ein Schub:
+   --qc-b zählt die Antworten hoch. qfxCalm nimmt Grün/Rot wieder weg. */
 let qfx = null, qfxN = 0;
 function qfxEl(){
   if (!qfx) {
     qfx = document.createElement("div"); qfx.id = "qfx"; qfx.setAttribute("aria-hidden", "true");
+    qfx.innerHTML = '<i class="qfx-l n1 l"></i><i class="qfx-l n2 r"></i><i class="qfx-l n3 l"></i><i class="qfx-l a r"></i>';
     document.body.prepend(qfx);
+    requestAnimationFrame(() => qfx.classList.add("on"));
   }
   return qfx;
 }
 function qfxShow(a){
   const el = qfxEl();
-  el.classList.add("on");
   el.classList.toggle("is-ok", !!a && a.ok === true);
   el.classList.toggle("is-bad", !!a && a.ok === false);
   if (a && !a.fx) { a.fx = true; el.style.setProperty("--qc-b", ++qfxN); }
 }
-function qfxOff(){ if (qfx) qfx.classList.remove("on", "is-ok", "is-bad"); }
+function qfxCalm(){ if (qfx) qfx.classList.remove("is-ok", "is-bad"); }
 function renderQuiz(){
   if (Q.q.part === "c") return renderQuizC();
   const q = Q.q, t = q.t, c = CATS[t.cat], a = Q.answered, TN = langName(MOD.lang.term), MN = langName(MOD.lang.meaning);
@@ -1653,7 +1654,7 @@ function nextQuestion(){
   transit(() => { goQuestion(n); renderQuiz(); window.scrollTo(0,0); });
 }
 function renderQuizDone(){
-  qfxOff();
+  qfxCalm();
   const perfect = Q.asked > 0 && Q.right === Q.asked;
   if (perfect) confetti();
   const p = pool(), more = p.some(hasTask), wait = quiet ? p.filter(waitsForSound).length : 0, aiW = p.filter(waitsForAi).length;
@@ -1797,4 +1798,4 @@ if ("serviceWorker" in navigator && location.protocol !== "file:") {
   navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadController && !reloaded && screen === "home") { reloaded = true; location.reload(); } });
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 }
-
+qfxEl();

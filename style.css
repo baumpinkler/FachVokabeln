@@ -820,3 +820,82 @@ details.st-done{border-color:color-mix(in srgb, var(--ok) 70%, transparent)}
 :root[data-mod] .trow[aria-pressed="true"] .tbox::after{border-color:#1C2440}
 :root[data-mod] .st-tag.b{background:color-mix(in srgb, var(--gold) 30%, transparent); box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--gold) 55%, transparent)}
 :root[data-mod] .st-tag.done{background:color-mix(in srgb, var(--ok) 30%, transparent); box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--ok) 55%, transparent)}
+
+/* Glas-Look: Modulleiste. Leiste als Glas, aktives Modul als getöntes, leuchtendes Glas (gleitet beim Wechsel). */
+:root[data-mod] .modbar:not(.pick){
+  background:var(--glass), var(--raise); border-color:var(--glass-line);
+  backdrop-filter:none; -webkit-backdrop-filter:none;
+  box-shadow:var(--edge), 0 14px 30px -20px rgba(0,0,0,.9);
+}
+:root[data-mod] .modbar .ind{
+  background:linear-gradient(155deg, rgba(255,255,255,.24), rgba(255,255,255,.03) 60%), color-mix(in srgb, var(--accent) 52%, transparent);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--accent) 80%, rgba(255,255,255,.3)), inset 0 1px 0 rgba(255,255,255,.28),
+    0 6px 22px -6px color-mix(in srgb, var(--accent) 85%, transparent);
+}
+
+/* Glas-Look: Blätter (Module verwalten, Hilfe, KI …). Glas mit Lichtrand oben und Farbschein der Akzentfarbe. */
+:root[data-mod] dialog{
+  background:
+    radial-gradient(80% 140px at 50% 0, color-mix(in srgb, var(--accent) 22%, transparent), transparent),
+    linear-gradient(160deg, rgba(255,255,255,.07), rgba(255,255,255,0) 40%),
+    color-mix(in srgb, var(--surface) 94%, var(--board));
+  border-color:var(--glass-line);
+  box-shadow:0 -24px 60px -24px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.16);
+}
+:root[data-mod] dialog::backdrop{backdrop-filter:none}
+/* Kopfzeile im Blatt: unsichtbar, bis Inhalt darunter durchscrollt – dann zeichnet sie ihn weich (Milchglas) */
+:root[data-mod] .lv-head{
+  background:transparent;
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+}
+:root[data-mod] dialog textarea{background:color-mix(in srgb, var(--board) 60%, transparent); border-color:var(--glass-line)}
+/* Modul-Einträge: statt hartem Farbstreifen ein weicher Verlauf in der Modulfarbe (--ac) */
+:root[data-mod] :is(.mod-item, .cg-item){
+  background-image:var(--glass), linear-gradient(90deg, color-mix(in srgb, var(--ac, var(--accent)) 26%, transparent), transparent 70%);
+  box-shadow:var(--edge);
+}
+:root[data-mod] .mod-item.cur{outline:0; border-color:color-mix(in srgb, var(--ac, var(--accent)) 75%, transparent);
+  box-shadow:var(--edge), 0 0 22px -8px var(--ac, var(--accent))}
+
+/* Glas-Look: Rückmeldung im Quiz. Ganz in Grün bzw. Rot (--fb) getöntes Glas mit leichtem Leuchten statt Streifen. */
+:root[data-mod] .feedback{
+  background:
+    linear-gradient(155deg, rgba(255,255,255,.1), rgba(255,255,255,0) 45%),
+    linear-gradient(160deg, color-mix(in srgb, var(--fb) 20%, transparent), color-mix(in srgb, var(--fb) 5%, transparent));
+  border-color:color-mix(in srgb, var(--fb) 42%, transparent);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14), 0 18px 40px -24px rgba(0,0,0,.9), 0 0 34px -18px var(--fb);
+}
+:root[data-mod] .feedback::before{display:none}
+:root[data-mod] .feedback h3{text-shadow:0 0 18px color-mix(in srgb, var(--fb) 60%, transparent)}
+:root[data-mod] .feedback p.fb-ex{border-top-color:rgba(255,255,255,.1)}
+
+/* ---------- Konfetti: Glassplitter und Lichtfunken ----------
+   Farbe --cc (Modulfarben, gesetzt in confetti() in app.js). Splitter: schräg geschnittenes Glas mit hellem Glanz;
+   Funken (.spark): kleine leuchtende Punkte. Fallen schimmernd, drehen sich räumlich und schwingen seitlich (--dx). */
+.confetti{
+  position:fixed; top:-16px; width:11px; height:15px; z-index:40; pointer-events:none;
+  background:linear-gradient(135deg, rgba(255,255,255,.75), color-mix(in srgb, var(--cc, #fff) 55%, transparent) 55%, color-mix(in srgb, var(--cc, #fff) 25%, transparent));
+  clip-path:polygon(18% 0, 100% 12%, 82% 100%, 0 78%);
+  filter:drop-shadow(0 0 5px var(--cc, #fff));
+  animation:fall 2.2s cubic-bezier(.3,.1,.6,1) forwards;
+}
+.confetti.spark{
+  width:6px; height:6px; border-radius:50%; clip-path:none; filter:none;
+  background:radial-gradient(circle, #fff 0 30%, var(--cc, #fff) 60%, transparent 72%);
+  box-shadow:0 0 10px 2px color-mix(in srgb, var(--cc, #fff) 70%, transparent);
+}
+@keyframes fall{
+  0%{transform:translate(0,0) rotate3d(1,1,0,0deg); opacity:0}
+  10%{opacity:1}
+  35%{transform:translate(var(--dx,20px), 35vh) rotate3d(1,1,0,240deg)}
+  70%{transform:translate(calc(-1 * var(--dx,20px)), 72vh) rotate3d(1,1,0,480deg); opacity:.9}
+  100%{transform:translate(0, 105vh) rotate3d(1,1,0,720deg); opacity:0}
+}
+
+/* Glas-Look: Hinweise unten (Toast) als dunkles, leuchtendes Glas statt heller Pille */
+:root[data-mod] .toast{
+  background:linear-gradient(155deg, rgba(255,255,255,.12), rgba(255,255,255,.02) 55%), color-mix(in srgb, var(--surface) 82%, transparent);
+  color:var(--ink); font-weight:600;
+  box-shadow:inset 0 0 0 1px var(--glass-line), inset 0 1px 0 rgba(255,255,255,.16), 0 16px 40px -16px rgba(0,0,0,.85),
+    0 0 30px -14px color-mix(in srgb, var(--accent) 80%, transparent);
+}

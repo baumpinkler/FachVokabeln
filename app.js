@@ -1079,13 +1079,16 @@ function toast(msg, ms = 2400){
   setTimeout(() => d.classList.add("out"), ms); setTimeout(() => d.remove(), ms + 300);
 }
 function confetti(){
+  /* Glassplitter und Lichtfunken in den Modulfarben (Aussehen in style.css, .confetti) */
   if (reduced()) return;
-  const cols = ["#FFDA5C","#FFA3BA","#8FE3C3","#A2CDFF","#CDB9FF","#FFB677"];
+  const cols = ["--m1", "--m2", "--m3", "--accent", "--ok"];
   for (let i = 0; i < 44; i++) {
-    const c = document.createElement("div"); c.className = "confetti";
-    c.style.left = Math.random() * 100 + "vw"; c.style.background = cols[i % cols.length];
-    c.style.animationDelay = Math.random() * .4 + "s"; c.style.animationDuration = 1.2 + Math.random() * .9 + "s";
-    document.body.appendChild(c); setTimeout(() => c.remove(), 2600);
+    const c = document.createElement("div"); c.className = i % 3 ? "confetti" : "confetti spark";
+    c.style.left = Math.random() * 100 + "vw"; c.style.setProperty("--cc", `var(${cols[i % cols.length]})`);
+    c.style.setProperty("--dx", (Math.random() * 50 - 25).toFixed(0) + "px");
+    const s = .7 + Math.random() * .6; c.style.scale = s.toFixed(2);
+    c.style.animationDelay = Math.random() * .5 + "s"; c.style.animationDuration = 1.8 + Math.random() * 1.1 + "s";
+    document.body.appendChild(c); setTimeout(() => c.remove(), 3600);
   }
 }
 

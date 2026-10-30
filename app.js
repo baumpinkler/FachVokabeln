@@ -1367,6 +1367,10 @@ function startQuiz(){
   stopListen(); goQuestion(n);
   transit(() => { screen = "quiz"; setFocus(true); navEnterScreen(); renderQuiz(); window.scrollTo(0,0); });
 }
+/* Lichtfäden hinter der Frage (style.css, .note.qc): Die Animation läuft an der Uhrzeit weiter, damit die Fäden
+   beim Neuaufbau der Karte nicht springen. Der Schub mit Farbwechsel kommt nur beim ersten Aufbau nach der Antwort. */
+const qcDelay = () => `-${(performance.now() / 1000).toFixed(2)}s`;
+const qcBurst = a => { if (a.fx) return ""; a.fx = true; return " qc-burst"; };
 function renderQuiz(){
   if (Q.q.part === "c") return renderQuizC();
   const q = Q.q, t = q.t, c = CATS[t.cat], a = Q.answered, TN = langName(MOD.lang.term), MN = langName(MOD.lang.meaning);
@@ -1416,7 +1420,7 @@ function renderQuiz(){
     <div class="bar"><button class="back" aria-label="Quiz beenden" data-home>✕</button>
       <div class="progress"><i style="width:${(Q.asked / total) * 100}%"></i></div>
       <span class="xp-chip" aria-label="Häkchen in dieser Runde">✓ ${Q.checks}</span></div>
-    <div class="note qc${a ? " tap-next " + (a.ok ? "is-ok" : "is-bad") : ""}" id="qcard" style="--c:${c.c}"${a ? ` title="Weiter zur nächsten Frage"` : ""}>
+    <div class="note qc${a ? " tap-next " + (a.ok ? "is-ok" : "is-bad") + qcBurst(a) : ""}" id="qcard" style="--c:${c.c};--qc-d:${qcDelay()}"${a ? ` title="Weiter zur nächsten Frage"` : ""}>
       <div class="cat-label">${esc(c.name)}${q.fresh ? " · neu" : ""}${B ? " · Teil B" : ""} · Frage ${nr} von ${total}</div>
       <div class="q-ask">${ask}</div>${body}
     </div>
@@ -1489,7 +1493,7 @@ function renderQuizC(){
     <div class="bar"><button class="back" aria-label="Quiz beenden" data-home>✕</button>
       <div class="progress"><i style="width:${(Q.asked / total) * 100}%"></i></div>
       <span class="xp-chip" aria-label="Häkchen in dieser Runde">✓ ${Q.checks}</span></div>
-    <div class="note qc${a ? " tap-next " + (a.ok ? "is-ok" : "is-bad") : ""}" id="qcard" style="--c:${c.c}"${a ? ` title="Weiter zur nächsten Frage"` : ""}>
+    <div class="note qc${a ? " tap-next " + (a.ok ? "is-ok" : "is-bad") + qcBurst(a) : ""}" id="qcard" style="--c:${c.c};--qc-d:${qcDelay()}"${a ? ` title="Weiter zur nächsten Frage"` : ""}>
       <div class="cat-label">${esc(c.name)} · Teil C · Frage ${nr} von ${total}</div>
       <div class="q-ask">Erklär den Begriff in eigenen Worten</div>
       <div class="q-big" lang="${esc(MOD.lang.term)}">${esc(t.en)}</div>

@@ -1159,7 +1159,7 @@ window.addEventListener("popstate", () => {
 });
 function renderHome(fromPop){
   if (fromPop !== true && history.state && history.state.nav === "screen") { ignorePop++; try { history.back(); } catch (e) { ignorePop--; } }
-  screen = "home";
+  screen = "home"; qfxOff();
   autoFinishB();
   setFocus(false); renderTop();
   const all = TERMS.length, p = pool(), active = p.length;
@@ -1367,10 +1367,32 @@ function startQuiz(){
   stopListen(); goQuestion(n);
   transit(() => { screen = "quiz"; setFocus(true); navEnterScreen(); renderQuiz(); window.scrollTo(0,0); });
 }
-/* Lichtfäden hinter der Frage (style.css, .note.qc): Die Animation läuft an der Uhrzeit weiter, damit die Fäden
-   beim Neuaufbau der Karte nicht springen. Der Schub mit Farbwechsel kommt nur beim ersten Aufbau nach der Antwort. */
-const qcDelay = () => `-${(performance.now() / 1000).toFixed(2)}s`;
-const qcBurst = a => { if (a.fx) return ""; a.fx = true; return " qc-burst"; };
+/* Lichtfäden hinter der Quiz-Frage (style.css, #qfx): eigenes Element in <body>, damit es beim Fragenwechsel
+   nicht mit #pager ausgeblendet wird. Reicht vom Seitenanfang bis knapp unter #qcard. Nach der Antwort
+   grün/rot (Klassen is-ok/is-bad, Übergang in CSS) und ein Schub: --qc-b zählt die Antworten hoch. */
+let qfx = null, qfxN = 0;
+function qfxEl(){
+  if (!qfx) {
+    qfx = document.createElement("div"); qfx.id = "qfx"; qfx.setAttribute("aria-hidden", "true");
+    document.body.prepend(qfx); addEventListener("resize", qfxFit);
+    if (window.ResizeObserver) new ResizeObserver(qfxFit).observe($("#app"));
+  }
+  return qfx;
+}
+function qfxFit(){
+  const c = $("#qcard");
+  if (!qfx || !qfx.classList.contains("on") || !c) return;
+  qfx.style.height = Math.round(c.getBoundingClientRect().bottom + scrollY + 24) + "px";
+}
+function qfxShow(a){
+  const el = qfxEl();
+  el.classList.add("on");
+  el.classList.toggle("is-ok", !!a && a.ok === true);
+  el.classList.toggle("is-bad", !!a && a.ok === false);
+  if (a && !a.fx) { a.fx = true; el.style.setProperty("--qc-b", ++qfxN); }
+  qfxFit();
+}
+function qfxOff(){ if (qfx) qfx.classList.remove("on", "is-ok", "is-bad"); }
 function renderQuiz(){
   if (Q.q.part === "c") return renderQuizC();
   const q = Q.q, t = q.t, c = CATS[t.cat], a = Q.answered, TN = langName(MOD.lang.term), MN = langName(MOD.lang.meaning);
@@ -1420,11 +1442,12 @@ function renderQuiz(){
     <div class="bar"><button class="back" aria-label="Quiz beenden" data-home>✕</button>
       <div class="progress"><i style="width:${(Q.asked / total) * 100}%"></i></div>
       <span class="xp-chip" aria-label="Häkchen in dieser Runde">✓ ${Q.checks}</span></div>
-    <div class="note qc${a ? " tap-next " + (a.ok ? "is-ok" : "is-bad") + qcBurst(a) : ""}" id="qcard" style="--c:${c.c};--qc-d:${qcDelay()}"${a ? ` title="Weiter zur nächsten Frage"` : ""}>
+    <div class="note qc${a ? " tap-next " + (a.ok ? "is-ok" : "is-bad") : ""}" id="qcard" style="--c:${c.c}"${a ? ` title="Weiter zur nächsten Frage"` : ""}>
       <div class="cat-label">${esc(c.name)}${q.fresh ? " · neu" : ""}${B ? " · Teil B" : ""} · Frage ${nr} von ${total}</div>
       <div class="q-ask">${ask}</div>${body}
     </div>
     ${input}${opts ? `<div class="opts${q.kind === "tf" ? " tf" : ""}">${opts}</div>` : ""}${fb}`;
+  qfxShow(a);
   app.querySelector("[data-home]").onclick = () => { stopListen(); if (Q.asked) save(); goHome(); };
   const hb = $("#hint"); if (hb) hb.onclick = () => { Q.hint = true; renderQuiz(); };
   if (!a) {
@@ -1493,11 +1516,12 @@ function renderQuizC(){
     <div class="bar"><button class="back" aria-label="Quiz beenden" data-home>✕</button>
       <div class="progress"><i style="width:${(Q.asked / total) * 100}%"></i></div>
       <span class="xp-chip" aria-label="Häkchen in dieser Runde">✓ ${Q.checks}</span></div>
-    <div class="note qc${a ? " tap-next " + (a.ok ? "is-ok" : "is-bad") + qcBurst(a) : ""}" id="qcard" style="--c:${c.c};--qc-d:${qcDelay()}"${a ? ` title="Weiter zur nächsten Frage"` : ""}>
+    <div class="note qc${a ? " tap-next " + (a.ok ? "is-ok" : "is-bad") : ""}" id="qcard" style="--c:${c.c}"${a ? ` title="Weiter zur nächsten Frage"` : ""}>
       <div class="cat-label">${esc(c.name)} · Teil C · Frage ${nr} von ${total}</div>
       <div class="q-ask">Erklär den Begriff in eigenen Worten</div>
       <div class="q-big" lang="${esc(MOD.lang.term)}">${esc(t.en)}</div>
     </div>${below}`;
+  qfxShow(a);
   app.querySelector("[data-home]").onclick = () => { stopListen(); if (Q.asked) save(); goHome(); };
   if (a) {
     const n = $("#next"); n.onclick = nextQuestion; n.focus({preventScroll:true});
@@ -1636,6 +1660,7 @@ function nextQuestion(){
   transit(() => { goQuestion(n); renderQuiz(); window.scrollTo(0,0); });
 }
 function renderQuizDone(){
+  qfxOff();
   const perfect = Q.asked > 0 && Q.right === Q.asked;
   if (perfect) confetti();
   const p = pool(), more = p.some(hasTask), wait = quiet ? p.filter(waitsForSound).length : 0, aiW = p.filter(waitsForAi).length;

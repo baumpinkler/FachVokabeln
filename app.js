@@ -1091,17 +1091,54 @@ function toast(msg, ms = 2400){
   setTimeout(() => d.classList.add("out"), ms); setTimeout(() => d.remove(), ms + 300);
 }
 function confetti(){
-  /* Glassplitter und Lichtfunken in den Modulfarben (Aussehen in style.css, .confetti) */
+  /* Funkensprühen von den Seitenrändern (statt Konfetti): Funken in den Modulfarben schießen von links und rechts
+     schräg nach oben, ziehen leuchtende Schweife und fallen mit der Schwerkraft zurück. Ein Canvas, nur solange
+     die Animation läuft (Aussehen der Ebene in style.css, .sparks). */
   if (reduced()) return;
-  const cols = ["--m1", "--m2", "--m3", "--accent", "--ok"];
-  for (let i = 0; i < 44; i++) {
-    const c = document.createElement("div"); c.className = i % 3 ? "confetti" : "confetti spark";
-    c.style.left = Math.random() * 100 + "vw"; c.style.setProperty("--cc", `var(${cols[i % cols.length]})`);
-    c.style.setProperty("--dx", (Math.random() * 50 - 25).toFixed(0) + "px");
-    const s = .7 + Math.random() * .6; c.style.scale = s.toFixed(2);
-    c.style.animationDelay = Math.random() * .5 + "s"; c.style.animationDuration = 1.8 + Math.random() * 1.1 + "s";
-    document.body.appendChild(c); setTimeout(() => c.remove(), 3600);
-  }
+  const cv = document.createElement("canvas"); cv.className = "sparks"; cv.setAttribute("aria-hidden", "true");
+  document.body.appendChild(cv);
+  const W = innerWidth, H = innerHeight, dpr = Math.min(2, devicePixelRatio || 1);
+  cv.width = W * dpr; cv.height = H * dpr;
+  const g = cv.getContext("2d"); g.scale(dpr, dpr);
+  const cs = getComputedStyle(document.documentElement);
+  const cols = ["--m1", "--m2", "--m3", "--accent", "--ok"].map(v => cs.getPropertyValue(v).trim()).filter(Boolean);
+  cols.push("#ffffff");
+  const sp = [], EMIT = 900, start = performance.now();
+  let last = start, emitted = 0;
+  const spawn = side => {
+    const left = side === 0, speed = 7 + Math.random() * 7, ang = (18 + Math.random() * 42) * Math.PI / 180;
+    sp.push({
+      x: left ? -4 : W + 4, y: H * (.55 + Math.random() * .3),
+      vx: (left ? 1 : -1) * Math.cos(ang) * speed * Math.min(1, W / 420), vy: -Math.sin(ang) * speed,
+      life: 1, decay: .010 + Math.random() * .012, r: 1 + Math.random() * 1.6,
+      c: cols[Math.random() * cols.length | 0], tw: Math.random() * 6
+    });
+  };
+  const frame = now => {
+    const dt = Math.min(3, (now - last) / 16.7); last = now;
+    /* in den ersten 0,9 s gleichmäßig Funken nachlegen, abwechselnd links und rechts */
+    const want = Math.min(1, (now - start) / EMIT) * 170;
+    while (emitted < want) spawn(emitted++ % 2);
+    g.globalCompositeOperation = "destination-out"; g.fillStyle = `rgba(0,0,0,${.22 * dt})`; g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = "lighter";
+    for (const p of sp) {
+      if (p.life <= 0) continue;
+      p.vy += .16 * dt; p.vx *= Math.pow(.985, dt); p.vy *= Math.pow(.985, dt);
+      const ox = p.x, oy = p.y;
+      p.x += p.vx * dt; p.y += p.vy * dt; p.life -= p.decay * dt;
+      const a = Math.max(0, p.life) * (.75 + .25 * Math.sin(now / 60 + p.tw));
+      /* Strich vom letzten zum neuen Ort: weicher Schein, farbiger Kern, heller Mittelstrich */
+      g.strokeStyle = p.c; g.lineCap = "round";
+      g.globalAlpha = a * .16; g.lineWidth = p.r * 5; g.beginPath(); g.moveTo(ox, oy); g.lineTo(p.x, p.y); g.stroke();
+      g.globalAlpha = a; g.lineWidth = p.r * 1.6; g.stroke();
+      g.strokeStyle = "#fff"; g.globalAlpha = a * .75; g.lineWidth = p.r * .6; g.stroke();
+    }
+    g.globalAlpha = 1;
+    if (now - start < EMIT || sp.some(p => p.life > 0 && p.y < H + 20)) requestAnimationFrame(frame);
+    else cv.remove();
+  };
+  requestAnimationFrame(frame);
+  setTimeout(() => cv.remove(), 6000);
 }
 
 /* ---------- Kopfzeile ---------- */
@@ -1424,12 +1461,9 @@ function qfxShow(a){
   if (a && !a.fx) { a.fx = true; el.style.setProperty("--qc-b", ++qfxN); }
 }
 function qfxOff(){ document.body.classList.remove("qmode"); if (qfx) qfx.classList.remove("on", "is-ok", "is-bad"); }
-/* Fußzeile im Quiz (style.css, .q-foot): Glas-Pille mit Kategorie und Fragennummer, darunter der Fortschrittsbalken.
-   Nach der Antwort statt der Kategorie der Hinweis, dass ein Tipp weiterführt (es gibt keinen Weiter-Button). */
-function qFoot(label, nr, total, a, last){
-  const pos = `Frage ${nr} von ${total}`;
-  return `<div class="q-foot"><span class="q-pill">${a ? `${pos} · <b>Tippen für ${last ? "das Ergebnis" : "weiter"}</b>` : `${label} · ${pos}`}</span>
-    <div class="progress" aria-label="Fortschritt"><i style="width:${(Q.asked / total) * 100}%"></i></div></div>`;
+/* Fußzeile im Quiz (style.css, .q-foot): nur der Fortschrittsbalken, fest ganz unten am Bildrand. */
+function qFoot(total){
+  return `<div class="q-foot"><div class="progress" role="progressbar" aria-label="Fortschritt: ${Q.asked} von ${total} Fragen"><i style="width:${(Q.asked / total) * 100}%"></i></div></div>`;
 }
 /* Tasten im Quiz: Enter/Leertaste nach der Antwort = weiter, Esc = Quiz beenden (statt ✕) */
 document.addEventListener("keydown", e => {
@@ -1461,7 +1495,9 @@ function renderQuiz(){
   let input = "";
   /* Schreiben und Sprechen sind getrennt: Die Frage sagt, wie geantwortet wird, und bietet nur das an */
   if (q.inp !== "pick") input = a
-    ? `<div class="typed" style="--fb:var(${a.ok ? "--ok" : "--bad"})">${a.typed === null ? "Weiß ich nicht" : `Deine Antwort${a.spoken ? " (gesprochen)" : ""}: <b>${esc(a.typed)}</b>`}${a.ok && !a.near ? "" : `<br>Richtig: <b>${esc(t.en)}</b>`}</div>`
+    ? `<div class="typed${a.ok ? " ok" : " bad"}">${a.typed === null
+        ? `<span class="ty-v none">Weiß ich nicht</span>`
+        : `<span class="ty-l">Deine Antwort${a.spoken ? " (gesprochen)" : ""}</span><span class="ty-v mine">${esc(a.typed)}</span>`}${a.ok && !a.near ? "" : `<span class="ty-l">Richtig</span><span class="ty-v right">${esc(t.en)}</span>`}</div>`
     : `<p class="inp-mode"><span aria-hidden="true">${say ? "🎤" : "✍️"}</span> ${say ? `Sprich den Begriff auf ${esc(TN)}` : `Schreib den Begriff auf ${esc(TN)}`}</p>
        <div class="type-row${say ? " say" : ""}">${say ? `<button class="btn mic big" id="mic" aria-label="Begriff auf ${esc(TN)} sprechen" aria-pressed="false">🎤</button>` : ""}<input class="type-in" id="typed" type="text" lang="${esc(MOD.lang.term)}" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="done"
          ${say ? "readonly" : ""} placeholder="${say ? "🎤 antippen und sprechen" : "Begriff auf " + esc(TN)}" aria-label="Begriff auf ${esc(TN)}"></div>
@@ -1472,10 +1508,8 @@ function renderQuiz(){
   const fb = a ? `<div class="feedback tap-next" id="fbox" tabindex="0" style="--fb:var(${a.ok ? "--ok" : "--bad"})">
       <h3>${a.ok ? "Richtig!" : "Leider nicht."}</h3>
       ${a.note ? `<p><b>${esc(a.note)}</b></p>` : ""}
-      ${a.got.length ? `<p class="fb-got">Neu abgehakt: ${a.got.map(g => B ? checkNameB(t, g) : CHECK_FULL[g]).join(", ")}</p>` : ""}
       ${a.doneA ? `<p class="fb-done"><b>Teil A geschafft! 🎉</b> Ab morgen kommt Teil B.</p>` : ""}
       ${a.doneB ? `<p class="fb-done"><b>Teil B geschafft! 🎉</b> Ab morgen kommt Teil C.</p>` : ""}
-      ${!B && s && !s.aDay ? checksHtml(s) : B && s && !s.bDay ? checksHtmlB(t, s) : ""}
       ${q.kind === "tf" ? `<p><b>Die Aussage ${q.tf[0] ? "stimmt" : "stimmt nicht"}.</b> ${esc(q.tf[2] || "")}</p>` : ""}
       ${q.kind === "conf" ? `<p><b>Unterschied:</b> ${esc(q.conf)}</p><p><b>${esc(q.partner.en)}</b> = ${esc(q.partner.de)}</p>` : ""}
       <p><b>${esc(t.en)}</b> = ${esc(t.de)}</p>
@@ -1489,7 +1523,7 @@ function renderQuiz(){
       <div class="q-ask">${ask}</div>${body}
     </div>
     <div class="q-body">${input}${opts ? `<div class="opts${q.kind === "tf" ? " tf" : ""}">${opts}</div>` : ""}${fb}</div>
-    ${qFoot(`${esc(c.name)}${q.fresh ? " · neu" : ""}${B ? " · Teil B" : ""}`, nr, total, a, last)}`;
+    ${qFoot(total)}`;
   qfxShow(a);
   const hb = $("#hint"); if (hb) hb.onclick = () => { Q.hint = true; renderQuiz(); };
   if (!a) {
@@ -1559,7 +1593,7 @@ function renderQuizC(){
       <div class="q-big" lang="${esc(MOD.lang.term)}">${esc(t.en)}</div>
     </div>
     <div class="q-body">${below}</div>
-    ${qFoot(`${esc(c.name)} · Teil C`, nr, total, a, last)}`;
+    ${qFoot(total)}`;
   qfxShow(a);
   if (a) {
     $("#fbox").focus({preventScroll:true});

@@ -363,8 +363,6 @@ dialog textarea{width:100%;margin:8px 0;background:var(--board);color:var(--ink)
 }
 .toast.out{opacity:0;transform:translate(-50%,10px);transition:opacity .25s, transform .25s}
 @keyframes toastIn{from{opacity:0;transform:translate(-50%,16px) scale(.96)}to{opacity:1;transform:translate(-50%,0)}}
-.confetti{position:fixed;top:-12px;width:10px;height:14px;z-index:40;pointer-events:none;border-radius:2px;animation:fall 1.6s ease-in forwards}
-@keyframes fall{to{transform:translateY(105vh) rotate(540deg);opacity:.8}}
 .boot-error{padding:40px 4px}
 .boot-error p{color:var(--ink-soft);margin-top:10px}
 
@@ -654,7 +652,6 @@ i.sb-new{background:color-mix(in srgb, var(--line) 90%, transparent)}
 .chk i{font-style:normal;padding:2px 9px;border-radius:999px;border:1px dashed var(--line);color:var(--ink-soft)}
 .chk i.on{border-style:solid;background:color-mix(in srgb, var(--ok) 22%, transparent);border-color:color-mix(in srgb, var(--ok) 70%, transparent);color:var(--ink)}
 .chk i.on::before{content:"✓ "}
-.fb-got{color:var(--ok);font-weight:700}
 .fb-done{font-size:1.02rem}
 /* Stand im Nachschlagen */
 .st-tag{display:inline-block;font-size:.72rem;font-weight:700;background:var(--m1);color:var(--note-ink);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:middle;white-space:nowrap}
@@ -871,28 +868,8 @@ details.st-done{border-color:color-mix(in srgb, var(--ok) 70%, transparent)}
 :root[data-mod] .feedback h3{text-shadow:0 0 18px color-mix(in srgb, var(--fb) 60%, transparent)}
 :root[data-mod] .feedback p.fb-ex{border-top-color:rgba(255,255,255,.1)}
 
-/* ---------- Konfetti: Glassplitter und Lichtfunken ----------
-   Farbe --cc (Modulfarben, gesetzt in confetti() in app.js). Splitter: schräg geschnittenes Glas mit hellem Glanz;
-   Funken (.spark): kleine leuchtende Punkte. Fallen schimmernd, drehen sich räumlich und schwingen seitlich (--dx). */
-.confetti{
-  position:fixed; top:-16px; width:11px; height:15px; z-index:40; pointer-events:none;
-  background:linear-gradient(135deg, rgba(255,255,255,.75), color-mix(in srgb, var(--cc, #fff) 55%, transparent) 55%, color-mix(in srgb, var(--cc, #fff) 25%, transparent));
-  clip-path:polygon(18% 0, 100% 12%, 82% 100%, 0 78%);
-  filter:drop-shadow(0 0 5px var(--cc, #fff));
-  animation:fall 2.2s cubic-bezier(.3,.1,.6,1) forwards;
-}
-.confetti.spark{
-  width:6px; height:6px; border-radius:50%; clip-path:none; filter:none;
-  background:radial-gradient(circle, #fff 0 30%, var(--cc, #fff) 60%, transparent 72%);
-  box-shadow:0 0 10px 2px color-mix(in srgb, var(--cc, #fff) 70%, transparent);
-}
-@keyframes fall{
-  0%{transform:translate(0,0) rotate3d(1,1,0,0deg); opacity:0}
-  10%{opacity:1}
-  35%{transform:translate(var(--dx,20px), 35vh) rotate3d(1,1,0,240deg)}
-  70%{transform:translate(calc(-1 * var(--dx,20px)), 72vh) rotate3d(1,1,0,480deg); opacity:.9}
-  100%{transform:translate(0, 105vh) rotate3d(1,1,0,720deg); opacity:0}
-}
+/* ---------- Funkensprühen (confetti() in app.js zeichnet in diesen Canvas) ---------- */
+.sparks{position:fixed; inset:0; width:100%; height:100%; z-index:40; pointer-events:none}
 
 /* Glas-Look: Hinweise unten (Toast) als dunkles, leuchtendes Glas statt heller Pille */
 :root[data-mod] .toast{
@@ -926,16 +903,8 @@ body.qmode #app>.note.qc{flex:none; margin-top:26px; max-height:55dvh; overflow:
 #qfx{position:fixed}
 
 /* ---------- Quiz: Fußzeile ----------
-   Glas-Pille mit Kategorie und Fragennummer (nach der Antwort: „Tippen für weiter“), darunter der Fortschrittsbalken. */
-.q-foot{flex:none; display:flex; flex-direction:column; align-items:center; gap:9px; padding-top:6px}
-.q-pill{
-  max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-  font-size:.74rem; font-weight:600; color:var(--ink-soft); letter-spacing:.01em;
-  padding:6px 14px; border-radius:999px;
-  background:linear-gradient(155deg, rgba(255,255,255,.08), rgba(255,255,255,.01) 60%), color-mix(in srgb, var(--surface) 70%, transparent);
-  box-shadow:inset 0 0 0 1px var(--glass-line, var(--line)), 0 10px 26px -12px rgba(0,0,0,.9);
-}
-.q-pill b{color:var(--ink); font-weight:700}
+   Nur der Fortschrittsbalken (fest ganz unten am Bildrand, siehe weiter unten); die Fußzeile selbst nimmt keinen Platz ein. */
+.q-foot{flex:none}
 .q-foot .progress{flex:none; width:min(100%, 320px)}
 /* Bildschirmtastatur offen (body.kbd, gesetzt von kbdWatch in app.js): Pille und Balken ausblenden */
 body.qmode.kbd .q-foot{display:none}
@@ -955,4 +924,36 @@ body.qmode.kbd .q-foot{display:none}
   content:""; position:absolute; right:-3px; top:50%; width:10px; height:10px; translate:0 -50%; border-radius:50%;
   background:radial-gradient(circle, #fff 0 25%, color-mix(in srgb, var(--m3) 80%, #fff 20%) 55%, transparent 72%);
   box-shadow:0 0 12px 3px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+/* ---------- Quiz: Abstand unter der Frage ---------- */
+body.qmode #app>.note.qc{margin-bottom:22px}
+
+/* ---------- Quiz: Fortschrittsbalken ganz unten am Bildrand, über die volle Breite ---------- */
+body.qmode .q-foot .progress{
+  position:fixed; left:0; right:0; bottom:0; width:auto; height:3px; border-radius:0; z-index:5;
+  background:rgba(255,255,255,.05); box-shadow:none;
+}
+body.qmode .q-foot .progress i{border-radius:0 99px 99px 0}
+body.qmode .wrap{padding-bottom:16px}
+
+/* ---------- Quiz: eingegebene Antwort im Vergleich (Teil B) – schwebend wie die Antworten ----------
+   Keine Fläche: kleine Beschriftung, darunter die Antwort groß. Eigene Antwort grün bzw. rot und durchgestrichen,
+   die richtige hell mit grünem Schein. */
+.typed{
+  margin:6px 0 14px; padding:4px 6px; border:0; border-radius:0; background:none; box-shadow:none;
+  display:grid; gap:2px; font-size:1rem; line-height:1.4;
+}
+.ty-l{font-size:.78rem; font-weight:600; color:var(--ink-soft); letter-spacing:.01em}
+.ty-l:not(:first-child){margin-top:10px}
+.ty-v{font-size:1.12rem; font-weight:600; overflow-wrap:anywhere}
+.typed.ok .ty-v.mine,.ty-v.right{color:color-mix(in srgb, var(--ok) 35%, #fff 65%); text-shadow:0 0 16px color-mix(in srgb, var(--ok) 80%, transparent)}
+.typed.bad .ty-v.mine{color:color-mix(in srgb, var(--bad) 55%, #fff 45%); text-shadow:0 0 16px color-mix(in srgb, var(--bad) 60%, transparent);
+  text-decoration:line-through; text-decoration-color:color-mix(in srgb, var(--bad) 70%, transparent)}
+.ty-v.none{color:var(--ink-soft)}
+
+/* Fehlermeldung der KI-Prüfung (Teil C) als rot getöntes Glas */
+:root[data-mod] .c-err{
+  background:linear-gradient(155deg, rgba(255,255,255,.08), rgba(255,255,255,0) 45%), color-mix(in srgb, var(--bad) 14%, transparent);
+  border-color:color-mix(in srgb, var(--bad) 45%, transparent); box-shadow:inset 0 1px 0 rgba(255,255,255,.1);
 }

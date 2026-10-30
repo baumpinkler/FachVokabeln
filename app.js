@@ -1368,21 +1368,15 @@ function startQuiz(){
   transit(() => { screen = "quiz"; setFocus(true); navEnterScreen(); renderQuiz(); window.scrollTo(0,0); });
 }
 /* Lichtfäden hinter der Quiz-Frage (style.css, #qfx): eigenes Element in <body>, damit es beim Fragenwechsel
-   nicht mit #pager ausgeblendet wird. Reicht vom Seitenanfang bis knapp unter #qcard. Nach der Antwort
+   nicht mit #pager ausgeblendet wird. Feste Höhe ab Seitenanfang (CSS). Nach der Antwort
    grün/rot (Klassen is-ok/is-bad, Übergang in CSS) und ein Schub: --qc-b zählt die Antworten hoch. */
 let qfx = null, qfxN = 0;
 function qfxEl(){
   if (!qfx) {
     qfx = document.createElement("div"); qfx.id = "qfx"; qfx.setAttribute("aria-hidden", "true");
-    document.body.prepend(qfx); addEventListener("resize", qfxFit);
-    if (window.ResizeObserver) new ResizeObserver(qfxFit).observe($("#app"));
+    document.body.prepend(qfx);
   }
   return qfx;
-}
-function qfxFit(){
-  const c = $("#qcard");
-  if (!qfx || !qfx.classList.contains("on") || !c) return;
-  qfx.style.height = Math.round(c.getBoundingClientRect().bottom + scrollY + 24) + "px";
 }
 function qfxShow(a){
   const el = qfxEl();
@@ -1390,7 +1384,6 @@ function qfxShow(a){
   el.classList.toggle("is-ok", !!a && a.ok === true);
   el.classList.toggle("is-bad", !!a && a.ok === false);
   if (a && !a.fx) { a.fx = true; el.style.setProperty("--qc-b", ++qfxN); }
-  qfxFit();
 }
 function qfxOff(){ if (qfx) qfx.classList.remove("on", "is-ok", "is-bad"); }
 function renderQuiz(){

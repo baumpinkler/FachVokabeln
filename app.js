@@ -1465,6 +1465,15 @@ function qfxOff(){ document.body.classList.remove("qmode"); if (qfx) qfx.classLi
 function qFoot(total){
   return `<div class="q-foot"><div class="progress" role="progressbar" aria-label="Fortschritt: ${Q.asked} von ${total} Fragen"><i style="width:${(Q.asked / total) * 100}%"></i></div></div>`;
 }
+/* Nach der Antwort führt ein Tipp irgendwo auf dem Bildschirm zur nächsten Frage – außer auf Lautsprecher
+   (Vorlese-Knöpfe, „Nochmal anhören“), Links und offene Blätter. Die kurze Sperre fängt auch den Tipp ab,
+   mit dem gerade geantwortet wurde (er läuft nach dem Neuaufbau noch bis hierher durch). */
+document.addEventListener("click", e => {
+  if (screen !== "quiz" || !Q.answered) return;
+  if (e.target.closest("[data-speak], .speak, .hear-btn, a, dialog")) return;
+  if (Date.now() - (Q.answered.at || 0) < 350) return;
+  nextQuestion();
+});
 /* Tasten im Quiz: Enter/Leertaste nach der Antwort = weiter, Esc = Quiz beenden (statt ✕) */
 document.addEventListener("keydown", e => {
   if (screen !== "quiz" || e.defaultPrevented || document.querySelector("dialog[open]")) return;
@@ -1546,11 +1555,7 @@ function renderQuiz(){
     }
   } else {
     $("#fbox").focus({preventScroll:true});
-    /* Nach der Antwort führen auch Karte, Antworten und Info-Box weiter (kurze Sperre gegen Doppeltipps) */
-    const go = () => { if (Date.now() - (a.at || 0) < 350) return; nextQuestion(); };
-    $("#qcard").onclick = e => { if (e.target.closest("button, a, [data-speak]")) return; go(); };
-    $("#fbox").onclick = e => { if (e.target.closest("button, a, [data-speak]")) return; go(); };
-    app.querySelectorAll(".opt").forEach(b => b.onclick = go);
+    /* Weiter per Tipp irgendwo auf dem Bildschirm: siehe Klick-Handler bei qFoot */
   }
 }
 /* ---------- Teil C im Quiz: erklären (schreiben oder diktieren), KI prüft ---------- */
@@ -1597,10 +1602,7 @@ function renderQuizC(){
   qfxShow(a);
   if (a) {
     $("#fbox").focus({preventScroll:true});
-    const go = () => { if (Date.now() - (a.at || 0) < 350) return; nextQuestion(); };
-    $("#qcard").onclick = e => { if (e.target.closest("button, a, [data-speak]")) return; go(); };
-    $("#fbox").onclick = e => { if (e.target.closest("button, a, [data-speak]")) return; go(); };
-    return;
+    return;   /* weiter per Tipp irgendwo: siehe Klick-Handler bei qFoot */
   }
   const ta = $("#explain");
   ta.oninput = () => { Q.cText = ta.value; };

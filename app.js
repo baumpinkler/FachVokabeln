@@ -1395,19 +1395,29 @@ function qfxEl(){
   }
   return qfx;
 }
+/* Quiz-Aufbau (style.css, body.qmode): Frage oben fest, Antworten und Rückmeldung scrollen in .q-body, Fußzeile unten.
+   Beim Neuaufbau derselben Frage (Antwort, KI-Prüfung) bleibt die Scrollposition in .q-body erhalten. */
+let qScroll = {q:null, top:0};
 function qfxShow(a){
   const el = qfxEl();
+  document.body.classList.add("qmode");
+  const qb = $(".q-body");
+  if (qb) {
+    if (qScroll.q === Q.q) qb.scrollTop = qScroll.top; else qScroll = {q:Q.q, top:0};
+    qb.onscroll = () => { qScroll = {q:Q.q, top:qb.scrollTop}; };
+  }
   el.classList.add("on");
   el.classList.toggle("is-ok", !!a && a.ok === true);
   el.classList.toggle("is-bad", !!a && a.ok === false);
   if (a && !a.fx) { a.fx = true; el.style.setProperty("--qc-b", ++qfxN); }
 }
-function qfxOff(){ if (qfx) qfx.classList.remove("on", "is-ok", "is-bad"); }
-/* Fußzeile im Quiz: Kategorie und Fragennummer, klein und fest am unteren Rand (style.css, .q-foot).
-   Nach der Antwort zusätzlich der Hinweis, dass ein Tipp weiterführt (es gibt keinen Weiter-Button). */
+function qfxOff(){ document.body.classList.remove("qmode"); if (qfx) qfx.classList.remove("on", "is-ok", "is-bad"); }
+/* Fußzeile im Quiz (style.css, .q-foot): Glas-Pille mit Kategorie und Fragennummer, darunter der Fortschrittsbalken.
+   Nach der Antwort statt der Kategorie der Hinweis, dass ein Tipp weiterführt (es gibt keinen Weiter-Button). */
 function qFoot(label, nr, total, a, last){
   const pos = `Frage ${nr} von ${total}`;
-  return `<div class="q-foot">${a ? `${pos} · <b>Tippen für ${last ? "das Ergebnis" : "weiter"}</b>` : `${label} · ${pos}`}</div>`;
+  return `<div class="q-foot"><span class="q-pill">${a ? `${pos} · <b>Tippen für ${last ? "das Ergebnis" : "weiter"}</b>` : `${label} · ${pos}`}</span>
+    <div class="progress" aria-label="Fortschritt"><i style="width:${(Q.asked / total) * 100}%"></i></div></div>`;
 }
 /* Tasten im Quiz: Enter/Leertaste nach der Antwort = weiter, Esc = Quiz beenden (statt ✕) */
 document.addEventListener("keydown", e => {
@@ -1463,11 +1473,10 @@ function renderQuiz(){
     </div>` : "";
   const nr = Q.asked + (a ? 0 : 1), total = Math.max(Q.total, nr);
   app.innerHTML = `
-    <div class="bar"><div class="progress" aria-label="Fortschritt"><i style="width:${(Q.asked / total) * 100}%"></i></div></div>
     <div class="note qc${a ? " tap-next " + (a.ok ? "is-ok" : "is-bad") : ""}" id="qcard" style="--c:${c.c}"${a ? ` title="Weiter zur nächsten Frage"` : ""}>
       <div class="q-ask">${ask}</div>${body}
     </div>
-    ${input}${opts ? `<div class="opts${q.kind === "tf" ? " tf" : ""}">${opts}</div>` : ""}${fb}
+    <div class="q-body">${input}${opts ? `<div class="opts${q.kind === "tf" ? " tf" : ""}">${opts}</div>` : ""}${fb}</div>
     ${qFoot(`${esc(c.name)}${q.fresh ? " · neu" : ""}${B ? " · Teil B" : ""}`, nr, total, a, last)}`;
   qfxShow(a);
   const hb = $("#hint"); if (hb) hb.onclick = () => { Q.hint = true; renderQuiz(); };
@@ -1533,11 +1542,11 @@ function renderQuizC(){
         : `<button class="btn" id="dunno"${busy ? " disabled" : ""}>Weiß ich nicht</button><button class="btn primary" id="check"${busy ? " disabled" : ""}>Prüfen lassen</button>`}</div>`;
   }
   app.innerHTML = `
-    <div class="bar"><div class="progress" aria-label="Fortschritt"><i style="width:${(Q.asked / total) * 100}%"></i></div></div>
     <div class="note qc${a ? " tap-next " + (a.ok ? "is-ok" : "is-bad") : ""}" id="qcard" style="--c:${c.c}"${a ? ` title="Weiter zur nächsten Frage"` : ""}>
       <div class="q-ask">Erklär den Begriff in eigenen Worten</div>
       <div class="q-big" lang="${esc(MOD.lang.term)}">${esc(t.en)}</div>
-    </div>${below}
+    </div>
+    <div class="q-body">${below}</div>
     ${qFoot(`${esc(c.name)} · Teil C`, nr, total, a, last)}`;
   qfxShow(a);
   if (a) {

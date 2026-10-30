@@ -349,8 +349,20 @@ function showCalendar(){
   renderCalendar(dlg);
   openDialog(dlg);
 }
+/* Erster Monat mit mindestens einer beantworteten Frage (in diesem Modul); weiter zurück blättert der Kalender nicht.
+   Monate dazwischen ohne Fragen bleiben erreichbar. Ohne Fragen: nur der aktuelle Monat. */
+function calFirstMonth(){
+  /* Tage stehen ohne führende Null im Log („2026-7-5“), daher als Datum vergleichen, nicht als Text */
+  const days = Object.keys(P.askLog || {}).filter(k => +P.askLog[k] > 0).map(parseDay);
+  const d = days.length ? new Date(Math.min(...days)) : new Date();
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
 function renderCalendar(dlg){
+  const firstM = calFirstMonth(), curM = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  if (calMonth < firstM) calMonth = firstM;
+  if (calMonth > curM) calMonth = curM;
   const y = calMonth.getFullYear(), m = calMonth.getMonth(), now = today();
+  const isFirst = y === firstM.getFullYear() && m === firstM.getMonth();
   const first = new Date(y, m, 1), days = new Date(y, m + 1, 0).getDate(), lead = (first.getDay() + 6) % 7;
   let sum = 0, active = 0, cells = "";
   for (let i = 0; i < lead; i++) cells += `<div class="cal-cell empty"></div>`;
@@ -366,13 +378,13 @@ function renderCalendar(dlg){
   const selText = calSel ? `<b>${parseDay(calSel).toLocaleDateString("de-AT", {weekday:"long", day:"numeric", month:"long"})}</b>: ${sn ? fragen(sn) + " beantwortet" : "keine Fragen beantwortet"}` : "";
   dlg.innerHTML = `<div class="lv-head"><h2>Kalender</h2><button class="back" id="calClose" aria-label="Schließen">✕</button></div>
     <p class="lv-sub">${esc(MOD.name)} · beantwortete Fragen pro Tag, richtige und falsche</p>
-    <div class="cal-nav"><button class="back" id="calPrev" aria-label="Voriger Monat">‹</button><b>${esc(monthName)}</b><button class="back" id="calNext" aria-label="Nächster Monat" ${isCur ? "disabled" : ""}>›</button></div>
+    <div class="cal-nav"><button class="back" id="calPrev" aria-label="Voriger Monat" ${isFirst ? "disabled" : ""}>‹</button><b>${esc(monthName)}</b><button class="back" id="calNext" aria-label="Nächster Monat" ${isCur ? "disabled" : ""}>›</button></div>
     <div class="cal-grid">${["Mo","Di","Mi","Do","Fr","Sa","So"].map(w => `<div class="cal-wd">${w}</div>`).join("")}${cells}</div>
     <p class="cal-sel" role="status">${selText}</p>
     <div class="cal-sum"><span><b>${num(sum)}</b> ${sum === 1 ? "Frage" : "Fragen"} in diesem Monat</span><span>an <b>${active}</b> ${active === 1 ? "Tag" : "Tagen"}</span></div>
     <div class="cal-legend"><span><i class="l1"></i>1–9</span><span><i class="l2"></i>10–29</span><span><i class="l3"></i>ab 30</span><span><i class="lg-today"></i>heute</span></div>`;
   dlg.querySelector("#calClose").onclick = () => dlg.close();
-  dlg.querySelector("#calPrev").onclick = () => { calMonth = new Date(y, m - 1, 1); renderCalendar(dlg); };
+  dlg.querySelector("#calPrev").onclick = () => { if (!isFirst) { calMonth = new Date(y, m - 1, 1); renderCalendar(dlg); } };
   dlg.querySelector("#calNext").onclick = () => { if (!isCur) { calMonth = new Date(y, m + 1, 1); renderCalendar(dlg); } };
   dlg.querySelectorAll("[data-day]").forEach(b => b.onclick = () => { calSel = b.dataset.day; renderCalendar(dlg); });
 }
@@ -1162,6 +1174,7 @@ window.addEventListener("popstate", () => {
 });
 function renderHome(fromPop){
   if (fromPop !== true && history.state && history.state.nav === "screen") { ignorePop++; try { history.back(); } catch (e) { ignorePop--; } }
+  if (screen === "quiz") { stopListen(); if (Q.asked) save(); }
   screen = "home"; qfxOff();
   autoFinishB();
   setFocus(false); renderTop();
@@ -1390,6 +1403,21 @@ function qfxShow(a){
   if (a && !a.fx) { a.fx = true; el.style.setProperty("--qc-b", ++qfxN); }
 }
 function qfxOff(){ if (qfx) qfx.classList.remove("on", "is-ok", "is-bad"); }
+/* Fußzeile im Quiz: Kategorie und Fragennummer, klein und fest am unteren Rand (style.css, .q-foot).
+   Nach der Antwort zusätzlich der Hinweis, dass ein Tipp weiterführt (es gibt keinen Weiter-Button). */
+function qFoot(label, nr, total, a, last){
+  const pos = `Frage ${nr} von ${total}`;
+  return `<div class="q-foot">${a ? `${pos} · <b>Tippen für ${last ? "das Ergebnis" : "weiter"}</b>` : `${label} · ${pos}`}</div>`;
+}
+/* Tasten im Quiz: Enter/Leertaste nach der Antwort = weiter, Esc = Quiz beenden (statt ✕) */
+document.addEventListener("keydown", e => {
+  if (screen !== "quiz" || e.defaultPrevented || document.querySelector("dialog[open]")) return;
+  if (e.key === "Escape") { e.preventDefault(); goHome(); return; }
+  if ((e.key === "Enter" || e.key === " ") && Q.answered && !e.target.closest("input, textarea, button, a, [data-speak]")) {
+    if (Date.now() - (Q.answered.at || 0) < 350) return;
+    e.preventDefault(); nextQuestion();
+  }
+});
 function renderQuiz(){
   if (Q.q.part === "c") return renderQuizC();
   const q = Q.q, t = q.t, c = CATS[t.cat], a = Q.answered, TN = langName(MOD.lang.term), MN = langName(MOD.lang.meaning);
@@ -1419,7 +1447,7 @@ function renderQuiz(){
        <div class="type-btns"><button class="btn" id="dunno">Weiß ich nicht</button><button class="btn primary" id="check">Prüfen</button></div>`;
   const s = stateOf(t), last = a && Q.total <= Q.asked;
   const exEn = q.sent ? q.sent.en : t.exEn, exDe = q.sent ? q.sent.de : t.exDe;
-  const fb = a ? `<div class="feedback tap-next" id="fbox" style="--fb:var(${a.ok ? "--ok" : "--bad"})">
+  const fb = a ? `<div class="feedback tap-next" id="fbox" tabindex="0" style="--fb:var(${a.ok ? "--ok" : "--bad"})">
       <h3>${a.ok ? "Richtig!" : "Leider nicht."}</h3>
       ${a.note ? `<p><b>${esc(a.note)}</b></p>` : ""}
       ${a.got.length ? `<p class="fb-got">Neu abgehakt: ${a.got.map(g => B ? checkNameB(t, g) : CHECK_FULL[g]).join(", ")}</p>` : ""}
@@ -1432,20 +1460,16 @@ function renderQuiz(){
       <p>${esc(t.expl)}</p>
       <p class="fb-ex"><i>${markTerm(t, exEn)}</i><br>${esc(exDe)}</p>
       <div>${speakBtn(t.en, "Begriff")} ${speakBtn(exEn, TN)} ${speakBtn(exDe, MN, MOD.lang.meaning)}</div>
-    </div>
-    <button class="btn primary wide" id="next">${last ? "Ergebnis ansehen" : "Weiter"}</button>` : "";
+    </div>` : "";
   const nr = Q.asked + (a ? 0 : 1), total = Math.max(Q.total, nr);
   app.innerHTML = `
-    <div class="bar"><button class="back" aria-label="Quiz beenden" data-home>✕</button>
-      <div class="progress"><i style="width:${(Q.asked / total) * 100}%"></i></div>
-      <span class="xp-chip" aria-label="Häkchen in dieser Runde">✓ ${Q.checks}</span></div>
+    <div class="bar"><div class="progress" aria-label="Fortschritt"><i style="width:${(Q.asked / total) * 100}%"></i></div></div>
     <div class="note qc${a ? " tap-next " + (a.ok ? "is-ok" : "is-bad") : ""}" id="qcard" style="--c:${c.c}"${a ? ` title="Weiter zur nächsten Frage"` : ""}>
-      <div class="cat-label">${esc(c.name)}${q.fresh ? " · neu" : ""}${B ? " · Teil B" : ""} · Frage ${nr} von ${total}</div>
       <div class="q-ask">${ask}</div>${body}
     </div>
-    ${input}${opts ? `<div class="opts${q.kind === "tf" ? " tf" : ""}">${opts}</div>` : ""}${fb}`;
+    ${input}${opts ? `<div class="opts${q.kind === "tf" ? " tf" : ""}">${opts}</div>` : ""}${fb}
+    ${qFoot(`${esc(c.name)}${q.fresh ? " · neu" : ""}${B ? " · Teil B" : ""}`, nr, total, a, last)}`;
   qfxShow(a);
-  app.querySelector("[data-home]").onclick = () => { stopListen(); if (Q.asked) save(); goHome(); };
   const hb = $("#hint"); if (hb) hb.onclick = () => { Q.hint = true; renderQuiz(); };
   if (!a) {
     if (hear) {
@@ -1466,7 +1490,7 @@ function renderQuiz(){
       if (!say) inp.focus({preventScroll:true});
     }
   } else {
-    const n = $("#next"); n.onclick = nextQuestion; n.focus({preventScroll:true});
+    $("#fbox").focus({preventScroll:true});
     /* Nach der Antwort führen auch Karte, Antworten und Info-Box weiter (kurze Sperre gegen Doppeltipps) */
     const go = () => { if (Date.now() - (a.at || 0) < 350) return; nextQuestion(); };
     $("#qcard").onclick = e => { if (e.target.closest("button, a, [data-speak]")) return; go(); };
@@ -1483,7 +1507,7 @@ function renderQuizC(){
   if (a) {
     const ai = a.ai;
     below = `<div class="typed" style="--fb:var(${a.ok ? "--ok" : "--bad"})">${a.typed === null ? "Weiß ich nicht" : `Deine Erklärung: <b>${esc(a.typed)}</b>`}</div>
-    <div class="feedback tap-next" id="fbox" style="--fb:var(${a.ok ? "--ok" : "--bad"})">
+    <div class="feedback tap-next" id="fbox" tabindex="0" style="--fb:var(${a.ok ? "--ok" : "--bad"})">
       <h3>${a.ok ? "Verstanden!" : a.typed === null ? "Kein Problem." : "Noch nicht ganz."}</h3>
       ${ai && ai.feedback ? `<p>${esc(ai.feedback)}</p>` : ""}
       ${ai && ai.fehlt && !a.ok ? `<p><b>Was gefehlt hat:</b> ${esc(ai.fehlt)}</p>` : ""}
@@ -1493,8 +1517,7 @@ function renderQuizC(){
       <p class="fb-ex"><b>So kann man es erklären:</b> ${esc(a.muster)}</p>
       <p><b>${esc(t.en)}</b> = ${esc(t.de)}</p>
       <div>${speakBtn(t.en, "Begriff")}</div>
-    </div>
-    <button class="btn primary wide" id="next">${last ? "Ergebnis ansehen" : "Weiter"}</button>`;
+    </div>`;
   } else {
     const setup = err === "nokey" || err === "badkey";
     below = `<p class="inp-mode"><span aria-hidden="true">${canSay ? "✍️🎤" : "✍️"}</span> ${canSay ? "Schreib oder diktier" : "Schreib"} deine Erklärung auf ${esc(MN)}</p>
@@ -1510,18 +1533,15 @@ function renderQuizC(){
         : `<button class="btn" id="dunno"${busy ? " disabled" : ""}>Weiß ich nicht</button><button class="btn primary" id="check"${busy ? " disabled" : ""}>Prüfen lassen</button>`}</div>`;
   }
   app.innerHTML = `
-    <div class="bar"><button class="back" aria-label="Quiz beenden" data-home>✕</button>
-      <div class="progress"><i style="width:${(Q.asked / total) * 100}%"></i></div>
-      <span class="xp-chip" aria-label="Häkchen in dieser Runde">✓ ${Q.checks}</span></div>
+    <div class="bar"><div class="progress" aria-label="Fortschritt"><i style="width:${(Q.asked / total) * 100}%"></i></div></div>
     <div class="note qc${a ? " tap-next " + (a.ok ? "is-ok" : "is-bad") : ""}" id="qcard" style="--c:${c.c}"${a ? ` title="Weiter zur nächsten Frage"` : ""}>
-      <div class="cat-label">${esc(c.name)} · Teil C · Frage ${nr} von ${total}</div>
       <div class="q-ask">Erklär den Begriff in eigenen Worten</div>
       <div class="q-big" lang="${esc(MOD.lang.term)}">${esc(t.en)}</div>
-    </div>${below}`;
+    </div>${below}
+    ${qFoot(`${esc(c.name)} · Teil C`, nr, total, a, last)}`;
   qfxShow(a);
-  app.querySelector("[data-home]").onclick = () => { stopListen(); if (Q.asked) save(); goHome(); };
   if (a) {
-    const n = $("#next"); n.onclick = nextQuestion; n.focus({preventScroll:true});
+    $("#fbox").focus({preventScroll:true});
     const go = () => { if (Date.now() - (a.at || 0) < 350) return; nextQuestion(); };
     $("#qcard").onclick = e => { if (e.target.closest("button, a, [data-speak]")) return; go(); };
     $("#fbox").onclick = e => { if (e.target.closest("button, a, [data-speak]")) return; go(); };

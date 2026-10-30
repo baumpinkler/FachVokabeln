@@ -1369,24 +1369,52 @@ function startQuiz(){
 }
 /* Lichtfäden als Hintergrund der ganzen App (style.css, #qfx): eigenes Element in <body>, läuft bei jedem
    Seitenwechsel weiter. Im Quiz nach der Antwort grün/rot (is-ok/is-bad, Übergang in CSS) und ein Schub:
-   --qc-b zählt die Antworten hoch. qfxCalm nimmt Grün/Rot wieder weg. */
-let qfx = null, qfxN = 0;
+   --qc-b zählt die Antworten hoch. qfxCalm nimmt Grün/Rot wieder weg.
+   Hinter der richtigen und der falsch gewählten Antwort färben sich genau die Fäden dort: zwei Ausschnitte
+   (.qfx-hl ok/bad) mit denselben Lagen, von qfxTrack auf die Bildschirmposition der Antwort gesetzt. */
+const QFX_LAYERS = '<i class="qfx-l n1 l"></i><i class="qfx-l n2 r"></i><i class="qfx-l n3 l"></i><i class="qfx-l a r"></i>';
+let qfx = null, qfxN = 0, qfxHl = [], qfxRaf = 0;
 function qfxEl(){
   if (!qfx) {
     qfx = document.createElement("div"); qfx.id = "qfx"; qfx.setAttribute("aria-hidden", "true");
-    qfx.innerHTML = '<i class="qfx-l n1 l"></i><i class="qfx-l n2 r"></i><i class="qfx-l n3 l"></i><i class="qfx-l a r"></i>';
+    qfx.innerHTML = QFX_LAYERS + ["ok", "bad"].map(k => `<div class="qfx-hl ${k}"><div class="qfx-hi">${QFX_LAYERS}</div></div>`).join("");
     document.body.prepend(qfx);
+    qfxHl = [...qfx.querySelectorAll(".qfx-hl")].map(el => ({el, target:null}));
+    const later = () => { if (!qfxRaf) qfxRaf = requestAnimationFrame(qfxTrack); };
+    addEventListener("scroll", later, {passive:true}); addEventListener("resize", later);
     requestAnimationFrame(() => qfx.classList.add("on"));
   }
   return qfx;
+}
+function qfxTrack(){
+  qfxRaf = 0;
+  if (!qfx) return;
+  qfx.style.setProperty("--vw", qfx.clientWidth + "px"); qfx.style.setProperty("--vh", qfx.clientHeight + "px");
+  for (const h of qfxHl) {
+    const t = h.target && h.target.isConnected ? h.target : null;
+    h.el.classList.toggle("on", !!t);
+    if (!t) continue;
+    const r = t.getBoundingClientRect(), padX = 36, padY = 22;
+    h.el.style.setProperty("--t", Math.round(r.top - padY) + "px");
+    h.el.style.setProperty("--l", Math.round(r.left - padX) + "px");
+    h.el.style.setProperty("--hw", Math.round(r.width + 2 * padX) + "px");
+    h.el.style.setProperty("--hh", Math.round(r.height + 2 * padY) + "px");
+  }
 }
 function qfxShow(a){
   const el = qfxEl();
   el.classList.toggle("is-ok", !!a && a.ok === true);
   el.classList.toggle("is-bad", !!a && a.ok === false);
   if (a && !a.fx) { a.fx = true; el.style.setProperty("--qc-b", ++qfxN); }
+  qfxHl[0].target = a ? $(".opt.right") : null;
+  qfxHl[1].target = a ? $(".opt.wrong") : null;
+  qfxTrack();
 }
-function qfxCalm(){ if (qfx) qfx.classList.remove("is-ok", "is-bad"); }
+function qfxCalm(){
+  if (!qfx) return;
+  qfx.classList.remove("is-ok", "is-bad");
+  qfxHl.forEach(h => h.target = null); qfxTrack();
+}
 function renderQuiz(){
   if (Q.q.part === "c") return renderQuizC();
   const q = Q.q, t = q.t, c = CATS[t.cat], a = Q.answered, TN = langName(MOD.lang.term), MN = langName(MOD.lang.meaning);

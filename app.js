@@ -1489,6 +1489,7 @@ async function qReveal(a){
   if (!a || a.shown) return;
   a.shown = true;
   const right = $(".opt.right"), gone = [...document.querySelectorAll(".opt.gone")], fb = $("#fbox"), qb = $(".q-body");
+  const side = !!document.querySelector(".opts.tf");   /* nebeneinander: nur ausblenden, nicht zusammenfallen */
   const alive = () => (fb || right) && (fb ? fb.isConnected : right.isConnected) && Q && Q.answered === a;
   const fast = reduced();
   if (!fast && (right || gone.length)) {
@@ -1497,7 +1498,7 @@ async function qReveal(a){
     if (right) p1.push(right.animate(big, {duration:300, easing:"cubic-bezier(.2,.8,.3,1)", fill:"forwards"}).finished);
     await Promise.all(p1).catch(() => {});
     if (!alive()) return;
-    const p2 = gone.map(g => {
+    const p2 = side ? [] : gone.map(g => {
       const cs = getComputedStyle(g);
       return g.animate([
         {opacity:0, height:g.offsetHeight + "px", paddingTop:cs.paddingTop, paddingBottom:cs.paddingBottom},

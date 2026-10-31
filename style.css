@@ -997,3 +997,25 @@ body.qmode .q-foot .progress i::before{
 /* Hilfe: Farbpunkt der Stufe in der Überschrift; lange Angaben dürfen umbrechen */
 .hp h3 .ls-dot{vertical-align:2px}
 .hp-row b{white-space:normal; max-width:68%}
+
+/* ---------- Mehrere Aussagen (multi-truefalse): Mehrfachauswahl, schwebend ----------
+   Antippen schaltet eine Aussage an (leuchtender Neon-Ring mit Häkchen), „Prüfen“ wertet aus. Danach jede Aussage
+   grün (richtig eingeschätzt) bzw. rot (daneben) mit „Stimmt / Stimmt nicht“ und Begründung; nichts verschwindet. */
+.mt-list{display:grid;gap:2px;margin:4px 0 14px}
+.opt.mt{display:flex;gap:14px;align-items:flex-start;font-size:1rem;line-height:1.4;font-weight:600;width:100%}
+.mt-box{flex:none;width:22px;height:22px;margin-top:1px;border-radius:7px;position:relative;
+  box-shadow:inset 0 0 0 1.5px color-mix(in srgb, var(--ink) 45%, transparent);transition:box-shadow .3s var(--ease), background .3s var(--ease)}
+.mt-box::after{content:"";position:absolute;left:7px;top:3px;width:6px;height:11px;border:solid #fff;border-width:0 2.5px 2.5px 0;
+  transform:rotate(45deg) scale(.4);opacity:0;transition:transform .3s var(--spring), opacity .2s var(--ease)}
+.opt.mt[aria-pressed="true"] .mt-box,.mt-box.on{background:color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow:inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 80%, #fff 20%), 0 0 14px color-mix(in srgb, var(--accent) 70%, transparent)}
+.opt.mt[aria-pressed="true"] .mt-box::after,.mt-box.on::after{transform:rotate(45deg) scale(1);opacity:1}
+.opt.mt[aria-pressed="true"] .mt-t{color:#fff}
+.opt.mt.done{cursor:pointer}
+.opt.mt.done .mt-t{display:grid;gap:4px}
+.opt.mt.mt-ok .mt-t{color:color-mix(in srgb, var(--ok) 35%, #fff 65%);text-shadow:0 0 16px color-mix(in srgb, var(--ok) 70%, transparent)}
+.opt.mt.mt-bad .mt-t{color:color-mix(in srgb, var(--bad) 55%, #fff 45%);text-shadow:0 0 16px color-mix(in srgb, var(--bad) 55%, transparent)}
+.mt-v{font-size:.86rem;font-weight:400;color:var(--ink-soft);text-shadow:none;line-height:1.4}
+.mt-v b{font-weight:700;color:var(--ink)}
+.mt-btns{grid-template-columns:1fr}
+@media (prefers-reduced-motion:reduce){.mt-box,.mt-box::after{transition:none}}

@@ -584,7 +584,7 @@ function kindSpec(kc){
   if (def.each) p.push(def.each);
   if (def.ai) p.push("schreiben" + (SR ? " oder diktieren" : "") + ", auf " + langName(MOD.lang[def.lang]));
   else {
-    if (kc.outs.length > 1 || kc.outs[0] !== "read") p.push(listText(kc.outs.map(o => OUT_LABEL[o].toLowerCase())));
+    if (kc.outs.length > 1 || kc.outs[0] !== "read") p.push(listText(kc.outs.map(o => def.outLabel ? outLabel(def, o) : OUT_LABEL[o].toLowerCase())));
     if (def.ins.length > 1 || kc.ins[0] !== "pick") p.push(listText(kc.ins.map(i => INP_LABEL[i].toLowerCase())));
   }
   if (kc.minCorrect) p.push(`mindestens ${kc.minCorrect} richtige Antworten`);
@@ -624,7 +624,7 @@ function showHelp(){
     + row("Geschafft", esc(stageDone(st)))
     + row("Wann", esc(stageWhen(i)))
     + (st.perRound < QZ.round ? row("Pro Runde", `höchstens ${st.perRound} ${st.perRound === 1 ? "Frage" : "Fragen"}`) : "")
-    + note(st.kinds.map(kc => KINDS[kc.kind].help ? KINDS[kc.kind].help() : "").filter(Boolean).join(" "))
+    + note(st.kinds.map(kc => KINDS[kc.kind].help ? KINDS[kc.kind].help(kc) : "").filter(Boolean).join(" "))
     + (st.kinds.length > 1 ? note("Die Fragearten kommen gemischt.") : ""))).join("");
   dlg.innerHTML = `<div class="lv-head"><h2>So lernst du hier</h2><button class="back" id="helpClose" aria-label="Schließen">✕</button></div>
     <p class="lv-sub">${N === 1 ? `Jeder Begriff durchläuft eine Stufe: ${esc(STAGES[0].name)}.` : `Jeder Begriff durchläuft ${N} Stufen: ${esc(listText(STAGES.map((st, i) => stTitle(i))))}.`}
@@ -738,27 +738,31 @@ function setFocus(on){ document.body.classList.toggle("focus", on); }
    id, name (Hilfe, Nachschlagen), refName (Beschriftung der Inhalts-Häkchen: „Satz 1“ …),
    lang: "term" | "meaning" – Sprache der Ausgabe beim Hören (MOD.lang), outs/ins: mögliche Ausgabe- (read, hear) und
    Eingabearten (pick, type, say; free = freier Text für die KI), ai: braucht die KI-Prüfung,
-   refs(t): Inhalte des Begriffs, je {ck: Häkchen oder nichts, …}; leer = die Frageart entfällt für diesen Begriff,
+   refs(t): Inhalte des Begriffs, je {ck: Häkchen oder nichts, tag: eigene Beschriftung im Nachschlagen, …}; leer = die Frageart entfällt für diesen Begriff,
    outCk(out) / inpCk(inp): Häkchen für eine Ausgabe- bzw. Eingabeart (oder null),
    make(q): Frage bauen (prompt, opts, answer …), ask(q): Fragezeile, body(q, a): Inhalt unter der Frage (Standard: prompt),
    fb(q): zusätzliche Zeilen der Rückmeldung, big: Schriftgröße des prompt, long: lange Antworttexte, side: Antworten nebeneinander,
    render: ganz eigene Darstellung,
-   help(): ein, zwei Sätze für die Hilfe (was die Frage ist), each: Häkchen je Inhalt in der Hilfe („jeder Satz einmal“).
+   help(kc): ein, zwei Sätze für die Hilfe (was die Frage ist; kc = Einstellung in der Stufe), each: Häkchen je Inhalt in der Hilfe („jeder Satz einmal“).
    Häkchen-Namen sind über alle Fragearten eindeutig (gespeichert wird pro Stufe, nicht pro Frageart). */
 const OUTS = ["read", "hear"], INPUTS = ["pick", "type", "say"];
 const INP_LABEL = {pick:"Auswählen", type:"Schreiben", say:"Sprechen", free:"Schreiben oder diktieren"}, OUT_LABEL = {read:"Lesen", hear:"Hören"};
+/* Beschriftung einer Ausgabeart (eigene Ausgabearten wie die Richtungen beim Übersetzen über def.outLabel) */
+/* „liest oder hörst“ je nach Ausgabearten der Frageart in der Stufe (Hilfe) */
+const readHear = kc => !kc ? "liest oder hörst" : kc.outs.includes("hear") ? (kc.outs.includes("read") ? "liest oder hörst" : "hörst") : "liest";
+const outLabel = (def, o) => def.outLabel ? def.outLabel(o) : OUT_LABEL[o];
 const KINDS = {};
 const kind = def => { KINDS[def.id] = Object.assign({lang:"term", outs:["read"], ins:["pick"], refName:"", big:"q-mid", outCk:() => null, inpCk:() => null}, def); };
 /* Antwortmöglichkeiten: der Begriff und q.n - 1 Ablenker */
 function optsFor(q, field){ q.opts = shuffle([q.t].concat(distractors(q.t, field, q.n - 1))).map(o => ({id:o.id, label:o[field]})); q.answer = q.t.id; }
 kind({id:"meaning-to-term", name:"Bedeutung → Begriff", lang:"meaning", outs:OUTS, ins:INPUTS, big:"q-big",
   refs:() => [{}], outCk:o => "o:" + o, inpCk:i => "i:" + i,
-  help:() => `Du liest oder hörst die Bedeutung und antwortest mit dem Begriff auf ${esc(langName(MOD.lang.term))}.`,
+  help:kc => `Du ${readHear(kc)} die Bedeutung und antwortest mit dem Begriff auf ${esc(langName(MOD.lang.term))}.`,
   make:q => { q.prompt = q.t.de; if (q.inp === "pick") optsFor(q, "en"); },
   ask:() => `Wie heißt das auf ${esc(langName(MOD.lang.term))}?`});
 kind({id:"term-to-meaning", name:"Begriff → Bedeutung", outs:OUTS, big:"q-big", long:true,
   refs:() => [{}], outCk:o => "r:" + o,
-  help:() => "Du liest oder hörst den Begriff und wählst die passende Bedeutung.",
+  help:kc => `Du ${readHear(kc)} den Begriff und wählst die passende Bedeutung.`,
   make:q => { q.prompt = q.t.en; optsFor(q, "de"); },
   ask:() => "Was bedeutet das?"});
 /* Lückensatz: c0 = Beispielsatz (nur wenn termRe passt), c1/c2 = Zusatzsätze; Hilfe „Satz auf Deutsch zeigen“ */
@@ -837,10 +841,158 @@ kind({id:"explain-ai", name:"In eigenen Worten", refName:"Erklärung", lang:"mea
   make:q => { q.prompt = q.t.en; },
   render:() => renderQuizC()});
 
+/* ---------- Neue Fragearten zum Auswählen (Quiz-Baukasten, Chat 3) ---------- */
+/* Erklärung → Begriff: eine der drei Erklärungen (Index 3, 6, 7), vorgelesen in der Bedeutungs-Sprache */
+kind({id:"explain-to-term", name:"Erklärung → Begriff", refName:"Erklärung", lang:"meaning", outs:OUTS, ins:INPUTS, each:"jede Erklärung einmal",
+  help:kc => `Du ${readHear(kc)} eine Erklärung und antwortest mit dem passenden Begriff auf ${esc(langName(MOD.lang.term))}.`,
+  refs:t => t.expls.map((text, i) => ({ck:"x" + i, text})),
+  outCk:o => "xo:" + o, inpCk:i => "xi:" + i,
+  make:q => { q.prompt = q.task.ref.text; if (q.inp === "pick") optsFor(q, "en"); },
+  ask:() => "Welcher Begriff passt zur Erklärung?"});
+/* Begriff → Erklärung: Ablenker sind Erklärungen anderer Begriffe (gleiche Kategorie zuerst), möglichst an derselben Stelle */
+kind({id:"term-to-explain", name:"Begriff → Erklärung", refName:"Erklärung", outs:OUTS, big:"q-big", long:true, each:"jede Erklärung einmal",
+  help:kc => `Du ${readHear(kc)} den Begriff und wählst die passende Erklärung.`,
+  refs:t => t.expls.map((text, i) => ({ck:"y" + i, i, text})),
+  outCk:o => "yo:" + o,
+  make:q => { const r = q.task.ref; q.prompt = q.t.en; q.answer = q.t.id;
+    const seen = new Set([r.text]), wrong = [];
+    for (const c of distractors(q.t, "en", q.n + 3, c => c.expls.length)) {
+      if (wrong.length >= q.n - 1) break;
+      const e = c.expls[r.i] || pickOne(c.expls); if (seen.has(e)) continue; seen.add(e); wrong.push({id:c.id, label:e});
+    }
+    q.opts = shuffle([{id:q.t.id, label:r.text}].concat(wrong)); },
+  ask:() => "Welche Erklärung passt?"});
+/* Welche Situation passt? Umkehrung von „situation“: Ablenker sind Situationen anderer Begriffe (lange Antworten) */
+kind({id:"which-situation", name:"Welche Situation passt?", refName:"Situation", big:"q-big", long:true, each:"jede Situation einmal",
+  help:() => "Du siehst einen Begriff und wählst die Situation aus dem Arbeitsalltag, zu der er passt.",
+  refs:t => extraOf(t).sit.slice(0, 3).map((text, i) => ({ck:"ws" + i, text})),
+  make:q => { const r = q.task.ref; q.prompt = q.t.en; q.answer = q.t.id;
+    const wrong = distractors(q.t, "en", q.n - 1, c => extraOf(c).sit.length).map(c => ({id:c.id, label:pickOne(extraOf(c).sit.slice(0, 3))}));
+    q.opts = shuffle([{id:q.t.id, label:r.text}].concat(wrong)); },
+  ask:() => "Welche Situation passt zum Begriff?"});
+/* Satzpaare eines Begriffs: Beispielsatz (Index 4/5) und die Zusatzsätze (ex), ohne Prüfung auf termRe */
+function sentPairs(t){
+  const out = [];
+  if (typeof t.exEn === "string" && t.exEn.trim() && typeof t.exDe === "string" && t.exDe.trim()) out.push({en:t.exEn, de:t.exDe});
+  const x = (MOD.extra && MOD.extra[t.id]) || {};
+  for (const e of arr(x.ex)) if (Array.isArray(e) && typeof e[0] === "string" && e[0].trim() && typeof e[1] === "string" && e[1].trim()) out.push({en:e[0], de:e[1]});
+  return out.slice(0, 3);
+}
+/* Satz übersetzen: Richtungen als eigene Ausgabearten (Einstellung „directions“: en-de, de-en). Ablenker: andere Sätze
+   desselben Begriffs, dann Sätze anderer Begriffe (gleiche Kategorie zuerst) */
+const TR_DIRS = ["en-de", "de-en"];
+const trFrom = o => o === "de-en" ? "de" : "en", trTo = o => o === "de-en" ? "en" : "de";
+const trLang = side => side === "en" ? MOD.lang.term : MOD.lang.meaning;
+kind({id:"translate-sentence", name:"Satz übersetzen", refName:"Satz", outs:TR_DIRS, outKey:"directions", each:"jeder Satz einmal",
+  outLabel:o => langName(trLang(trFrom(o))) + " → " + langName(trLang(trTo(o))),
+  help:() => "Ein Beispielsatz mit dem Begriff: Welche Übersetzung ist richtig? Unter den falschen Antworten sind auch andere Sätze mit demselben Begriff, du musst also wirklich übersetzen.",
+  refs:t => sentPairs(t).map((p, i) => ({ck:"ts" + i, en:p.en, de:p.de})),
+  outCk:o => "td:" + o,
+  make:q => { const r = q.task.ref, from = trFrom(q.out), to = trTo(q.out);
+    q.sent = r; q.prompt = r[from]; q.toLang = trLang(to); q.answer = "ok";
+    /* zuerst die anderen Sätze desselben Begriffs (sonst verrät der Begriff selbst die Antwort), dann Sätze anderer Begriffe */
+    const seen = new Set([r[to]]), wrong = [], add = s => { if (wrong.length < q.n - 1 && !seen.has(s)) { seen.add(s); wrong.push({id:"x" + wrong.length, label:s}); } };
+    shuffle(sentPairs(q.t).filter(p => p.en !== r.en)).forEach(p => add(p[to]));
+    for (const c of distractors(q.t, "en", q.n + 3, c => sentPairs(c).length)) add(pickOne(sentPairs(c))[to]);
+    q.opts = shuffle([{id:"ok", label:r[to]}].concat(wrong)); q.long = true; },
+  ask:q => `Was heißt das auf ${esc(langName(q.toLang))}?`,
+  body:q => `<div class="q-mid" lang="${esc(trLang(trFrom(q.out)))}">${esc(q.prompt)}</div>`});
+/* Falscher Begriff im Satz: Ja/Nein, bei „Passt nicht“ Folgefrage nach dem richtigen Begriff. wt0 = Satz stimmt so,
+   wt1 = Begriff vertauscht. Ersetzt wird nur durch Begriffe derselben Wortart (Verben „to …“ nur durch Verben). */
+const isVerb = t => /^to /i.test(t.en);
+const sameClass = t => c => isVerb(c) === isVerb(t) && !/[\/()]/.test(c.en);
+function gapSents(t){
+  const out = [];
+  if (termRe(t).test(t.exEn)) out.push({en:t.exEn, de:t.exDe});
+  extraOf(t).ex.slice(0, 2).forEach(e => out.push({en:e[0], de:e[1]}));
+  return out;
+}
+/* Begriff im Satz ersetzen: Großschreibung am Satzanfang übernehmen, „a“/„an“ davor anpassen */
+function swapTerm(t, en, d){
+  const m = termRe(t).exec(en); if (!m) return null;
+  let w = d.en.replace(/^to /i, "");
+  const at = m.index + m[1].length, orig = m[2];
+  if (/^[A-Z]/.test(orig) && /^[a-z]/.test(w)) w = w[0].toUpperCase() + w.slice(1);
+  let before = en.slice(0, at);
+  const art = /(^|[^A-Za-z])(a|an|A|An)(\s+)$/.exec(before);
+  if (art) { const an = /^[aeiouAEIOU]/.test(w); let a = an ? "an" : "a"; if (/^A/.test(art[2])) a = a[0].toUpperCase() + a.slice(1);
+    before = before.slice(0, art.index + art[1].length) + a + art[3]; }
+  return {before, word:w, after:en.slice(at + orig.length)};
+}
+kind({id:"wrong-term", name:"Falscher Begriff im Satz", refName:"Fall", side:true, each:"beide Fälle einmal (der Satz stimmt, der Begriff ist vertauscht)",
+  help:() => "In einem Beispielsatz ist ein Begriff markiert: Passt er? Manchmal ist er gegen einen anderen Begriff vertauscht; dann wählst du danach den richtigen.",
+  refs:t => !gapSents(t).length ? [] : [{ck:"wt0", tag:"Passt", swap:false}]
+    .concat(TERMS.some(c => c !== t && sameClass(t)(c)) ? [{ck:"wt1", tag:"Vertauscht", swap:true}] : []),
+  make:q => {
+    const s = pickOne(gapSents(q.t)); q.sent = s; q.step = 1;
+    const d = q.task.ref.swap ? distractors(q.t, "en", 1, sameClass(q.t))[0] : null;
+    const parts = d ? swapTerm(q.t, s.en, d) : null;
+    q.swap = !!parts; q.wrongT = parts ? d : null;
+    const m = termRe(q.t).exec(s.en);
+    q.marked = parts ? esc(parts.before) + "<mark>" + esc(parts.word) + "</mark>" + esc(parts.after) : markTerm(q.t, s.en);
+    q.shown = parts ? parts.word : m ? m[2] : q.t.en;
+    q.opts = [{id:"yes", label:"Passt"}, {id:"no", label:"Passt nicht"}]; q.answer = q.swap ? "no" : "yes"; q.side = true; q.long = false;
+  },
+  /* „Passt nicht“ bei vertauschtem Begriff: Folgefrage, ausgewertet wird erst danach */
+  pick:(q, k) => {
+    if (q.step !== 1 || !q.swap || q.opts[k].id !== "no") return false;
+    q.step = 2; q.side = false;
+    const wrong = distractors(q.t, "en", q.n, c => c !== q.wrongT).slice(0, q.n - 1);
+    q.opts = shuffle([q.t].concat(wrong)).map(o => ({id:o.id, label:o.en})); q.answer = q.t.id;
+    renderQuiz(); return true;
+  },
+  ask:q => q.step === 2 ? "Stimmt, der passt nicht. Welcher Begriff gehört hinein?" : "Passt der markierte Begriff in den Satz?",
+  body:q => `<div class="q-mid" lang="${esc(MOD.lang.term)}">${q.marked}</div>`,
+  fb:q => q.swap ? `<p><b>Im Satz stand „${esc(q.shown)}“ statt „${esc(q.t.en)}“.</b> ${esc(q.wrongT.en)} = ${esc(q.wrongT.de)}</p>` : `<p><b>Der Begriff passt.</b></p>`});
+/* Mehrere Aussagen: beide Aussagen des Begriffs und zwei Aussagen anderer Begriffe (nur solche, die ihren Begriff nennen,
+   damit sie für sich verständlich sind). Richtig = beide eigenen richtig eingeschätzt und höchstens eine fremde daneben
+   (das zählt als „fast richtig“). Häkchen gibt es nur für den gefragten Begriff. */
+const mentions = (t, text) => nameVariants(t).some(v => new RegExp("(^|[^" + LTR + "])(" + escRe(v) + ")(:innen|:in|es|en|s|n|e)?(?![" + LTR + "])", "i").test(text));
+function foreignTf(t, n){
+  const same = shuffle(TERMS.filter(c => c.cat === t.cat && c !== t)), other = shuffle(TERMS.filter(c => c.cat !== t.cat));
+  const out = [];
+  for (const c of same.concat(other)) {
+    if (out.length >= n) break;
+    const fs = extraOf(c).tf.filter(f => mentions(c, f[1])); if (!fs.length) continue;
+    const want = out.length ? !out[0].ok : Math.random() < .5;   /* eine stimmt, eine nicht (wenn möglich) */
+    const f = fs.find(x => x[0] === want) || fs[0];
+    out.push({text:f[1], ok:f[0], why:f[2] || "", t:c});
+  }
+  return out;
+}
+kind({id:"multi-truefalse", name:"Mehrere Aussagen", refName:"Aussagen",
+  help:() => "Vier Aussagen, zwei davon zum gefragten Begriff: Tipp alle an, die stimmen, und prüf dann. Liegst du bei einer Aussage zu einem anderen Begriff daneben, zählt es noch als fast richtig.",
+  refs:t => extraOf(t).tf.length >= 2 ? [{ck:"mt", tag:"Aussagen"}] : [],
+  make:q => {
+    const own = extraOf(q.t).tf.slice(0, 2).map(f => ({text:f[1], ok:f[0], why:f[2] || "", t:q.t, own:true}));
+    q.items = shuffle(own.concat(foreignTf(q.t, 2))); q.sel = q.items.map(() => false);
+  },
+  ask:() => "Welche Aussagen stimmen?",
+  body:q => `<div class="q-mid">Rund um <span class="q-term">${esc(q.t.en)}</span></div><div class="q-hint">Tipp alle an, die stimmen. Es können auch alle oder keine sein.</div>`,
+  controls:(q, a) => `<div class="mt-list" role="group" aria-label="Aussagen">${q.items.map((it, i) => {
+      const on = q.sel[i];
+      if (!a) return `<button class="opt mt" data-m="${i}" aria-pressed="${on}"><span class="mt-box" aria-hidden="true"></span><span class="mt-t">${esc(it.text)}</span></button>`;
+      const good = on === it.ok;
+      return `<div class="opt mt done ${good ? "mt-ok" : "mt-bad"}"><span class="mt-box${on ? " on" : ""}" aria-hidden="true"></span><span class="mt-t">${esc(it.text)}
+        <span class="mt-v"><b>${it.ok ? "Stimmt" : "Stimmt nicht"}</b>${it.own ? "" : ` (Aussage zu ${esc(it.t.en)})`}${good ? "" : " – " + (on ? "du hast sie angetippt" : "du hast sie nicht angetippt")}.${it.why ? " " + esc(it.why) : ""}</span></span></div>`;
+    }).join("")}</div>${a ? "" : `<div class="type-btns mt-btns"><button class="btn primary" id="mtCheck">Prüfen</button></div>`}`,
+  wire:q => {
+    app.querySelectorAll("[data-m]").forEach(b => b.onclick = () => {
+      const i = +b.dataset.m; q.sel[i] = !q.sel[i]; b.setAttribute("aria-pressed", q.sel[i]);
+    });
+    $("#mtCheck").onclick = () => {
+      const miss = q.items.map((it, i) => q.sel[i] !== it.ok);
+      const ownBad = q.items.some((it, i) => it.own && miss[i]), otherBad = q.items.filter((it, i) => !it.own && miss[i]).length;
+      const ok = !ownBad && otherBad <= 1;
+      settle(ok, {inp:"pick", note:ok && otherBad ? "Fast richtig: Bei einer Aussage zu einem anderen Begriff lagst du daneben." : ""});
+    };
+  }});
+
 /* ---------- Moduleinstellung „quiz“ (module.json) ----------
    Wird beim Laden gelesen, geprüft und auf erlaubte Bereiche zurechtgestutzt (quizConf). Unbekannte Fragearten fallen weg,
    Stufen ohne bekannte Fragearten werden übersprungen, höchstens STAGE_MAX Stufen. Ohne gültige Stufen gilt DEFAULT_STAGES.
-   Eine Frageart in stages[].kinds ist ein Name oder {kind, inputs, outputs, minCorrect, options}. */
+   Eine Frageart in stages[].kinds ist ein Name oder {kind, inputs, outputs, minCorrect, options};
+   Fragearten mit eigenem outKey nehmen statt outputs dieses Feld (translate-sentence: directions). */
 const STAGE_MAX = 6;
 /* Standard-Stufenplan = Teil A/B/C wie bis v39 (part: Übergang für quiz.parts aus Modulen der Version 1) */
 const DEFAULT_STAGES = [
@@ -856,7 +1008,7 @@ function kindConf(k, options){
   if (!def) return null;
   /* Einschränkung auf bekannte Ein-/Ausgabearten der Frageart; bleibt nichts übrig, gelten alle */
   const only = (want, all) => { const v = arr(want).filter(x => all.includes(x)); return v.length ? all.filter(x => v.includes(x)) : all.slice(); };
-  return {kind:def.id, outs:only(o.outputs, def.outs), ins:only(o.inputs, def.ins),
+  return {kind:def.id, outs:only(o[def.outKey || "outputs"], def.outs), ins:only(o.inputs, def.ins),
     minCorrect:clampInt(o.minCorrect, 0, 30, 0), options:clampInt(o.options, 2, 6, options)};
 }
 function stageConf(s, i, q){
@@ -1193,9 +1345,9 @@ function planRound(){
   }
   return shuffle(out);
 }
-/* Ablenker: andere Begriffe mit anderem Anfangsbuchstaben, zuerst aus derselben Kategorie */
-function distractors(t, field, n = 4){
-  const clash = c => { const a = c.en.toLowerCase(), b = t.en.toLowerCase(); return a.includes(b) || b.includes(a); };
+/* Ablenker: andere Begriffe mit anderem Anfangsbuchstaben, zuerst aus derselben Kategorie; fit(c): nur passende (z. B. mit Inhalten) */
+function distractors(t, field, n = 4, fit){
+  const clash = c => { const a = c.en.toLowerCase(), b = t.en.toLowerCase(); return a.includes(b) || b.includes(a) || (fit && !fit(c)); };
   const same = shuffle(TERMS.filter(c => c.cat === t.cat)), other = shuffle(TERMS.filter(c => c.cat !== t.cat));
   const out = [], used = new Set([keyLetter(t[field])]);
   for (const c of same.concat(other)) {
@@ -1718,7 +1870,8 @@ document.addEventListener("keydown", e => {
     e.preventDefault(); nextQuestion();
   }
 });
-/* Allgemeine Darstellung einer Frage (Frageart def: ask, body, fb, big, long, side; eigene Darstellung über def.render) */
+/* Allgemeine Darstellung einer Frage (Frageart def: ask, body, fb, big, long, side – long/side auch pro Frage in q;
+   eigene Bedienelemente statt der Antworten über def.controls + def.wire; ganz eigene Darstellung über def.render) */
 function renderQuiz(){
   const q = Q.q, def = q.def;
   if (def.render) return def.render();
@@ -1730,7 +1883,7 @@ function renderQuiz(){
     : `<div class="${def.big}">${esc(q.prompt)}</div>${hear ? `<p class="q-heard">Das war zu hören.</p>` : ""}`;
   const opts = (q.opts || []).map((o, k) => {
     const cls = !a ? "opt" : o.id === q.answer ? "opt right" : a.pick === k ? "opt wrong" : a.shown ? "opt gone out" : "opt gone";
-    return `<button class="${cls}${def.long ? " long" : ""}" data-k="${k}" ${a ? 'aria-disabled="true"' : ""}>${esc(o.label)}</button>`;
+    return `<button class="${cls}${q.long ?? def.long ? " long" : ""}" data-k="${k}" ${a ? 'aria-disabled="true"' : ""}>${esc(o.label)}</button>`;
   }).join("");
   let input = "";
   /* Schreiben und Sprechen sind getrennt: Die Frage sagt, wie geantwortet wird, und bietet nur das an */
@@ -1760,7 +1913,7 @@ function renderQuiz(){
     <div class="note qc${a ? " tap-next " + (a.ok ? "is-ok" : "is-bad") : ""}" id="qcard" style="--c:${c.c}"${a ? ` title="Weiter zur nächsten Frage"` : ""}>
       <div class="q-ask">${ask}</div>${body}
     </div>
-    <div class="q-body">${input}${opts ? `<div class="opts${def.side ? " tf" : ""}">${opts}</div>` : ""}${fb}</div>
+    <div class="q-body">${input}${def.controls ? def.controls(q, a) : opts ? `<div class="opts${q.side ?? def.side ? " tf" : ""}">${opts}</div>` : ""}${fb}</div>
     ${qFoot(total)}`;
   qfxShow(a); qReveal(a);
   const hb = $("#hint"); if (hb) hb.onclick = () => { Q.hint = true; renderQuiz(); };
@@ -1770,7 +1923,8 @@ function renderQuiz(){
       $("#hear").onclick = play;
       if (!q.played) { q.played = true; setTimeout(() => { if (Q && Q.q === q && !Q.answered && screen === "quiz") play(); }, 350); }
     }
-    app.querySelectorAll(".opt").forEach(b => b.onclick = () => answer(+b.dataset.k));
+    app.querySelectorAll(".opt[data-k]").forEach(b => b.onclick = () => answer(+b.dataset.k));
+    if (def.wire) def.wire(q);
     const inp = $("#typed");
     if (inp) {
       const go = () => { if (inp.value.trim()) { stopListen(); answerInput(inp.value); } else inp.focus(); };
@@ -1878,8 +2032,8 @@ function checksHtml(t, s, st){
   for (const kc of st.kinds) {
     const def = KINDS[kc.kind], refs = kindRefs(t, kc.kind), list = [];
     if (!refs.length) continue;
-    refs.forEach((r, i) => { if (r.ck) list.push([r.ck, def.refName + " " + (i + 1)]); });
-    kc.outs.forEach(o => { const g = def.outCk(o); if (g) list.push([g, OUT_LABEL[o]]); });
+    refs.forEach((r, i) => { if (r.ck) list.push([r.ck, r.tag || def.refName + " " + (i + 1)]); });
+    kc.outs.forEach(o => { const g = def.outCk(o); if (g) list.push([g, outLabel(def, o)]); });
     kc.ins.forEach(i => { const g = def.inpCk(i); if (g) list.push([g, INP_LABEL[i]]); });
     if (list.length) h += `<span aria-hidden="true">${esc(def.name)}</span><div aria-hidden="true">${list.map(([g, l]) => chip(g, l)).join("")}</div>`;
   }
@@ -1894,7 +2048,8 @@ function doneNote(q, a){
   if (a.learned) return `<p class="fb-done"><b>Gelernt! 🎉</b> ${esc(q.t.en)} hat ${STAGES.length > 1 ? "alle Stufen" : "alles"} geschafft.</p>`;
   return `<p class="fb-done"><b>Stufe ${esc(stTitle(i))} geschafft! 🎉</b> ${esc(nextText(i + 1))}</p>`;
 }
-function answer(k){ const q = Q.q; settle(q.opts[k].id === q.answer, {pick:k, inp:"pick"}); }
+/* Auswahl: def.pick kann einen Zwischenschritt übernehmen (Ja/Nein mit Folgefrage) und gibt dann true zurück */
+function answer(k){ const q = Q.q; if (q.def.pick && q.def.pick(q, k)) return; settle(q.opts[k].id === q.answer, {pick:k, inp:"pick"}); }
 /* Gesprochen: die beste erkannte Variante kommt ins Textfeld (richtig vor fast richtig vor Verwechslung vor falsch) */
 function heard(alts, inp){
   if (!Q || Q.answered || !alts.length) return;
@@ -1936,7 +2091,7 @@ function record(q, ok, inp){
 function settle(ok, info){
   if (!Q || Q.answered) return;
   const q = Q.q, t = q.t;
-  let note = info.near ? (info.spoken ? `Fast richtig: verstanden habe ich „${info.typed}“, gemeint ist „${t.en}“.` : `Fast richtig: „${info.typed}“, richtig geschrieben „${t.en}“.`) : "";
+  let note = info.note ? info.note : info.near ? (info.spoken ? `Fast richtig: verstanden habe ich „${info.typed}“, gemeint ist „${t.en}“.` : `Fast richtig: „${info.typed}“, richtig geschrieben „${t.en}“.`) : "";
   if (ok && info.edited && q.inp === "say") note = (note ? note + " " : "") + "Von Hand geändert, darum zählt es als Schreiben.";
   const r = record(q, ok, info.inp);
   Q.answered = Object.assign(r, {pick:info.pick, typed:info.typed, spoken:!!info.spoken, near:info.near, ok, note, at:Date.now()});

@@ -143,10 +143,10 @@ Jeder Chat: Repo `baumpinkler/FachVokabeln` klonen, `CLAUDE.md` und dieses Dokum
 
 ### Chat 3: Neue Fragearten zum Auswählen
 
-- ☐ `explain-to-term`, `term-to-explain`, `which-situation`, `translate-sentence`
-- ☐ `wrong-term` (Ja/Nein mit Folgefrage)
-- ☐ `multi-truefalse` (Mehrfachauswahl; vorher Inhalte prüfen)
-- ☐ Variante `options` (weniger Antwortmöglichkeiten): Einstellung wird seit Chat 1 schon gelesen und beim Bauen der Antwortmöglichkeiten verwendet (`q.n`, `optsFor`); in Chat 3 nur noch testen und in der Oberfläche prüfen
+- ☑ `explain-to-term`, `term-to-explain`, `which-situation`, `translate-sentence`
+- ☑ `wrong-term` (Ja/Nein mit Folgefrage)
+- ☑ `multi-truefalse` (Mehrfachauswahl; vorher Inhalte prüfen)
+- ☑ Variante `options` (weniger Antwortmöglichkeiten): Einstellung wird seit Chat 1 schon gelesen und beim Bauen der Antwortmöglichkeiten verwendet (`q.n`, `optsFor`); in Chat 3 nur noch testen und in der Oberfläche prüfen
 
 ### Chat 4: Neue Fragearten zum Tippen, Hören, Sprechen
 
@@ -169,8 +169,6 @@ Jeder Chat: Repo `baumpinkler/FachVokabeln` klonen, `CLAUDE.md` und dieses Dokum
 
 ## Offene Entscheidungen (im jeweiligen Chat mit dem Nutzer klären)
 
-- Chat 3: Bleibt die Hilfe „Satz auf Deutsch zeigen“ im Lückensatz? (Die Variante „Hinweis auf Abruf“ wurde nicht gewählt.)
-- Chat 3: `translate-sentence` in beide Richtungen oder nur Englisch → Deutsch?
 - Chat 4: Verhalten bei abgelaufenem Zeitlimit; Zeitlimit auch bei Schreiben/Sprechen?
 - Chat 5: Sprache bei `own-sentence` (englischer Satz oder deutscher Satz mit englischem Begriff)?
 - Chat 6: Stufenpläne für IT und Agile (welche Fragearten in welcher Stufe, Abstände, Optionen).
@@ -198,3 +196,13 @@ Jeder Chat: Repo `baumpinkler/FachVokabeln` klonen, `CLAUDE.md` und dieses Dokum
 - Hilfe: ganz aus dem Stufenplan erzeugt. Jede Frageart liefert dafür `help()` und optional `each`. „Geschafft“ nennt die häufigste Zahl an Häkchen („meist 18“), weil sie je nach Inhalten schwankt. Modulspezifische Erklärungen gehen über das neue optionale Feld `quiz.help` (bis 400 Zeichen); IT erklärt dort, warum es keine Stufe „Begriff und Bedeutung“ gibt. Der veraltete Abschnitt „Was die App auswählt“ (zweimal pro Runde, neue aus dem weitesten Thema) ist an das Verhalten seit v37/v39 angepasst.
 - Krönchen: `autoFinish` prüft alle Themen, damit auch Begriffe, die durch einen geänderten Stufenplan gelernt sind, zum Krönchen führen (still, ohne Karte). Verdiente Krönchen bleiben, auch wenn ein späterer Plan neue Stufen hat.
 - `quiz.flashcards: false` blendet die Kachel aus (Nachschlagen dann über die ganze Breite) und passt Hinweistexte und Hilfe an.
+
+**Chat 3 (v42):**
+- Lückensatz: Die Hilfe „Satz auf Deutsch zeigen“ bleibt (Entscheidung des Nutzers).
+- `translate-sentence`: beide Richtungen, im Modul einstellbar über `directions` (`["en-de","de-en"]`, Standard beide). Technisch sind die Richtungen die Ausgabearten der Frageart (`outKey:"directions"`, eigene Beschriftung `outLabel`), Häkchen `td:en-de`/`td:de-en` und je Satz `ts0`–`ts2` (Beispielsatz [4]/[5] und die `ex`-Paare). Ablenker: zuerst die **anderen Sätze desselben Begriffs**, dann Sätze anderer Begriffe (gleiche Kategorie zuerst). Grund: Der Begriff steht oft in beiden Sprachen gleich im Satz („Blame“) und hätte sonst die Antwort verraten.
+- Die neuen Fragearten sind auf Wunsch des Nutzers schon jetzt in Stufe B (`anwenden`) von IT und Agile: `explain-to-term` (nur Lesen, Auswählen und Schreiben), `term-to-explain` (nur Lesen), `which-situation` (3 Antwortmöglichkeiten, weil die Antworten lange Situationen sind), `translate-sentence` (beide Richtungen), `wrong-term`, `multi-truefalse`. Damit hat Stufe B meist 39 statt 18 Häkchen und braucht mit allen Inhalten etwa 25 statt 10 richtige Antworten pro Begriff (Simulation). Der Standardplan `DEFAULT_STAGES` bleibt wie bis v39. Endgültige Stufenpläne in Chat 6 (eventuell Stufe B aufteilen oder Fragearten einschränken).
+- Häkchen: `explain-to-term` `x0`–`x2`, `xo:*`, `xi:*`; `term-to-explain` `y0`–`y2`, `yo:*`; `which-situation` `ws0`–`ws2`; `wrong-term` `wt0` (Satz stimmt) und `wt1` (vertauscht); `multi-truefalse` ein Häkchen `mt`.
+- `wrong-term`: Satz aus den Lückensätzen (nur Sätze, in denen `termRe` passt). Ersetzt wird durch einen Begriff gleicher Wortart (Verben „to …“ nur durch Verben, keine Begriffe mit „/“ oder Klammern), Großschreibung am Satzanfang und „a“/„an“ davor werden angepasst. Bei „Passt nicht“ und vertauschtem Begriff kommt die Folgefrage (`def.pick`), ausgewertet und weiter per Tipp erst danach; der eingesetzte falsche Begriff ist in der Folgefrage nicht unter den Antworten.
+- `multi-truefalse`: Inhalte geprüft: 90 % (IT) bzw. 92 % (Agile) der `tf`-Aussagen nennen ihren Begriff, der Rest ist meist trotzdem verständlich. Eine Frage zeigt beide Aussagen des Begriffs und zwei Aussagen anderer Begriffe (gleiche Kategorie zuerst, **nur Aussagen, die ihren Begriff nennen**, möglichst eine wahre und eine falsche). Richtig = beide eigenen richtig eingeschätzt und höchstens eine fremde daneben (dann „fast richtig“). Ein Häkchen `mt`. Eigenes Bedienelement: Neon-Kästchen zum Antippen, „Prüfen“, danach jede Aussage grün bzw. rot mit „Stimmt / Stimmt nicht“ und Begründung.
+- Variante `options`: getestet auf Ebene Modul, Stufe und Frageart (`quizConf`), in der Oberfläche mit 3 Antworten bei `which-situation` geprüft.
+- Neue allgemeine Felder einer Frageart: `outKey` (Name der Moduleinstellung statt `outputs`), `outLabel(o)`, `pick(q, k)` (Zwischenschritt), `controls(q, a)` + `wire(q)` (eigene Bedienelemente statt der Antworten), `tag` an einem Inhalt (Beschriftung im Nachschlagen), `help(kc)` bekommt die Einstellung in der Stufe („liest“, „hörst“ oder „liest oder hörst“). Pro Frage können `q.long`/`q.side` die Werte der Frageart überschreiben; `settle` nimmt eine eigene Notiz (`info.note`).

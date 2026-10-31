@@ -662,7 +662,7 @@ function setFocus(on){ document.body.classList.toggle("focus", on); }
 /* ---------- Auswahl: die App entscheidet, was als Nächstes gefragt wird ----------
    Aufgabe = Richtung (m2t: Bedeutung → Begriff, t2m: Begriff → Bedeutung), Ausgabe (read/hear), Eingabe (pick/type/say).
    gives = Häkchen, die eine richtige Antwort bringt (bei m2t zählt beim Abschicken die tatsächlich genutzte Eingabe). */
-const QUIZ_LEN = 10, NEW_PER_ROUND = 3;
+const QUIZ_LEN = 10;
 const A_TASKS = [];
 for (const out of ["read", "hear"]) for (const inp of ["pick", "type", "say"]) A_TASKS.push({dir:"m2t", out, inp, gives:["o:" + out, "i:" + inp]});
 for (const out of ["read", "hear"]) A_TASKS.push({dir:"t2m", out, inp:"pick", gives:["r:" + out]});
@@ -995,15 +995,9 @@ function planRound(){
   /* Teil C: höchstens 2 pro Runde, jeder nur einmal (ein neuer Versuch kommt in einer späteren Runde) */
   const cs = started.filter(t => stageOf(t) === "c").slice(0, C_PER_ROUND), room = QUIZ_LEN - cs.length;
   const first = started.filter(t => stageOf(t) !== "c").slice(0, room);
-  /* Neue Begriffe: mindestens so viele, dass die Runde voll wird (jeder Begriff kommt bis zu 2×), sonst höchstens 3 */
-  const fill = Math.ceil(room / 2) - first.length;
-  first.push(...freshTerms(Math.min(Math.max(NEW_PER_ROUND, fill), room - first.length)));
-  const one = shuffle(first.concat(cs)), two = shuffle(first.slice(0, Math.max(0, room - first.length)));
-  if (two.length && one.length && two[0] === one[one.length - 1]) {
-    const k = two.findIndex(x => x !== two[0]);
-    if (k > 0) [two[0], two[k]] = [two[k], two[0]]; else two.shift();
-  }
-  return one.concat(two);
+  /* Jeder Begriff kommt nur einmal pro Runde. Fehlen angefangene Begriffe, füllen neue die Runde auf. */
+  first.push(...freshTerms(Math.max(0, room - first.length)));
+  return shuffle(first.concat(cs));
 }
 /* Ablenker: andere Begriffe mit anderem Anfangsbuchstaben, zuerst aus derselben Kategorie */
 function distractors(t, field){
@@ -1103,12 +1097,13 @@ function confetti(){
   const cs = getComputedStyle(document.documentElement);
   const cols = ["--m1", "--m2", "--m3", "--accent", "--ok"].map(v => cs.getPropertyValue(v).trim()).filter(Boolean);
   cols.push("#ffffff");
-  const sp = [], EMIT = 900, start = performance.now();
+  const sp = [], EMIT = 1400, start = performance.now();
   let last = start, emitted = 0;
-  const spawn = side => {
+  /* Abschussstelle wandert während des Sprühens am Rand von unten nach oben */
+  const spawn = (side, prog) => {
     const left = side === 0, speed = 7 + Math.random() * 7, ang = (18 + Math.random() * 42) * Math.PI / 180;
     sp.push({
-      x: left ? -4 : W + 4, y: H * (.55 + Math.random() * .3),
+      x: left ? -4 : W + 4, y: H * (.95 - .8 * prog + (Math.random() - .5) * .08),
       vx: (left ? 1 : -1) * Math.cos(ang) * speed * Math.min(1, W / 420), vy: -Math.sin(ang) * speed,
       life: 1, decay: .010 + Math.random() * .012, r: 1 + Math.random() * 1.6,
       c: cols[Math.random() * cols.length | 0], tw: Math.random() * 6
@@ -1116,9 +1111,9 @@ function confetti(){
   };
   const frame = now => {
     const dt = Math.min(3, (now - last) / 16.7); last = now;
-    /* in den ersten 0,9 s gleichmäßig Funken nachlegen, abwechselnd links und rechts */
-    const want = Math.min(1, (now - start) / EMIT) * 170;
-    while (emitted < want) spawn(emitted++ % 2);
+    /* in den ersten 1,4 s gleichmäßig Funken nachlegen, abwechselnd links und rechts, von unten nach oben */
+    const prog = Math.min(1, (now - start) / EMIT), want = prog * 190;
+    while (emitted < want) spawn(emitted++ % 2, emitted / 190);
     g.globalCompositeOperation = "destination-out"; g.fillStyle = `rgba(0,0,0,${.22 * dt})`; g.fillRect(0, 0, W, H);
     g.globalCompositeOperation = "lighter";
     for (const p of sp) {
@@ -1429,8 +1424,21 @@ function qfxEl(){
     qfx = document.createElement("div"); qfx.id = "qfx"; qfx.setAttribute("aria-hidden", "true");
     qfx.innerHTML = '<i class="qfx-l n1 l"></i><i class="qfx-l n2 r"></i><i class="qfx-l n3 l"></i><i class="qfx-l a r"></i>';
     document.body.prepend(qfx);
+    addEventListener("resize", qfxFit);
   }
   return qfx;
+}
+/* Bereich der Fäden: vom Seitenanfang bis knapp unter die Frage (#qcard) */
+function qfxFit(){
+  const c = $("#qcard");
+  if (!qfx || !c || !document.body.classList.contains("qmode")) return;
+  qfx.style.setProperty("--qfx-h", Math.round(Math.min(420, Math.max(140, c.getBoundingClientRect().bottom + 34))) + "px");
+}
+/* Beim Fragenwechsel blenden die Fäden kurz aus, damit man nicht sieht, wie sich ihr Bereich verschiebt */
+let qfxFade = null;
+function qfxSwapOut(){
+  if (!qfx || !qfx.animate || reduced()) return;
+  qfxFade = qfx.animate([{opacity:1}, {opacity:0}], {duration:FADE_OUT, easing:"ease-in", fill:"forwards"});
 }
 /* Quiz-Aufbau (style.css, body.qmode): Frage oben fest, Antworten und Rückmeldung scrollen in .q-body, Fußzeile unten.
    Beim Neuaufbau derselben Frage (Antwort, KI-Prüfung) bleibt die Scrollposition in .q-body erhalten. */
@@ -1456,14 +1464,62 @@ function qfxShow(a){
     qb.onscroll = () => { qScroll = {q:Q.q, top:qb.scrollTop}; };
   }
   el.classList.add("on");
+  qfxFit();
+  if (qfxFade) { qfxFade.cancel(); qfxFade = null; el.animate([{opacity:0}, {opacity:1}], {duration:360, easing:"ease-out"}); }
   el.classList.toggle("is-ok", !!a && a.ok === true);
   el.classList.toggle("is-bad", !!a && a.ok === false);
   if (a && !a.fx) { a.fx = true; el.style.setProperty("--qc-b", ++qfxN); }
 }
-function qfxOff(){ document.body.classList.remove("qmode"); if (qfx) qfx.classList.remove("on", "is-ok", "is-bad"); }
+function qfxOff(){
+  document.body.classList.remove("qmode");
+  if (qfxFade) { qfxFade.cancel(); qfxFade = null; }
+  if (qfx) qfx.classList.remove("on", "is-ok", "is-bad");
+}
 /* Fußzeile im Quiz (style.css, .q-foot): nur der Fortschrittsbalken, fest ganz unten am Bildrand. */
 function qFoot(total){
   return `<div class="q-foot"><div class="progress" role="progressbar" aria-label="Fortschritt: ${Q.asked} von ${total} Fragen"><i style="width:${(Q.asked / total) * 100}%"></i></div></div>`;
+}
+/* Ablauf nach der Antwort (nur beim ersten Aufbau, a.shown merkt es sich):
+   1. richtige Antwort wird größer, die übrigen (außer der falsch gewählten) werden unsichtbar
+   2. richtige Antwort schrumpft zurück, die unsichtbaren fallen fließend auf Höhe 0 zusammen
+   3. Rückmeldung wird unsichtbar eingesetzt, .q-body scrollt ganz nach unten, dann blendet sie ein.
+   Wird die Karte dabei neu aufgebaut oder verlassen, bricht der Ablauf still ab. */
+const wait = ms => new Promise(r => setTimeout(r, ms));
+async function qReveal(a){
+  if (!a || a.shown) return;
+  a.shown = true;
+  const right = $(".opt.right"), gone = [...document.querySelectorAll(".opt.gone")], fb = $("#fbox"), qb = $(".q-body");
+  const alive = () => (fb || right) && (fb ? fb.isConnected : right.isConnected) && Q && Q.answered === a;
+  const fast = reduced();
+  if (!fast && (right || gone.length)) {
+    const big = [{transform:"scale(1)"}, {transform:"scale(1.1)"}];
+    const p1 = gone.map(g => g.animate([{opacity:1}, {opacity:0}], {duration:260, easing:"ease-out", fill:"forwards"}).finished);
+    if (right) p1.push(right.animate(big, {duration:300, easing:"cubic-bezier(.2,.8,.3,1)", fill:"forwards"}).finished);
+    await Promise.all(p1).catch(() => {});
+    if (!alive()) return;
+    const p2 = gone.map(g => {
+      const cs = getComputedStyle(g);
+      return g.animate([
+        {opacity:0, height:g.offsetHeight + "px", paddingTop:cs.paddingTop, paddingBottom:cs.paddingBottom},
+        {opacity:0, height:"0px", paddingTop:"0px", paddingBottom:"0px"}],
+        {duration:340, easing:"cubic-bezier(.4,0,.2,1)", fill:"forwards"}).finished;
+    });
+    if (right) p2.push(right.animate(big.slice().reverse(), {duration:340, easing:"cubic-bezier(.3,.6,.3,1)", fill:"forwards"}).finished);
+    await Promise.all(p2).catch(() => {});
+    if (!alive()) return;
+  }
+  gone.forEach(g => { g.classList.add("out"); g.getAnimations().forEach(x => x.cancel()); });
+  if (right) right.getAnimations().forEach(x => x.cancel());
+  if (!fb || !alive()) return;
+  fb.style.opacity = "0"; fb.classList.remove("fb-wait");
+  if (qb && qb.scrollHeight > qb.clientHeight) {
+    qb.scrollTo({top:qb.scrollHeight, behavior:fast ? "auto" : "smooth"});
+    if (!fast) await wait(380);
+    if (!alive()) return;
+  }
+  fb.style.opacity = "";
+  if (!fast) fb.animate([{opacity:0, transform:"translateY(10px)"}, {opacity:1, transform:"none"}], {duration:340, easing:"ease-out"});
+  fb.focus({preventScroll:true});
 }
 /* Nach der Antwort führt ein Tipp irgendwo auf dem Bildschirm zur nächsten Frage – außer auf Lautsprecher
    (Vorlese-Knöpfe, „Nochmal anhören“), Links und offene Blätter. Die kurze Sperre fängt auch den Tipp ab,
@@ -1498,7 +1554,7 @@ function renderQuiz(){
       <div class="q-hint">${a ? "" : Q.hint ? esc(q.sent.hint) : `<button id="hint">Satz auf ${esc(MN)} zeigen</button>`}</div>`;
   if (q.kind === "conf") body = `<div class="conf-pair"><div><b class="ab">A</b><span>${esc(t.en)}</span></div><div><b class="ab">B</b><span>${esc(q.partner.en)}</span></div></div>`;
   const opts = (q.opts || []).map((o, k) => {
-    const cls = !a ? "opt" : o.id === q.answer ? "opt right" : a.pick === k ? "opt wrong" : "opt dim";
+    const cls = !a ? "opt" : o.id === q.answer ? "opt right" : a.pick === k ? "opt wrong" : a.shown ? "opt gone out" : "opt gone";
     return `<button class="${cls}${q.dir === "t2m" || q.kind === "conf" ? " long" : ""}" data-k="${k}" ${a ? 'aria-disabled="true"' : ""}>${esc(o.label)}</button>`;
   }).join("");
   let input = "";
@@ -1514,7 +1570,7 @@ function renderQuiz(){
        <div class="type-btns"><button class="btn" id="dunno">Weiß ich nicht</button><button class="btn primary" id="check">Prüfen</button></div>`;
   const s = stateOf(t), last = a && Q.total <= Q.asked;
   const exEn = q.sent ? q.sent.en : t.exEn, exDe = q.sent ? q.sent.de : t.exDe;
-  const fb = a ? `<div class="feedback tap-next" id="fbox" tabindex="0" style="--fb:var(${a.ok ? "--ok" : "--bad"})">
+  const fb = a ? `<div class="feedback tap-next${a.shown ? "" : " fb-wait"}" id="fbox" tabindex="0" style="--fb:var(${a.ok ? "--ok" : "--bad"})">
       <h3>${a.ok ? "Richtig!" : "Leider nicht."}</h3>
       ${a.note ? `<p><b>${esc(a.note)}</b></p>` : ""}
       ${a.doneA ? `<p class="fb-done"><b>Teil A geschafft! 🎉</b> Ab morgen kommt Teil B.</p>` : ""}
@@ -1533,7 +1589,7 @@ function renderQuiz(){
     </div>
     <div class="q-body">${input}${opts ? `<div class="opts${q.kind === "tf" ? " tf" : ""}">${opts}</div>` : ""}${fb}</div>
     ${qFoot(total)}`;
-  qfxShow(a);
+  qfxShow(a); qReveal(a);
   const hb = $("#hint"); if (hb) hb.onclick = () => { Q.hint = true; renderQuiz(); };
   if (!a) {
     if (hear) {
@@ -1554,7 +1610,6 @@ function renderQuiz(){
       if (!say) inp.focus({preventScroll:true});
     }
   } else {
-    $("#fbox").focus({preventScroll:true});
     /* Weiter per Tipp irgendwo auf dem Bildschirm: siehe Klick-Handler bei qFoot */
   }
 }
@@ -1567,7 +1622,7 @@ function renderQuizC(){
   if (a) {
     const ai = a.ai;
     below = `<div class="typed" style="--fb:var(${a.ok ? "--ok" : "--bad"})">${a.typed === null ? "Weiß ich nicht" : `Deine Erklärung: <b>${esc(a.typed)}</b>`}</div>
-    <div class="feedback tap-next" id="fbox" tabindex="0" style="--fb:var(${a.ok ? "--ok" : "--bad"})">
+    <div class="feedback tap-next${a.shown ? "" : " fb-wait"}" id="fbox" tabindex="0" style="--fb:var(${a.ok ? "--ok" : "--bad"})">
       <h3>${a.ok ? "Verstanden!" : a.typed === null ? "Kein Problem." : "Noch nicht ganz."}</h3>
       ${ai && ai.feedback ? `<p>${esc(ai.feedback)}</p>` : ""}
       ${ai && ai.fehlt && !a.ok ? `<p><b>Was gefehlt hat:</b> ${esc(ai.fehlt)}</p>` : ""}
@@ -1599,9 +1654,8 @@ function renderQuizC(){
     </div>
     <div class="q-body">${below}</div>
     ${qFoot(total)}`;
-  qfxShow(a);
+  qfxShow(a); qReveal(a);
   if (a) {
-    $("#fbox").focus({preventScroll:true});
     return;   /* weiter per Tipp irgendwo: siehe Klick-Handler bei qFoot */
   }
   const ta = $("#explain");
@@ -1727,7 +1781,7 @@ function settle(ok, info){
 }
 function nextQuestion(){
   if (Q.leaving) return;   /* Doppeltipp während des Ausblendens */
-  Q.leaving = true;
+  Q.leaving = true; qfxSwapOut();
   stopListen();
   const n = findNext(Q.i + 1, Q.q.t.id);
   if (!n) return transit(renderQuizDone);

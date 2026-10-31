@@ -619,10 +619,12 @@ function showHelp(){
   const typing = any(kc => kc.ins.includes("type")), saying = any(kc => kc.ins.includes("say")), hearing = any(kc => kc.outs.includes("hear"));
   const ai = aiStages(), ty = QZ.typing, multi = any(kc => kc.ins.length > 1 || kc.outs.length > 1 || KINDS[kc.kind].each);
   const waits = STAGES.filter((st, i) => i && st.waitDays > 0).length;
+  const timed = STAGES.filter(st => st.timeLimit && st.kinds.some(kc => !KINDS[kc.kind].ai));
   const stages = STAGES.map((st, i) => sec(`<i class="ls-dot" style="${stStyle(i)}" aria-hidden="true"></i>Stufe ${esc(stTitle(i))}`,
     st.kinds.map(kc => row(esc(KINDS[kc.kind].name), esc(kindSpec(kc)))).join("")
     + row("Geschafft", esc(stageDone(st)))
     + row("Wann", esc(stageWhen(i)))
+    + (st.timeLimit && st.kinds.some(kc => !KINDS[kc.kind].ai) ? row("Zeit", `${st.timeLimit} Sekunden pro Frage`) : "")
     + (st.perRound < QZ.round ? row("Pro Runde", `höchstens ${st.perRound} ${st.perRound === 1 ? "Frage" : "Fragen"}`) : "")
     + note(st.kinds.map(kc => KINDS[kc.kind].help ? KINDS[kc.kind].help(kc) : "").filter(Boolean).join(" "))
     + (st.kinds.length > 1 ? note("Die Fragearten kommen gemischt.") : ""))).join("");
@@ -638,6 +640,7 @@ function showHelp(){
     ${hearing || saying ? sec("Gerade kein Ton 🔇", note(`Im Bus oder im Büro? Schalte auf der Übersicht „Gerade kein Ton“ ein. Dann gibt es nichts zu hören und nichts zu sprechen, bis du es wieder ausschaltest. Diese Häkchen holst du später nach; Begriffe, die nur noch Hören oder Sprechen brauchen, warten so lange. Kann dein Gerät gar nicht vorlesen oder keine Sprache erkennen, gelten diese Häkchen als erledigt.`)) : ""}
     ${ai.length ? sec("KI-Prüfung 🤖", note(`Die Fragen in Stufe ${esc(listText(ai.map(i => STAGES[i].short)))} prüft Gemini, eine KI von Google. Dafür trägst du unter „KI-Prüfung“ (bei Module und Fortschritt) einen eigenen, kostenlosen Schlüssel aus Google AI Studio ein. Er bleibt nur auf diesem Gerät und ist nicht im Export. In der Gratis-Stufe darf Google die Eingaben zum Verbessern seiner Modelle verwenden: Schreib nur Erklärungen, nichts Persönliches.`)
       + note(`Ohne Schlüssel, ohne Internet oder wenn das Gratis-Limit erreicht ist, warten diese Begriffe; die Übersicht sagt dir das. Klappt eine Prüfung nicht, wird deine Antwort nicht gewertet und du kannst es nochmal versuchen oder die Frage überspringen. Erklärungen schreibst du auf ${esc(M)}.`)) : ""}
+    ${timed.length ? sec("Zeitlimit ⏱️", note(`In Stufe ${esc(listText(timed.map(st => st.short)))} hast du pro Frage nur begrenzt Zeit (siehe „Zeit“ oben); unter der Frage läuft eine dünne Linie ab. Das gilt auch beim Schreiben und Sprechen${aiStages().length ? ", nicht aber bei der KI-Prüfung" : ""}. Ist die Zeit um, zählt es wie eine falsche Antwort: Du siehst die Lösung, und der Begriff kommt später wieder.`)) : ""}
     ${waits ? sec("Abstand zwischen den Stufen", note(`Manche Stufen kommen erst ein paar Tage nach der vorigen dran (siehe „Wann“ oben). So lernst du jeden Begriff an mindestens ${waits + 1} verschiedenen Tagen und nicht alles an einem Abend aus dem Kurzzeitgedächtnis.`)) : ""}
     ${N > 1 ? (QZ.lockstep ? sec("Alle Begriffe im Gleichschritt", note(`Die Begriffe eines Themas gehen gemeinsam von Stufe zu Stufe: Die nächste Stufe kommt erst dran, wenn alle Begriffe die vorige geschafft haben. So kommen nach und nach alle Begriffe dran statt immer dieselben. Hast du mehrere Themen angehakt, bestimmt das Thema, das am wenigsten weit ist, welche Stufe dran ist; die anderen warten so lange. Welche Stufe gerade dran ist, steht auf der Quiz-Kachel.`))
       : sec("Jedes Thema für sich", note(`Die Begriffe eines Themas gehen gemeinsam von Stufe zu Stufe: Die nächste Stufe kommt erst dran, wenn alle Begriffe des Themas die vorige geschafft haben. Jedes angehakte Thema ist dabei in seiner eigenen Stufe; eine Runde mischt die Themen. Was gerade dran ist, steht auf der Quiz-Kachel.`))) : ""}
@@ -737,7 +740,8 @@ function setFocus(on){ document.body.classList.toggle("focus", on); }
    Felder einer Frageart:
    id, name (Hilfe, Nachschlagen), refName (Beschriftung der Inhalts-Häkchen: „Satz 1“ …),
    lang: "term" | "meaning" – Sprache der Ausgabe beim Hören (MOD.lang), outs/ins: mögliche Ausgabe- (read, hear) und
-   Eingabearten (pick, type, say; free = freier Text für die KI), ai: braucht die KI-Prüfung,
+   Eingabearten (pick, type, say; build = Wörter antippen; free = freier Text für die KI), ai: braucht die KI-Prüfung,
+   sayOnly: beim Sprechen bleibt das Feld gesperrt (Nachsprechen: Abschreiben zählt nicht),
    refs(t): Inhalte des Begriffs, je {ck: Häkchen oder nichts, tag: eigene Beschriftung im Nachschlagen, …}; leer = die Frageart entfällt für diesen Begriff,
    outCk(out) / inpCk(inp): Häkchen für eine Ausgabe- bzw. Eingabeart (oder null),
    make(q): Frage bauen (prompt, opts, answer …), ask(q): Fragezeile, body(q, a): Inhalt unter der Frage (Standard: prompt),
@@ -746,7 +750,7 @@ function setFocus(on){ document.body.classList.toggle("focus", on); }
    help(kc): ein, zwei Sätze für die Hilfe (was die Frage ist; kc = Einstellung in der Stufe), each: Häkchen je Inhalt in der Hilfe („jeder Satz einmal“).
    Häkchen-Namen sind über alle Fragearten eindeutig (gespeichert wird pro Stufe, nicht pro Frageart). */
 const OUTS = ["read", "hear"], INPUTS = ["pick", "type", "say"];
-const INP_LABEL = {pick:"Auswählen", type:"Schreiben", say:"Sprechen", free:"Schreiben oder diktieren"}, OUT_LABEL = {read:"Lesen", hear:"Hören"};
+const INP_LABEL = {pick:"Auswählen", type:"Schreiben", say:"Sprechen", build:"Wörter antippen", free:"Schreiben oder diktieren"}, OUT_LABEL = {read:"Lesen", hear:"Hören"};
 /* Beschriftung einer Ausgabeart (eigene Ausgabearten wie die Richtungen beim Übersetzen über def.outLabel) */
 /* „liest oder hörst“ je nach Ausgabearten der Frageart in der Stufe (Hilfe) */
 const readHear = kc => !kc ? "liest oder hörst" : kc.outs.includes("hear") ? (kc.outs.includes("read") ? "liest oder hörst" : "hörst") : "liest";
@@ -987,6 +991,94 @@ kind({id:"multi-truefalse", name:"Mehrere Aussagen", refName:"Aussagen",
       settle(ok, {inp:"pick", note:ok && otherBad ? "Fast richtig: Bei einer Aussage zu einem anderen Begriff lagst du daneben." : ""});
     };
   }});
+
+/* ---------- Neue Fragearten zum Tippen, Hören, Sprechen (Quiz-Baukasten, Chat 4) ---------- */
+/* Satz bauen: der Satz in der Bedeutungs-Sprache steht da, die Wörter des Satzes in der Begriffs-Sprache liegen
+   durcheinander und werden der Reihe nach angetippt (Antippen eines gesetzten Worts oder „Rückgängig“ nimmt zurück).
+   Nur Sätze mit 3–12 Wörtern. Das Satzzeichen am Ende steht fest, das erste Wort wird kleingeschrieben (verrät sonst
+   den Anfang), außer es gehört zum Begriff, ist „I“ oder eine Abkürzung. Richtig = genau die Reihenfolge des Satzes. */
+const BS_MAX = 12;
+function bsWords(t, en){
+  const w = en.trim().split(/\s+/); let end = "";
+  const m = /^(.*?)([.!?…]+)$/.exec(w[w.length - 1]);
+  if (m && m[1]) { w[w.length - 1] = m[1]; end = m[2]; }
+  const first = t.en.replace(/^to /i, "").split(/\s+/)[0];
+  if (/^[A-Z][a-z'’]+$/.test(w[0]) && w[0] !== first) w[0] = w[0][0].toLowerCase() + w[0].slice(1);
+  return {words:w, end};
+}
+kind({id:"build-sentence", name:"Satz bauen", refName:"Satz", ins:["build"], each:"jeder Satz einmal",
+  help:() => `Ein Satz auf ${esc(langName(MOD.lang.meaning))}: Bau ihn auf ${esc(langName(MOD.lang.term))} aus den durcheinandergewürfelten Wörtern nach. Tipp sie der Reihe nach an; ein Tipp auf ein gesetztes Wort oder „Rückgängig“ nimmt es zurück.`,
+  refs:t => sentPairs(t).map((p, i) => ({ck:"bs" + i, en:p.en, de:p.de})).filter(r => { const n = r.en.trim().split(/\s+/).length; return n >= 3 && n <= BS_MAX; }),
+  make:q => {
+    const r = q.task.ref, b = bsWords(q.t, r.en);
+    q.sent = {en:r.en, de:r.de}; q.words = b.words; q.end = b.end; q.built = [];
+    const idx = q.words.map((w, i) => i), same = o => o.every((i, k) => q.words[i] === q.words[k]);
+    let o = shuffle(idx); for (let k = 0; k < 6 && same(o); k++) o = shuffle(idx);
+    q.pool = o;
+  },
+  ask:() => `Bau den Satz auf ${esc(langName(MOD.lang.term))}`,
+  body:q => `<div class="q-mid" lang="${esc(MOD.lang.meaning)}">${esc(q.sent.de)}</div>`,
+  controls:(q, a) => {
+    if (a) {
+      const mine = a.ok ? q.sent.en.replace(/[.!?…]+$/, "") : q.built.map(i => q.words[i]).join(" ");
+      return `<div class="typed${a.ok ? " ok" : " bad"}">${a.typed === null && !mine
+        ? `<span class="ty-v none">${a.timeout ? "Zeit abgelaufen" : "Weiß ich nicht"}</span>`
+        : `<span class="ty-l">Dein Satz${a.timeout ? " (Zeit abgelaufen)" : ""}</span><span class="ty-v mine" lang="${esc(MOD.lang.term)}">${esc(mine + (a.ok || q.built.length === q.words.length ? q.end : " …"))}</span>`}${a.ok ? "" : `<span class="ty-l">Richtig</span><span class="ty-v right" lang="${esc(MOD.lang.term)}">${esc(q.sent.en)}</span>`}</div>`;
+    }
+    return `<div class="bs-line" id="bsLine" lang="${esc(MOD.lang.term)}" aria-live="polite"></div>
+      <div class="bs-tools"><button class="bs-undo" id="bsUndo"><span aria-hidden="true">↶</span> Rückgängig</button></div>
+      <div class="bs-pool" id="bsPool" lang="${esc(MOD.lang.term)}" role="group" aria-label="Wörter">${q.pool.map(i => `<button class="bs-w" data-w="${i}">${esc(q.words[i])}</button>`).join("")}</div>
+      <div class="type-btns"><button class="btn" id="dunno">Weiß ich nicht</button><button class="btn primary" id="bsCheck">Prüfen</button></div>`;
+  },
+  wire:q => {
+    const line = $("#bsLine"), draw = () => {
+      line.innerHTML = q.built.length ? q.built.map((i, k) => `<button class="bs-w set" data-u="${k}">${esc(q.words[i])}</button>`).join("")
+        + (q.built.length === q.words.length ? `<span class="bs-end">${esc(q.end)}</span>` : "")
+        : `<span class="bs-ph">Tipp die Wörter der Reihe nach an</span>`;
+      app.querySelectorAll("[data-w]").forEach(b => { const used = q.built.includes(+b.dataset.w); b.classList.toggle("used", used); b.disabled = used; });
+      line.querySelectorAll("[data-u]").forEach(b => b.onclick = () => { q.built.splice(+b.dataset.u, 1); draw(); });
+      $("#bsUndo").disabled = !q.built.length;
+      $("#bsCheck").disabled = q.built.length !== q.words.length;
+    };
+    app.querySelectorAll("[data-w]").forEach(b => b.onclick = () => { const i = +b.dataset.w; if (!q.built.includes(i)) { q.built.push(i); draw(); } });
+    $("#bsUndo").onclick = () => { q.built.pop(); draw(); };
+    $("#dunno").onclick = () => settle(false, {inp:"build", typed:null});
+    $("#bsCheck").onclick = () => {
+      if (q.built.length !== q.words.length) return;
+      settle(q.built.every((i, k) => q.words[i] === q.words[k]), {inp:"build", typed:""});
+    };
+    draw();
+  }});
+/* Buchstabenlücken: rund 40 % der Buchstaben des Begriffs sind verdeckt (Leerzeichen, Bindestriche und das „to“ der Verben
+   bleiben sichtbar), dazu die Bedeutung; der Begriff wird ganz geschrieben (Toleranz wie beim Schreiben). Nur mit mind. 3 Buchstaben. */
+const lgLetters = t => { const off = /^to /i.test(t.en) ? 3 : 0, out = [];
+  for (let i = off; i < t.en.length; i++) if (new RegExp("[" + LTR + "]").test(t.en[i])) out.push(i); return out; };
+kind({id:"letter-gaps", name:"Buchstabenlücken", ins:["type"],
+  help:() => `Vom Begriff sind nur ein paar Buchstaben zu sehen, dazu die Bedeutung. Du schreibst den ganzen Begriff.`,
+  refs:t => lgLetters(t).length >= 3 ? [{ck:"lg", tag:"Lücken"}] : [],
+  make:q => {
+    const ls = lgLetters(q.t), n = Math.max(1, Math.round(ls.length * .4));
+    const hide = new Set(shuffle(ls.slice()).slice(0, n));
+    q.prompt = q.t.en;
+    q.gaps = [...q.t.en].map((ch, i) => ch === " " ? `<span class="lg-sp"> </span>` : hide.has(i) ? `<span class="lg-g">&#8199;</span>` : `<span>${esc(ch)}</span>`).join("");
+  },
+  ask:() => "Welcher Begriff ist das?",
+  body:(q, a) => `<div class="lg-word" lang="${esc(MOD.lang.term)}" aria-label="${esc(a ? q.t.en : "Begriff mit Lücken")}">${a ? esc(q.t.en) : q.gaps}</div><div class="q-hint">${esc(q.t.de)}</div>`});
+/* Diktat: der Begriff wird in der Begriffs-Sprache vorgelesen und geschrieben. Braucht eine Stimme (sonst gilt das
+   Häkchen als erfüllt, autoChecks) und Ton; Schreiben erst nach einer richtigen Antwort. */
+kind({id:"dictation", name:"Diktat", outs:["hear"], ins:["type"], big:"q-big",
+  help:() => `Der Begriff wird auf ${esc(langName(MOD.lang.term))} vorgelesen, du schreibst ihn.`,
+  refs:() => [{}], outCk:o => o === "hear" ? "dk" : null,
+  make:q => { q.prompt = q.t.en; },
+  ask:() => "Schreib den Begriff, den du hörst."});
+/* Nachsprechen: Begriff lesen (🔊 zum Vorhören) und sprechen; Prüfung mit derselben Toleranz wie Schreiben. Das Feld bleibt
+   gesperrt (sayOnly): Abschreiben zählt hier nicht. Braucht Spracherkennung (sonst gilt das Häkchen als erfüllt). */
+kind({id:"pronounce", name:"Nachsprechen", ins:["say"], sayOnly:true,
+  help:() => `Du siehst den Begriff (🔊 spielt ihn vor) und sprichst ihn auf ${esc(langName(MOD.lang.term))} nach. Erkannt wird mit derselben Toleranz wie beim Schreiben; das Feld lässt sich hier nicht von Hand ändern.`,
+  refs:() => [{}], inpCk:i => i === "say" ? "pn" : null,
+  make:q => { q.prompt = q.t.en; },
+  ask:() => "Sprich den Begriff nach.",
+  body:q => `<div class="q-big" lang="${esc(MOD.lang.term)}">${esc(q.t.en)}</div><div class="q-hint">${esc(q.t.de)} ${speakBtn(q.t.en, "vorhören")}</div>`});
 
 /* ---------- Moduleinstellung „quiz“ (module.json) ----------
    Wird beim Laden gelesen, geprüft und auf erlaubte Bereiche zurechtgestutzt (quizConf). Unbekannte Fragearten fallen weg,
@@ -1870,6 +1962,27 @@ document.addEventListener("keydown", e => {
     e.preventDefault(); nextQuestion();
   }
 });
+/* Zeitlimit (Variante timeLimit der Stufe, Sekunden pro Frage, 0 = aus): gilt für alle Fragearten außer den KI-Fragearten,
+   beim Schreiben und Sprechen mit derselben Zeit. Die Uhr startet beim ersten Aufbau der Frage und läuft über Zwischenschritte
+   (Folgefrage, Hilfe) weiter. Unter der Frage läuft eine dünne Neon-Linie ab (.q-timer, im letzten Viertel rot).
+   Abgelaufen = wie falsch: Lösung zeigen, zählt als Antwort, der Begriff kommt später wieder (qTimeout). */
+const qTimeLimit = q => { const st = STAGES[q.stage]; return st && !q.def.ai ? st.timeLimit || 0 : 0; };
+function qTimerStart(q){
+  if (q.tl) return;
+  const sec = qTimeLimit(q); if (!sec) return;
+  q.tl = {start:Date.now(), ms:sec * 1000};
+  setTimeout(() => qTimeout(q), q.tl.ms);
+}
+function qTimerHtml(q, a){
+  if (!q.tl || a) return "";
+  const left = Math.max(0, q.tl.ms - (Date.now() - q.tl.start));
+  return `<div class="q-timer" role="timer" aria-label="Noch ${Math.ceil(left / 1000)} Sekunden"><i style="--tl:${q.tl.ms}ms;animation-delay:-${q.tl.ms - left}ms"></i></div>`;
+}
+function qTimeout(q){
+  if (!Q || Q.q !== q || Q.answered || screen !== "quiz") return;
+  stopListen();
+  settle(false, {timeout:true, inp:q.inp, typed:null});
+}
 /* Allgemeine Darstellung einer Frage (Frageart def: ask, body, fb, big, long, side – long/side auch pro Frage in q;
    eigene Bedienelemente statt der Antworten über def.controls + def.wire; ganz eigene Darstellung über def.render) */
 function renderQuiz(){
@@ -1887,19 +2000,19 @@ function renderQuiz(){
   }).join("");
   let input = "";
   /* Schreiben und Sprechen sind getrennt: Die Frage sagt, wie geantwortet wird, und bietet nur das an */
-  if (q.inp !== "pick") input = a
+  if (q.inp === "type" || q.inp === "say") input = a
     ? `<div class="typed${a.ok ? " ok" : " bad"}">${a.typed === null
-        ? `<span class="ty-v none">Weiß ich nicht</span>`
+        ? `<span class="ty-v none">${a.timeout ? "Zeit abgelaufen" : "Weiß ich nicht"}</span>`
         : `<span class="ty-l">Deine Antwort${a.spoken ? " (gesprochen)" : ""}</span><span class="ty-v mine">${esc(a.typed)}</span>`}${a.ok && !a.near ? "" : `<span class="ty-l">Richtig</span><span class="ty-v right">${esc(t.en)}</span>`}</div>`
     : `<p class="inp-mode"><span aria-hidden="true">${say ? "🎤" : "✍️"}</span> ${say ? `Sprich den Begriff auf ${esc(TN)}` : `Schreib den Begriff auf ${esc(TN)}`}</p>
        <div class="type-row${say ? " say" : ""}">${say ? `<button class="btn mic big" id="mic" aria-label="Begriff auf ${esc(TN)} sprechen" aria-pressed="false">🎤</button>` : ""}<input class="type-in" id="typed" type="text" lang="${esc(MOD.lang.term)}" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="done"
          ${say ? "readonly" : ""} placeholder="${say ? "🎤 antippen und sprechen" : "Begriff auf " + esc(TN)}" aria-label="Begriff auf ${esc(TN)}"></div>
-       ${say ? `<p class="say-note">Was erkannt wurde, steht danach im Feld. Du kannst neu aufnehmen; änderst du den Text von Hand, zählt es als Schreiben.</p>` : ""}
+       ${say ? `<p class="say-note">Was erkannt wurde, steht danach im Feld. Du kannst neu aufnehmen${def.sayOnly ? "." : "; änderst du den Text von Hand, zählt es als Schreiben."}</p>` : ""}
        <div class="type-btns"><button class="btn" id="dunno">Weiß ich nicht</button><button class="btn primary" id="check">Prüfen</button></div>`;
   const s = stateOf(t), last = a && Q.total <= Q.asked;
   const exEn = q.sent ? q.sent.en : t.exEn, exDe = q.sent ? q.sent.de : t.exDe;
   const fb = a ? `<div class="feedback tap-next${a.shown ? "" : " fb-wait"}" id="fbox" tabindex="0" style="--fb:var(${a.ok ? "--ok" : "--bad"})">
-      <h3>${a.ok ? "Richtig!" : "Leider nicht."}</h3>
+      <h3>${a.ok ? "Richtig!" : a.timeout ? "Zeit abgelaufen." : "Leider nicht."}</h3>
       ${a.note ? `<p><b>${esc(a.note)}</b></p>` : ""}
       ${doneNote(q, a)}${a.crown ? crownCard(a.crown) : ""}
       ${def.fb ? def.fb(q) : ""}
@@ -1909,9 +2022,10 @@ function renderQuiz(){
       <div>${speakBtn(t.en, "Begriff")} ${speakBtn(exEn, TN)} ${speakBtn(exDe, MN, MOD.lang.meaning)}</div>
     </div>` : "";
   const nr = Q.asked + (a ? 0 : 1), total = Math.max(Q.total, nr);
+  if (!a) qTimerStart(q);
   app.innerHTML = `
     <div class="note qc${a ? " tap-next " + (a.ok ? "is-ok" : "is-bad") : ""}" id="qcard" style="--c:${c.c}"${a ? ` title="Weiter zur nächsten Frage"` : ""}>
-      <div class="q-ask">${ask}</div>${body}
+      <div class="q-ask">${ask}</div>${body}${qTimerHtml(q, a)}
     </div>
     <div class="q-body">${input}${def.controls ? def.controls(q, a) : opts ? `<div class="opts${q.side ?? def.side ? " tf" : ""}">${opts}</div>` : ""}${fb}</div>
     ${qFoot(total)}`;
@@ -1932,7 +2046,7 @@ function renderQuiz(){
       $("#check").onclick = go;
       $("#dunno").onclick = () => { stopListen(); settle(false, {typed:null, inp:q.inp}); };
       const mic = $("#mic"), ph = inp.placeholder;
-      if (mic) mic.onclick = () => listen(MOD.lang.term, alts => { heard(alts, inp); if (inp.value) inp.readOnly = false; },
+      if (mic) mic.onclick = () => listen(MOD.lang.term, alts => { heard(alts, inp); if (inp.value && !def.sayOnly) inp.readOnly = false; },
         on => { mic.classList.toggle("on", on); mic.setAttribute("aria-pressed", on); inp.placeholder = on ? "Ich höre zu …" : ph; });
       if (!say) inp.focus({preventScroll:true});
     }
@@ -2091,10 +2205,10 @@ function record(q, ok, inp){
 function settle(ok, info){
   if (!Q || Q.answered) return;
   const q = Q.q, t = q.t;
-  let note = info.note ? info.note : info.near ? (info.spoken ? `Fast richtig: verstanden habe ich „${info.typed}“, gemeint ist „${t.en}“.` : `Fast richtig: „${info.typed}“, richtig geschrieben „${t.en}“.`) : "";
+  let note = info.note ? info.note : info.timeout ? "Die Zeit für diese Frage ist um. Das zählt wie eine falsche Antwort, der Begriff kommt später wieder." : info.near ? (info.spoken ? `Fast richtig: verstanden habe ich „${info.typed}“, gemeint ist „${t.en}“.` : `Fast richtig: „${info.typed}“, richtig geschrieben „${t.en}“.`) : "";
   if (ok && info.edited && q.inp === "say") note = (note ? note + " " : "") + "Von Hand geändert, darum zählt es als Schreiben.";
   const r = record(q, ok, info.inp);
-  Q.answered = Object.assign(r, {pick:info.pick, typed:info.typed, spoken:!!info.spoken, near:info.near, ok, note, at:Date.now()});
+  Q.answered = Object.assign(r, {pick:info.pick, typed:info.typed, spoken:!!info.spoken, near:info.near, timeout:!!info.timeout, ok, note, at:Date.now()});
   save(); renderQuiz();
 }
 function nextQuestion(){

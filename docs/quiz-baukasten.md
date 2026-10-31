@@ -150,9 +150,9 @@ Jeder Chat: Repo `baumpinkler/FachVokabeln` klonen, `CLAUDE.md` und dieses Dokum
 
 ### Chat 4: Neue Fragearten zum Tippen, Hören, Sprechen
 
-- ☐ `build-sentence` (eigenes Bedienelement)
-- ☐ `letter-gaps`, `dictation`, `pronounce`
-- ☐ Variante `timeLimit`
+- ☑ `build-sentence` (eigenes Bedienelement)
+- ☑ `letter-gaps`, `dictation`, `pronounce`
+- ☑ Variante `timeLimit`
 
 ### Chat 5: KI-Fragearten
 
@@ -169,7 +169,6 @@ Jeder Chat: Repo `baumpinkler/FachVokabeln` klonen, `CLAUDE.md` und dieses Dokum
 
 ## Offene Entscheidungen (im jeweiligen Chat mit dem Nutzer klären)
 
-- Chat 4: Verhalten bei abgelaufenem Zeitlimit; Zeitlimit auch bei Schreiben/Sprechen?
 - Chat 5: Sprache bei `own-sentence` (englischer Satz oder deutscher Satz mit englischem Begriff)?
 - Chat 6: Stufenpläne für IT und Agile (welche Fragearten in welcher Stufe, Abstände, Optionen).
 
@@ -206,3 +205,12 @@ Jeder Chat: Repo `baumpinkler/FachVokabeln` klonen, `CLAUDE.md` und dieses Dokum
 - `multi-truefalse`: Inhalte geprüft: 90 % (IT) bzw. 92 % (Agile) der `tf`-Aussagen nennen ihren Begriff, der Rest ist meist trotzdem verständlich. Eine Frage zeigt beide Aussagen des Begriffs und zwei Aussagen anderer Begriffe (gleiche Kategorie zuerst, **nur Aussagen, die ihren Begriff nennen**, möglichst eine wahre und eine falsche). Richtig = beide eigenen richtig eingeschätzt und höchstens eine fremde daneben (dann „fast richtig“). Ein Häkchen `mt`. Eigenes Bedienelement: Neon-Kästchen zum Antippen, „Prüfen“, danach jede Aussage grün bzw. rot mit „Stimmt / Stimmt nicht“ und Begründung.
 - Variante `options`: getestet auf Ebene Modul, Stufe und Frageart (`quizConf`), in der Oberfläche mit 3 Antworten bei `which-situation` geprüft.
 - Neue allgemeine Felder einer Frageart: `outKey` (Name der Moduleinstellung statt `outputs`), `outLabel(o)`, `pick(q, k)` (Zwischenschritt), `controls(q, a)` + `wire(q)` (eigene Bedienelemente statt der Antworten), `tag` an einem Inhalt (Beschriftung im Nachschlagen), `help(kc)` bekommt die Einstellung in der Stufe („liest“, „hörst“ oder „liest oder hörst“). Pro Frage können `q.long`/`q.side` die Werte der Frageart überschreiben; `settle` nimmt eine eigene Notiz (`info.note`).
+
+**Chat 4 (v43):**
+- Zeitlimit (Entscheidung des Nutzers): Abgelaufen zählt **wie falsch** (Lösung zeigen, zählt als Antwort, Begriff in „Daneben“, kommt später wieder). Gilt **mit derselben Zeit** auch beim Schreiben, Sprechen, Diktat, Satz bauen und Buchstabenlücken, nicht bei KI-Fragearten (dort wäre die Wartezeit auf die KI mitgezählt). Die Uhr startet beim ersten Aufbau der Frage und läuft über Zwischenschritte (Folgefrage bei `wrong-term`, „Satz auf Deutsch zeigen“) weiter. Anzeige: dünne Neon-Linie unter der Frage (`.q-timer`), im letzten Viertel rot; läuft auch bei reduzierter Bewegung (ist Anzeige, keine Zierde). Rückmeldung „Zeit abgelaufen.“ mit kurzer Erklärung.
+- Die neuen Fragearten kommen auf Wunsch des Nutzers **noch nicht** in die Stufenpläne von IT und Agile, erst in Chat 6.
+- `build-sentence`: Satz in der Bedeutungs-Sprache steht da, Wörter des Satzes in der Begriffs-Sprache durcheinander (Beispielsatz und `ex`, nur 3–12 Wörter: IT meist 3, Agile meist 2–3 Sätze pro Begriff). Satzzeichen am Ende steht fest, erstes Wort kleingeschrieben (außer es ist der Anfang des Begriffs), Kommas bleiben am Wort. Richtig = genau die Reihenfolge des Originals (gleiche Wörter dürfen vertauscht sein); keine Ablenker-Wörter. Eingabeart `build` („Wörter antippen“), braucht keine vorherige richtige Antwort. Häkchen `bs0`–`bs2`. Bedienelement: Zeile mit Neon-Unterlinie (gesetzte Wörter antippen nimmt sie zurück), „↶ Rückgängig“ klein darunter, Wörter als schwebende Neon-Rahmen (verbrauchte bleiben blass stehen), „Weiß ich nicht“/„Prüfen“ (erst aktiv, wenn alle Wörter gesetzt sind).
+- `letter-gaps`: Begriff mit rund 40 % verdeckten Buchstaben (Leerzeichen, Bindestriche und „to“ bleiben sichtbar, Lücken als leuchtende Striche, im DOM ohne den Buchstaben), dazu die Bedeutung; der Begriff wird ganz geschrieben (`checkTyped`). Nur Begriffe mit mind. 3 Buchstaben. Häkchen `lg`. Wie jedes Schreiben erst nach einer richtigen Antwort.
+- `dictation`: Hören in `MOD.lang.term`, Schreiben. Das Häkchen ist das Hören-Häkchen der Frageart (`dk`), dadurch greifen `autoChecks` (keine Stimme) und „Gerade kein Ton“ ohne Sonderfall.
+- `pronounce`: Begriff lesen (🔊 „vorhören“ in der Frage), sprechen; Häkchen = Sprechen-Häkchen (`pn`, also `autoChecks` ohne Spracherkennung). Neues Feld `sayOnly`: das Feld bleibt gesperrt, Abschreiben zählt hier nicht.
+- Neue allgemeine Teile: Eingabeart `build` in `INP_LABEL`; die Eingabezeile von `renderQuiz` erscheint nur noch bei `type`/`say`; `settle` kennt `info.timeout`.

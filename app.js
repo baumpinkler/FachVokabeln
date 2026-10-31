@@ -1511,6 +1511,8 @@ function speak(text, lang){
     u.rate = .9; speechSynthesis.speak(u);
   } catch(e) {}
 }
+/* Vorlesen abbrechen: beim Antworten, beim Wechsel zur nächsten Frage bzw. Karte und beim Verlassen von Quiz und Karteikarten */
+function stopSpeak(){ if (canSpeak) try { speechSynthesis.cancel(); } catch(e) {} }
 /* Vorlesen der Bedeutung: „die Datenbank / die DB“ → „die Datenbank, die DB“ */
 const sayable = s => String(s).replace(/\s+\/\s+/g, ", ");
 const speakBtn = (text, label, lang) => canSpeak ? `<button class="speak" data-speak="${esc(text)}" data-lang="${esc(lang || MOD.lang.term)}" aria-label="Vorlesen">🔊 ${esc(label || "anhören")}</button>` : "";
@@ -1646,6 +1648,7 @@ window.addEventListener("popstate", () => {
 function renderHome(fromPop){
   if (fromPop !== true && history.state && history.state.nav === "screen") { ignorePop++; try { history.back(); } catch (e) { ignorePop--; } }
   if (screen === "quiz") { stopListen(); if (Q.asked) save(); }
+  stopSpeak();
   screen = "home"; qfxOff();
   autoFinish();
   setFocus(false); renderTop();
@@ -1747,7 +1750,7 @@ function renderCard(){
   $("#card").onkeydown = e => { if (e.target.id === "card" && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); flip(); } };
   /* Antwort: Karte fliegt weg (gewusst nach rechts, nochmal nach links), dann kommt die nächste */
   const advance = (dir, fn) => {
-    if (F.busy) return; F.busy = true;
+    if (F.busy) return; F.busy = true; stopSpeak();
     const done = () => { F.busy = false; fn(); F.flipped = false; F.anim = reduced() ? "" : "card-in"; renderCard(); };
     const el = $("#card");
     if (reduced() || !el) return done();
@@ -2114,7 +2117,7 @@ function renderQuizC(){
 async function checkC(){
   const q = Q.q, text = (Q.cText || "").trim();
   if (!text || Q.cBusy || Q.answered) return;
-  stopListen();
+  stopListen(); stopSpeak();
   Q.cBusy = true; Q.cErr = null; renderQuiz();
   let res = null, err = null;
   try { res = await aiJudge(q.t, text); } catch (e) { err = (e && e.code) || "broken"; }
@@ -2125,6 +2128,7 @@ async function checkC(){
 }
 function settleC(ok, info){
   if (!Q || Q.answered) return;
+  stopSpeak();
   const q = Q.q, t = q.t, r = record(q, ok, "free");
   Q.answered = Object.assign(r, {ok, typed:info.text, ai:info.ai, muster:pickOne(t.expls) || t.expl, at:Date.now()});
   save(); renderQuiz();
@@ -2163,7 +2167,7 @@ function doneNote(q, a){
   return `<p class="fb-done"><b>Stufe ${esc(stTitle(i))} geschafft! 🎉</b> ${esc(nextText(i + 1))}</p>`;
 }
 /* Auswahl: def.pick kann einen Zwischenschritt übernehmen (Ja/Nein mit Folgefrage) und gibt dann true zurück */
-function answer(k){ const q = Q.q; if (q.def.pick && q.def.pick(q, k)) return; settle(q.opts[k].id === q.answer, {pick:k, inp:"pick"}); }
+function answer(k){ const q = Q.q; stopSpeak(); if (q.def.pick && q.def.pick(q, k)) return; settle(q.opts[k].id === q.answer, {pick:k, inp:"pick"}); }
 /* Gesprochen: die beste erkannte Variante kommt ins Textfeld (richtig vor fast richtig vor Verwechslung vor falsch) */
 function heard(alts, inp){
   if (!Q || Q.answered || !alts.length) return;
@@ -2204,6 +2208,7 @@ function record(q, ok, inp){
 }
 function settle(ok, info){
   if (!Q || Q.answered) return;
+  stopSpeak();
   const q = Q.q, t = q.t;
   let note = info.note ? info.note : info.timeout ? "Die Zeit für diese Frage ist um. Das zählt wie eine falsche Antwort, der Begriff kommt später wieder." : info.near ? (info.spoken ? `Fast richtig: verstanden habe ich „${info.typed}“, gemeint ist „${t.en}“.` : `Fast richtig: „${info.typed}“, richtig geschrieben „${t.en}“.`) : "";
   if (ok && info.edited && q.inp === "say") note = (note ? note + " " : "") + "Von Hand geändert, darum zählt es als Schreiben.";
@@ -2214,7 +2219,7 @@ function settle(ok, info){
 function nextQuestion(){
   if (Q.leaving) return;   /* Doppeltipp während des Ausblendens */
   Q.leaving = true; qfxSwapOut();
-  stopListen();
+  stopListen(); stopSpeak();
   const n = findNext(Q.i + 1, Q.q.t.id);
   if (!n) return transit(renderQuizDone);
   transit(() => { goQuestion(n); renderQuiz(); window.scrollTo(0,0); });

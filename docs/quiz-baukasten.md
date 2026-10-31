@@ -125,12 +125,12 @@ Jeder Chat: Repo `baumpinkler/FachVokabeln` klonen, `CLAUDE.md` und dieses Dokum
 
 ### Chat 1: Fundament (Registry, Stufen-Mechanik, Lernstand v3)
 
-- ☐ Registry der Fragearten anlegen; die 7 vorhandenen Fragearten aus der Teil-A/B/C-Logik herauslösen (`A_TASKS`, `taskForB`, `bContent`, `openChecksA/B`, `partADone`, `taskForC` usw.).
-- ☐ Allgemeine Stufen-Mechanik: Stufen aus `quiz.stages`, Häkchen pro Stufe aus den Fragearten, geschafft = alle Häkchen (+ `minCorrect`), `waitDays`, `perRound`, Gleichschritt (`lockstep`), Rundenplanung, `autoFinish` für Stufen ohne offene Häkchen.
-- ☐ Lernstand v3 (`P_VERSION` 3): pro Begriff Stufen-Index, Häkchen und Datum je Stufe, Zähler, `t`. Alter Stand wird verworfen. Export-Version erhöhen.
-- ☐ Moduleinstellung `quiz` lesen, prüfen, zurechtstutzen; Standard-Stufenplan = heutiges A/B/C; `MOD_VERSION` 2.
-- ☐ Stufenpläne für IT und Agile zunächst so, dass sie sich wie v39 verhalten (IT ohne „Bedeutung“-Stufe). Feinschliff kommt in Chat 6.
-- ☐ Test: Verhalten wie v39 (Runden, Gleichschritt, Bremse, Teil C mit nachgebildeter KI).
+- ☑ Registry der Fragearten anlegen; die 7 vorhandenen Fragearten aus der Teil-A/B/C-Logik herauslösen (`A_TASKS`, `taskForB`, `bContent`, `openChecksA/B`, `partADone`, `taskForC` usw.).
+- ☑ Allgemeine Stufen-Mechanik: Stufen aus `quiz.stages`, Häkchen pro Stufe aus den Fragearten, geschafft = alle Häkchen (+ `minCorrect`), `waitDays`, `perRound`, Gleichschritt (`lockstep`), Rundenplanung, `autoFinish` für Stufen ohne offene Häkchen.
+- ☑ Lernstand v3 (`P_VERSION` 3): pro Begriff Stufen-Index, Häkchen und Datum je Stufe, Zähler, `t`. Alter Stand wird verworfen. Export-Version erhöhen.
+- ☑ Moduleinstellung `quiz` lesen, prüfen, zurechtstutzen; Standard-Stufenplan = heutiges A/B/C; `MOD_VERSION` 2.
+- ☑ Stufenpläne für IT und Agile zunächst so, dass sie sich wie v39 verhalten (IT ohne „Bedeutung“-Stufe). Feinschliff kommt in Chat 6.
+- ☑ Test: Verhalten wie v39 (Runden, Gleichschritt, Bremse, Teil C mit nachgebildeter KI).
 
 ### Chat 2: Oberfläche auf Stufen umstellen
 
@@ -146,7 +146,7 @@ Jeder Chat: Repo `baumpinkler/FachVokabeln` klonen, `CLAUDE.md` und dieses Dokum
 - ☐ `explain-to-term`, `term-to-explain`, `which-situation`, `translate-sentence`
 - ☐ `wrong-term` (Ja/Nein mit Folgefrage)
 - ☐ `multi-truefalse` (Mehrfachauswahl; vorher Inhalte prüfen)
-- ☐ Variante `options` (weniger Antwortmöglichkeiten)
+- ☐ Variante `options` (weniger Antwortmöglichkeiten): Einstellung wird seit Chat 1 schon gelesen und beim Bauen der Antwortmöglichkeiten verwendet (`q.n`, `optsFor`); in Chat 3 nur noch testen und in der Oberfläche prüfen
 
 ### Chat 4: Neue Fragearten zum Tippen, Hören, Sprechen
 
@@ -169,7 +169,6 @@ Jeder Chat: Repo `baumpinkler/FachVokabeln` klonen, `CLAUDE.md` und dieses Dokum
 
 ## Offene Entscheidungen (im jeweiligen Chat mit dem Nutzer klären)
 
-- Chat 1: Wie heißen und kürzen sich Stufen auf der Übersicht ab (Buchstaben wie heute oder Namen)? Höchstzahl der Stufen?
 - Chat 3: Bleibt die Hilfe „Satz auf Deutsch zeigen“ im Lückensatz? (Die Variante „Hinweis auf Abruf“ wurde nicht gewählt.)
 - Chat 3: `translate-sentence` in beide Richtungen oder nur Englisch → Deutsch?
 - Chat 4: Verhalten bei abgelaufenem Zeitlimit; Zeitlimit auch bei Schreiben/Sprechen?
@@ -179,3 +178,14 @@ Jeder Chat: Repo `baumpinkler/FachVokabeln` klonen, `CLAUDE.md` und dieses Dokum
 ## Entscheidungen
 
 (Hier jeweils festhalten, was in den Chats entschieden wurde.)
+
+**Chat 1 (v40):**
+- Format von `quiz` wie im Entwurf oben, endgültig in `CLAUDE.md` unter „Moduldatei“. Zusätzlich: `minCorrect` auch pro Frageart (`{"kind":"meaning-to-term","minCorrect":3}`), damit die alte Regel „davon 3 in Richtung Bedeutung → Begriff“ abbildbar ist.
+- Stufen haben `name` und `short`; die Übersicht zeigt vorerst `short` (Buchstaben wie bisher). Höchstens 6 Stufen. Endgültige Darstellung in Chat 2.
+- Lernstand speichert pro Stufen-**ID**, nicht pro Index (`s:{<stufen-id>:{c,n,x,k,d}}`); aktuelle Stufe = erste ohne `d`. So passt der Stand auch nach Änderungen am Stufenplan (Chat 6).
+- `waitDays` fehlt → 1 Tag ab der zweiten Stufe, 0 bei der ersten (die erste wartet nie).
+- Übergang: Module ohne `stages`, aber mit `quiz.parts` (v1, noch im Cache) werden in den Standardplan übersetzt, damit IT nach dem Update nicht kurz einen Teil A zeigt.
+- Auswahl in jeder Stufe einheitlich wie früher Teil B: erst Frageart zufällig, darin die Aufgabe mit den meisten offenen Häkchen. Teil A hatte vorher „meiste offene Häkchen über alle Aufgaben“; die Zahl der nötigen Antworten (5) bleibt gleich.
+- Häkchen-Namen bleiben wie bisher (`o:read`, `c0`, `si:say` …) und müssen über alle Fragearten eindeutig sein.
+- `modules/index.json` bekommt **kein** `version: 2`: Alte App-Versionen laden so beim ersten Start nach dem Update noch das gecachte v1-Modul, statt „Module nicht geladen“ zu zeigen; danach ist auch die App aktuell.
+- Stufen-IDs: `bedeutung` (A), `anwenden` (B), `erklaeren` (C), in IT und Agile gleich.

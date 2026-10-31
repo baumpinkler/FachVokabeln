@@ -15,7 +15,7 @@
 4. ☑ **Echter Test der KI-Prüfung** (mit `tools/ki-test.html`): alle 16 Testfälle mit dem erwarteten Urteil, `AI_RULES` bleibt unverändert. Bei späteren Änderungen an `AI_RULES` oder `AI_MODEL` die Testseite erneut laufen lassen.
 5. ☑ **`levels` aus den Moduldateien gestrichen** (per Skript, beide Module).
 6. ☐ **Quiz-Baukasten** (Plan: `docs/quiz-baukasten.md`): Fragearten als Bausteine der App, Stufen und ihre Fragearten pro Modul in `module.json`. Lernstand startet neu. In sechs Chats:
-   - ☐ Chat 1: Fundament (Registry der Fragearten, Stufen-Mechanik, Lernstand v3)
+   - ☑ Chat 1: Fundament (Registry der Fragearten, Stufen-Mechanik, Lernstand v3), v40
    - ☐ Chat 2: Oberfläche auf Stufen umstellen (Übersicht, Nachschlagen, Hilfe, Krönchen)
    - ☐ Chat 3: neue Fragearten zum Auswählen
    - ☐ Chat 4: neue Fragearten zum Tippen, Hören, Sprechen
@@ -26,7 +26,7 @@
 
 Installierbare Web-App (PWA) zum Lernen englischer Fachbegriffe mit deutscher Übersetzung. Zielgruppe: der Nutzer selbst (Österreich), Android-Handy, Chrome. Später sollen auch Schulmodule (z. B. Biologie, auch rein deutschsprachig) für den Sohn des Nutzers dazukommen; der Lernrahmen ist dafür für alle Module gleich.
 Zwei Module: **IT** (`dev`, 1.305 Begriffe, violettes Schema) und **Agile & Projekte** (`agile`, 507 Begriffe, weinrotes Schema), beide mit Zusatzinhalten für alle Begriffe.
-Jeder Begriff durchläuft drei Teile: **A** (Begriff und Bedeutung), **B** (anwenden), **C** (in eigenen Worten erklären, eine KI prüft). Danach ist er **gelernt**; sind alle Begriffe eines Themas gelernt, bekommt das Thema ein **Krönchen**. Die App entscheidet selbst, was als Nächstes gefragt wird. Keine Punkte, Ränge oder Strafen.
+Jeder Begriff durchläuft die **Stufen** seines Moduls (`quiz.stages`, seit v40). Standard und Agile: **A** (Begriff und Bedeutung), **B** (anwenden), **C** (in eigenen Worten erklären, eine KI prüft); IT nur B und C. Die App kennt die Fragearten als Bausteine (Registry `KINDS`), das Modul legt fest, welche in welcher Stufe vorkommen. Nach der letzten Stufe ist ein Begriff **gelernt**; sind alle Begriffe eines Themas gelernt, bekommt das Thema ein **Krönchen**. Die App entscheidet selbst, was als Nächstes gefragt wird. Keine Punkte, Ränge oder Strafen.
 Bereiche: Quiz (ändert den Lernstand), Karteikarten und Nachschlagen (ändern ihn nicht). Dazu Kalender (Fragen pro Tag), Schalter „Gerade kein Ton“, Blatt „KI-Prüfung“, Hilfe, Export/Import.
 Jeder Nutzer wählt im Katalog „Module verwalten“, welche Module er verwendet; nur diese werden geladen und offline gespeichert (seit v13).
 
@@ -44,7 +44,7 @@ Jeder Nutzer wählt im Katalog „Module verwalten“, welche Module er verwende
 | Datei | Größe | Inhalt |
 |---|---|---|
 | `index.html` | 1 KB | Gerüst (`#modbar` Modulleiste, darunter `#pager` mit `#top` und `#app`), Manifest-Link, Fonts (Google Fonts), setzt gespeichertes Farbschema vor dem Laden |
-| `app.js` | 121 KB (~34.000 Tokens) | gesamte Logik |
+| `app.js` | 135 KB (~38.000 Tokens) | gesamte Logik |
 | `style.css` | 60 KB (~17.000 Tokens) | gesamte Gestaltung, Farben über CSS-Variablen |
 | `sw.js` | 3 KB | Service Worker: Offline-Cache, „sofort aus Cache, im Hintergrund aktualisieren“ |
 | `manifest.json` | 1 KB | App-Name, Symbole, Startfarbe `#0a0510` |
@@ -64,6 +64,8 @@ Jeder Nutzer wählt im Katalog „Module verwalten“, welche Module er verwende
 | Aussehen, Abstände, Schriften | `style.css` |
 | Lernrahmen, Auswahl, Quiz, KI-Prüfung, Kalender, neue Funktionen | `app.js` (+ ggf. `style.css`) |
 | Neue Begriffe, Zusatzinhalte | die `module.json` nur per Skript bearbeiten (siehe „Inhalte schreiben“), `modules/index.json` (`count` mitpflegen). Keine `VERSION`-Erhöhung |
+| Stufenplan eines Moduls (welche Fragearten in welcher Stufe, Abstände, Optionen) | `modules/<key>/module.json` per Skript, Feld `quiz` (siehe „Moduldatei“). Keine `VERSION`-Erhöhung. Stufen-IDs nicht ändern, an ihnen hängt der Lernstand |
+| Neue Frageart | `app.js` (Eintrag in `KINDS`, ggf. eigene Bedienelemente) + `style.css`, Plan in `docs/quiz-baukasten.md` |
 | Neues Modul | neuer Ordner `modules/<key>/` mit `module.json` + Eintrag in `modules/index.json` (siehe „Neues Modul anlegen“). Keine Code-Änderung, keine `VERSION`-Erhöhung; nur eigene Krönchen-Designs brauchen `app.js` + `style.css` |
 | Katalog, Modulauswahl, Laden der Module | `app.js` (Bereich „Module laden“ und „Katalog“), `sw.js` (Daten-Cache) |
 | Offline-Verhalten | `sw.js` |
@@ -86,19 +88,42 @@ Reihenfolge in `index.json` = Reihenfolge in Katalog, Modulleiste und beim Wisch
 
 ### Moduldatei `modules/<key>/module.json`
 ```
-{ format:"fachvokabeln-modul", version:1, key, name, short, icon,
+{ format:"fachvokabeln-modul", version:2, key, name, short, icon,
   cats:   { "net": {"name":"Netzwerk","c":"var(--n-sky)"}, … },
   lang:   { term:"en-US", meaning:"de-AT" },          // optional, Standard genau diese Werte
-  quiz:   { parts:["b","c"] },                        // optional, Standard ["a","b","c"]
+  quiz:   { round, lockstep, options, flashcards, typing, ai, stages:[…] },   // optional, siehe unten
   theme:  { board, board-dot, ink, ink-soft, surface, line, ok, bad, accent, m1, m2, m3 },
   raw:    [ Eintrag, Eintrag, … ],
   extra:  { "<begriffs-id>": {ex, sit, conf, tf}, … } }
 ```
-Kompakt gespeichert (`separators=(",",":")`, `ensure_ascii=False`, ohne Zeilenumbruch am Ende). Die App (`MOD_FORMAT`, `MOD_VERSION` in `app.js`) lädt nur `format` „fachvokabeln-modul“ mit `version` ≤ 1; sonst „braucht eine neuere App-Version“. Ohne gültiges JSON, `raw` oder `cats` gilt das Modul als fehlerhaft.
+Kompakt gespeichert (`separators=(",",":")`, `ensure_ascii=False`, ohne Zeilenumbruch am Ende). Die App (`MOD_FORMAT`, `MOD_VERSION` in `app.js`) lädt nur `format` „fachvokabeln-modul“ mit `version` ≤ 2; sonst „braucht eine neuere App-Version“. Module mit `quiz.stages` haben `version: 2` (IT und Agile seit v40). `index.json` bekommt bewusst keine `version` (siehe Änderungsprotokoll v40). Ohne gültiges JSON, `raw` oder `cats` gilt das Modul als fehlerhaft.
 `extra` (optional, seit v16, direkt nach `raw`): Zusatzinhalte für schwere Fragearten, Schlüssel = Begriffs-ID (Format und Regeln unter „Zusatzinhalte“). Fehlt das Feld oder fehlt ein Inhalt, entfallen die betreffenden Fragearten und Häkchen in Teil B. Ändern immer per Skript: JSON laden, `extra[id]` setzen, kompakt zurückschreiben.
 `theme`: `board` Hintergrund (fast schwarz), `surface` Flächen, `accent` Modul-Schalter, `m1`/`m2`/`m3` die drei Startseiten-Kärtchen (Karteikarten/Quiz/Nachschlagen).
-`lang` (optional, seit v18): Sprache der Begriffe (`term`, Vorlesen und Sprechen des Begriffs) und der Bedeutung (`meaning`, Vorlesen der Bedeutung und Situationen, Diktat in Teil C). Ein deutschsprachiges Schulmodul hat beide auf `de-AT`. Situationen und Stimmt-das-Aussagen sind in `meaning`-Sprache. `version` bleibt 1.
-`quiz` (optional, seit v39): `parts` = welche Teile das Modul hat. Fehlt `"a"`, gibt es keinen Teil A (sinnvoll, wenn Begriff und Übersetzung fast gleich sind, wie in IT: „integer“ → „der Integer“); neue Begriffe starten dann direkt in Teil B ohne Bremse. IT hat `{"parts":["b","c"]}`, Agile den Standard. Ein Vokabelmodul (echte Übersetzungen) lässt das Feld weg. `version` bleibt 1.
+`lang` (optional, seit v18): Sprache der Begriffe (`term`, Vorlesen und Sprechen des Begriffs) und der Bedeutung (`meaning`, Vorlesen der Bedeutung und Situationen, Diktat in Teil C). Ein deutschsprachiges Schulmodul hat beide auf `de-AT`. Situationen und Stimmt-das-Aussagen sind in `meaning`-Sprache.
+`quiz` (optional, seit v40; ersetzt `parts` aus v39): Stufen und Fragearten des Moduls. Kein ausführbarer Code, nur Einstellungen; `quizConf` liest, prüft und stutzt zurecht.
+```json
+"quiz":{
+  "round":10,             // Fragen pro Runde, 3–20
+  "lockstep":true,        // Gleichschritt; false = jedes Thema in seiner Stufe, Themen gemischt
+  "options":5,            // Antwortmöglichkeiten, 2–6 (Standard für alle Stufen)
+  "flashcards":true,      // Karteikarten anbieten (wird ab Chat 2 ausgewertet)
+  "typing":{"typosPer":6,"caseSensitive":false},   // 1 Tippfehler je angefangene typosPer Buchstaben (3–20)
+  "ai":{"rubric":"…"},    // zusätzlicher Bewertungshinweis (bis 600 Zeichen, wird ab Chat 5 ausgewertet)
+  "stages":[              // höchstens 6, Reihenfolge = Reihenfolge der Stufen
+    {"id":"bedeutung","name":"Begriff und Bedeutung","short":"A",
+     "kinds":[{"kind":"meaning-to-term","minCorrect":3},"term-to-meaning"],
+     "waitDays":0,        // Tage Abstand zum Abschluss der vorigen Stufe (0–30; fehlt: 1, bei der ersten egal)
+     "perRound":10,       // höchstens so viele Fragen dieser Stufe pro Runde (1–round)
+     "minCorrect":5,      // zusätzlich zu allen Häkchen: Mindestzahl richtiger Antworten (0–30)
+     "options":5,         // Antwortmöglichkeiten in dieser Stufe
+     "timeLimit":0}]}     // Sekunden pro Frage, 0 = aus, sonst 5–120 (wird ab Chat 4 ausgewertet)
+```
+- Eine Frageart in `kinds` ist ein Name oder `{"kind", "inputs", "outputs", "minCorrect", "options"}`. `inputs`/`outputs` schränken auf einen Teil der Ein-/Ausgabearten der Frageart ein (unbekannte Werte fallen weg; bleibt nichts übrig, gelten alle). `minCorrect` pro Frageart zählt nur, wenn der Begriff Inhalte für sie hat.
+- Bekannte Fragearten (`KINDS` in `app.js`): `meaning-to-term`, `term-to-meaning`, `gap`, `situation`, `truefalse`, `difference`, `explain-ai`. Unbekannte werden ignoriert, Stufen ohne bekannte Fragearten übersprungen, doppelte Fragearten in einer Stufe zählen einmal. Eine Frageart darf in mehreren Stufen vorkommen; ihre Häkchen gehören dann jeweils zur Stufe.
+- `id`: Kleinbuchstaben, Ziffern, `-`/`_`, eindeutig (fehlt: `stufe1` …). **Nicht mehr ändern**, sobald jemand damit lernt: Der Lernstand hängt an der ID. `short` (bis 3 Zeichen, fehlt: A, B, C …) erscheint auf Übersicht und im Nachschlagen, `name` (bis 40 Zeichen) in Rückmeldungen.
+- Fehlt `quiz` oder gibt es keine gültige Stufe, gilt der Standardplan `DEFAULT_STAGES` (= Agile: A/B/C wie bis v39). Übergang: ein Modul ohne `stages`, aber mit `parts` (v1) bekommt die passenden Stufen des Standardplans.
+- Eine Stufe für neue Begriffe braucht eine Frageart mit Auswählen: Schreiben und Sprechen gibt es erst nach einer richtigen Antwort.
+- IT: Stufen `anwenden` (B, `waitDays` 0) und `erklaeren` (C). Agile: `bedeutung` (A), `anwenden` (B), `erklaeren` (C). Feinschliff in Chat 6 des Quiz-Baukastens.
 `levels` (XP-Ränge) gibt es seit dem Lernrahmen nicht mehr; aus IT und Agile entfernt, die App ignoriert das Feld, falls es noch irgendwo steht.
 
 ### Ein Begriff (`raw`-Eintrag, Array)
@@ -118,44 +143,50 @@ Kompakt gespeichert (`separators=(",",":")`, `ensure_ascii=False`, ohne Zeilenum
 
 Grundsätze: Fehler haben **keine Folgen** (richtige Lösung zeigen, weiter), es zählen nur richtige Antworten, „fast richtig“ zählt als richtig. Was ein Begriff an Inhalten nicht hat, wird nicht verlangt. Kann ein Gerät etwas **gar nicht** (kein `speechSynthesis` oder keine Stimme für die Sprache, kein `SR`), gelten die betroffenen Häkchen als erfüllt (`autoChecks`, nicht gespeichert), sonst bliebe ein Begriff für immer hängen.
 
-**Begriffe:** Ausgabearten Lesen (Text steht da) und Hören (wird vorgelesen, steht nicht da, 🔊 zum Wiederholen). Eingabearten Auswählen (5 Antworten), Schreiben (`checkTyped`), Sprechen (🎤). Bedeutung = deutsche Übersetzung (Index 2), beim Vorlesen wird „ / “ zum Komma (`sayable`).
+**Begriffe:** Ausgabearten Lesen (Text steht da) und Hören (wird vorgelesen, steht nicht da, 🔊 zum Wiederholen). Eingabearten Auswählen (Standard 5 Antworten), Schreiben (`checkTyped`), Sprechen (🎤). Bedeutung = deutsche Übersetzung (Index 2), beim Vorlesen wird „ / “ zum Komma (`sayable`).
 
-### Teil A: Begriff und Bedeutung
-Nur in Modulen mit `"a"` in `quiz.parts` (Standard). Ohne Teil A (`skipA()`): gespeicherte Begriffe ohne `aDay` bekommen beim Laden `A_SKIP_DAY` (`normSkipA`), neue beim ersten Antworten (`touch`); nie beantwortete gelten in `taskFor` als Teil B ohne Bremse; `autoFinishB` schließt auch sie ab, wenn Teil B keine Inhalte hat. Schreiben und Sprechen sind nach einer richtigen Antwort in Teil A **oder** B erlaubt (`doable`: `na || nb`). Hilfe und Übersicht nennen Teil A dann nicht.
-- **Bedeutung → Begriff** (`m2t`): jede Ausgabeart (`o:read`, `o:hear`) und jede Eingabeart (`i:pick`, `i:type`, `i:say`) mindestens einmal richtig; eine Antwort hakt beides zugleich ab.
-- **Begriff → Bedeutung** (`t2m`): einmal Lesen + Auswählen (`r:read`), einmal Hören + Auswählen (`r:hear`). Kein Schreiben/Sprechen in dieser Richtung (deutsche Übersetzungen nicht zuverlässig prüfbar).
-- Fertig (`partADone`): alle 7 Häkchen (`A_CHECKS`), mindestens 5 richtige Antworten (`A_MIN`), davon 3 in Richtung Bedeutung → Begriff (`A_MIN_M2T`). Schreiben und Sprechen erst, wenn der Begriff einmal richtig beantwortet wurde (`doable`).
+### Stufen (seit v40, Quiz-Baukasten)
+Die Stufen kommen aus `quiz.stages` des Moduls (Format unter „Moduldatei“), gelesen von `quizConf` in `QZ`/`STAGES`. Jede Stufe hat Fragearten; jede Frageart bringt für einen Begriff Häkchen (Inhalte, Ausgabe- und Eingabearten).
+- **Aktuelle Stufe** (`curIdx`): erste Stufe ohne Abschlusstag `d`; alle haben `d` = **gelernt** (`learned`). Neue Begriffe (ohne Eintrag, `isNew`) stehen in der ersten Stufe.
+- **Geschafft** (`stageComplete`): alle Häkchen der Stufe (`stageContent(t, st).checks` ohne `openChecks`) und die Mindestzahlen (`minsMet`: `minCorrect` der Stufe und der Fragearten). Hat ein Begriff für eine Stufe gar keine Inhalte, gilt sie als geschafft. `record` setzt `d` nach einer Antwort, `autoFinish` (Übersicht, Rundenstart) schließt Stufen ohne Offenes nach der Bremse ab, auch mehrere hintereinander.
+- **Machbar** (`doable`): Hören nur mit Ton und Stimme für die Sprache der Frageart (`MOD.lang[def.lang]`), Sprechen nur mit Ton und `SR`, Schreiben/Sprechen erst nach einer richtigen Antwort zu diesem Begriff (`s.n`), KI-Fragearten nur bei `aiReady`.
+- **Aufgabe** (`taskFor`): erst eine Frageart zufällig unter denen mit offenen Häkchen, darin die Aufgabe mit den meisten offenen Häkchen. Sind alle Häkchen da, fehlen aber richtige Antworten, kommt eine beliebige machbare Aufgabe (zuerst aus Fragearten mit unerfülltem eigenem `minCorrect`). Offen ist nur, was gerade nicht geht → `null`; `blockOf` sagt warum (`day`, `sound`, `ai`, `other`).
+- **Krönchen:** Sobald alle Begriffe einer Kategorie gelernt sind, `P.crowns[kat] = {day}` (`crownCheck`); Anzeige als `crownCard` in Rückmeldung und Rundenende, danach dauerhaft auf Übersicht und Nachschlagen.
 
-### Teil B: anwenden (frühestens am Tag nach Teil A)
-Vier Fragearten, gemischt (erst Frageart zufällig unter denen mit offenen Häkchen, darin die Aufgabe mit den meisten offenen Häkchen):
-- **Lückensatz** (nur Lesen): jeder Satz einmal (`c0` = Beispielsatz Index 4, nur wenn `termRe` passt; `c1`/`c2` = `ex`-Sätze) und jede Eingabeart einmal (`ci:pick/type/say`). „Satz auf Deutsch zeigen“ als Hilfe.
-- **Situation** („Welcher Begriff passt?“): jede der 3 Situationen (`s0`–`s2`), Lesen und Hören (`so:read/hear`, vorgelesen in `MOD.lang.meaning`), jede Eingabeart (`si:…`).
-- **Stimmt das?**: beide Aussagen (`t0`, `t1`), Stimmt/Stimmt nicht, danach Begründung.
-- **Unterschied** (`u0`, `u1`): maskierte Sätze mit A/B (`maskNames`); zählt nur, wenn `confWrong` mindestens 3 verschiedene falsche Sätze findet.
-- Fertig: alle vorhandenen Häkchen (mit allen Inhalten 10 Antworten, ohne `conf` 8). `autoFinishB` schließt Teil B ab, wenn nach der Bremse nichts offen ist.
+### Fragearten (Registry `KINDS`)
+Jede Frageart ist ein Eintrag `kind({…})` in `app.js` mit `id`, `name`, `refName`, `lang`, `outs`/`ins`, `ai`, `refs(t)` (Inhalte mit Häkchen `ck`), `outCk`/`inpCk`, `make(q)`, `ask(q)`, optional `body`, `fb`, `big`, `long`, `side`, `render` (Felder im Kommentar über `KINDS`). Häkchen-Namen sind über alle Fragearten eindeutig. Neue Fragearten fügen sich in die allgemeine Darstellung (`renderQuiz`) und `qReveal` ein.
+- `meaning-to-term` (Bedeutung → Begriff): Lesen/Hören (`o:read`, `o:hear`, Bedeutungs-Sprache), Auswählen/Schreiben/Sprechen (`i:pick`, `i:type`, `i:say`); eine Antwort hakt Ausgabe und Eingabe zugleich ab.
+- `term-to-meaning` (Begriff → Bedeutung): Lesen/Hören (`r:read`, `r:hear`), nur Auswählen (deutsche Übersetzungen nicht zuverlässig prüfbar).
+- `gap` (Lückensatz, nur Lesen): jeder Satz einmal (`c0` = Beispielsatz Index 4, nur wenn `termRe` passt; `c1`/`c2` = `ex`-Sätze) und jede Eingabeart (`ci:pick/type/say`). „Satz auf Deutsch zeigen“ als Hilfe.
+- `situation` („Welcher Begriff passt?“): jede der 3 Situationen (`s0`–`s2`), Lesen/Hören (`so:read/hear`, Bedeutungs-Sprache), jede Eingabeart (`si:…`).
+- `truefalse` (Stimmt das?): beide Aussagen (`t0`, `t1`), Stimmt/Stimmt nicht nebeneinander, danach Begründung.
+- `difference` (Unterschied, `u0`, `u1`): maskierte Sätze mit A/B (`maskNames`); nur, wenn `confWrong` mindestens 3 verschiedene falsche Sätze findet (mehr als 3 falsche gibt es nie).
+- `explain-ai` (In eigenen Worten, `c`): schreiben oder diktieren (🎤 in `MOD.lang.meaning`, wird angehängt, frei bearbeitbar), Gemini prüft (siehe „KI-Prüfung“). Falsch hat keine Folgen, neuer Versuch in einer späteren Runde. „Weiß ich nicht“ zeigt die Musterlösung ohne KI. Eigene Darstellung `renderQuizC`.
 
-### Teil C: in eigenen Worten (frühestens am Tag nach Teil B)
-- Begriff erklären, schreiben oder diktieren (🎤 in `MOD.lang.meaning`, wird angehängt, frei bearbeitbar). Gemini prüft (Details unter „KI-Prüfung“). Richtig → `cDay`, der Begriff ist **gelernt**. Falsch hat keine Folgen, neuer Versuch in einer späteren Runde. „Weiß ich nicht“ zeigt die Musterlösung ohne KI.
-- **Krönchen:** Sobald alle Begriffe einer Kategorie `cDay` haben, `P.crowns[kat] = {day}` (`crownCheck`); Anzeige als `crownCard` in Rückmeldung und Rundenende, danach dauerhaft auf Übersicht und Nachschlagen.
+### Standardplan (Agile; IT ohne A)
+- **A Begriff und Bedeutung** (`bedeutung`): `meaning-to-term` mit `minCorrect` 3, `term-to-meaning`; Stufe `minCorrect` 5. Mit allen Häkchen genau 5 Antworten.
+- **B Anwenden** (`anwenden`, `waitDays` 1): `gap`, `situation`, `truefalse`, `difference`. Mit allen Inhalten 9–10 Antworten.
+- **C In eigenen Worten** (`erklaeren`, `waitDays` 1, `perRound` 2): `explain-ai`.
+- IT: nur B (`waitDays` 0, neue Begriffe starten dort ohne Bremse) und C.
 
 ### Bremse
-Teil B frühestens am Kalendertag nach Teil A, Teil C frühestens am Tag nach Teil B (`afterDay`, Vergleich mit `dayStr`). Ein Begriff braucht also mindestens 3 Tage, damit nicht alles an einem Abend aus dem Kurzzeitgedächtnis abgehakt wird.
+Eine Stufe ist frühestens `waitDays` Kalendertage nach dem Abschluss der vorigen dran (`waitLeft`, `daysSince`, Vergleich über `dayStr`/`parseDay`); die erste Stufe wartet nie. Im Standardplan braucht ein Begriff also mindestens 3 Tage, damit nicht alles an einem Abend aus dem Kurzzeitgedächtnis abgehakt wird.
 
 ### Auswahl der Fragen (`planRound`)
-- Runde = bis zu 10 Fragen (`QUIZ_LEN`) aus den angehakten Themen (`P.cats`). Pro Begriff wählt `taskFor` die Aufgabe mit den meisten offenen Häkchen (Gleichstand zufällig), unter Beachtung von Bremse, „Gerade kein Ton“ und KI-Verfügbarkeit.
-- **Gleichschritt** (seit v39): Ebene eines Begriffs (`levelOf`) 0 = Teil A (neu oder läuft), 1 = B, 2 = C, 3 = gelernt; ohne Teil A sind neue Begriffe Ebene 1. Ein Thema steht auf der niedrigsten Ebene seiner Begriffe (`catLevel`), gefragt wird nur auf der niedrigsten Ebene aller angehakten Themen (`roundLevel`, `quizPool`). Themen weiter vorne und Begriffe, die ihrem Thema voraus sind, pausieren (ihr Fortschritt bleibt). Die Quiz-Kachel zeigt „Gerade dran: Teil X“.
-- In der Ebene: am längsten nicht gefragt zuerst (`t`, nie gefragte zuerst), so kommen nach und nach alle Begriffe dran. Jeder Begriff nur einmal pro Runde. Teil C: höchstens 2 Begriffe (`C_PER_ROUND`), eine C-Runde hat also höchstens 2 Fragen. Ohne KI-Schlüssel warten auf Ebene 2 alle angehakten Themen (`noTasksText` sagt das).
-- Frage und Aufgabe werden erst beim Erreichen gebaut (`findNext`/`goQuestion`), damit der Lernstand aktuell ist. Gibt es weniger Aufgaben, wird die Runde kürzer; gibt es keine, sagt `noTasksText` warum („Heute alles erledigt, morgen geht's weiter mit X Begriffen“, warten auf Ton, warten auf die KI-Prüfung, alles gelernt).
-- Antwortmöglichkeiten: 5, unterschiedliche Anfangsbuchstaben (`keyLetter`, Artikel/„to“ zählen nicht), Ablenker zuerst aus derselben Kategorie (`distractors`), immer ganz sichtbar.
+- Runde = bis zu `quiz.round` Fragen (Standard 10) aus den angehakten Themen (`P.cats`), pro Stufe höchstens `perRound`.
+- **Gleichschritt** (`quiz.lockstep`, Standard an): Ebene eines Begriffs (`levelOf` = `curIdx`), gelernt = Zahl der Stufen. Ein Thema steht auf der niedrigsten Ebene seiner Begriffe (`catLevel`), gefragt wird nur auf der niedrigsten Ebene aller angehakten Themen (`roundLevel`, `quizPool`). Themen weiter vorne und Begriffe, die ihrem Thema voraus sind, pausieren (ihr Fortschritt bleibt). Die Quiz-Kachel zeigt „Gerade dran: Teil X“. Ohne Gleichschritt steht jedes Thema auf seiner eigenen Ebene und die Runde mischt die Themen.
+- Am längsten nicht gefragt zuerst (`t`, nie gefragte zuerst), so kommen nach und nach alle Begriffe dran. Jeder Begriff nur einmal pro Runde. Ohne KI-Schlüssel warten Begriffe in einer KI-Stufe (`noTasksText` sagt das).
+- Frage und Aufgabe werden erst beim Erreichen gebaut (`findNext`/`goQuestion`/`makeQuestion`), damit der Lernstand aktuell ist. Gibt es weniger Aufgaben, wird die Runde kürzer; gibt es keine, sagt `noTasksText` warum („Heute alles erledigt, morgen (bzw. in N Tagen) geht's weiter mit X Begriffen“, warten auf Ton, warten auf die KI-Prüfung, alles gelernt).
+- Antwortmöglichkeiten: `options` der Frageart bzw. Stufe bzw. des Moduls (Standard 5, `q.n`, `optsFor`), unterschiedliche Anfangsbuchstaben (`keyLetter`, Artikel/„to“ zählen nicht), Ablenker zuerst aus derselben Kategorie (`distractors`), immer ganz sichtbar.
 
 ### Eingabe und Ton
-- **Schreiben** (`checkTyped`, `typeNorm`, `lev`): Groß/Klein, führendes „to “, Bindestrich/Leerzeichen/Unterstrich egal; Levenshtein ≤ 1 je angefangene 6 Buchstaben = „fast richtig“ (zählt als richtig). Exakt ein anderer Begriff des Moduls = falsch.
+- **Schreiben** (`checkTyped`, `typeNorm`, `lev`): Groß/Klein (außer `quiz.typing.caseSensitive`), führendes „to “, Bindestrich/Leerzeichen/Unterstrich egal; Levenshtein ≤ 1 je angefangene `quiz.typing.typosPer` Buchstaben (Standard 6) = „fast richtig“ (zählt als richtig). Exakt ein anderer Begriff des Moduls = falsch.
 - **Sprechen:** Pro Frage nur eine Eingabeart, Hinweis „✍️ Schreib …“ bzw. „🎤 Sprich …“ über dem Feld. Beim Sprechen ist das Feld bis zur ersten Erkennung gesperrt; `listen` liefert bis zu 5 Varianten, die beste (richtig > fast richtig > Verwechslung > falsch, `heard`) kommt ins Feld. Unverändert abgeschickt = Sprechen, von Hand geändert = Schreiben. Spracherkennung braucht in Chrome meist Internet.
 - **„Gerade kein Ton“** (Schalter unter der Quiz-Kachel, `lernapp.quiet`): kein Hören, kein Sprechen, bis zum Ausschalten. Diese Häkchen werden später nachgeholt; Begriffe, die nur noch sie brauchen, warten (`waitsForSound`), Übersicht und Rundenende sagen das. Teil C geht dann nur schriftlich.
 - **Sprache pro Modul:** `MOD.lang = {term, meaning}` (Standard `en-US`/`de-AT`). Begriff vorlesen und sprechen in `term`, Bedeutung, Situationen und Diktat in `meaning` (`outLang`). `voiceFor` fällt von `de-AT` auf `de-DE` zurück.
 - **`conf`-Anzeige:** `maskNames` ersetzt englischen Begriff und deutsche Hauptwörter (ohne Artikel, `:in`, kleine Endungen) durch „A“/„B“.
 
-### KI-Prüfung (Teil C)
+### KI-Prüfung (Frageart `explain-ai`, Teil C)
 - **Anbieter:** Google Gemini API, Gratis-Stufe, direkt aus dem Browser: `POST https://generativelanguage.googleapis.com/v1beta/models/<AI_MODEL>:generateContent`, Kopfzeile `x-goog-api-key`, `generationConfig.responseMimeType = "application/json"`. `AI_MODEL` = `gemini-3.5-flash-lite` (Stand Oktober 2026), bei 404 Rückfall auf `gemini-flash-lite-latest`. Modelle und Grenzen ändern sich: bei Problemen in der aktuellen Gemini-Doku (Preisliste, Spalte „Free Tier“) ein Flash-Modell der Gratis-Stufe wählen.
 - **Schlüssel:** jeder Nutzer seinen eigenen, Blatt „KI-Prüfung“ (🤖 neben „Module verwalten“, Link zu Google AI Studio, „Speichern und testen“, „Testen“, „Entfernen“). Nur in `localStorage["lernapp.aikey"]`, **nie im Repo, nie im Export**. Hinweis im Blatt: In der Gratis-Stufe darf Google die Eingaben zum Verbessern der Modelle verwenden, also nur Erklärungen, nichts Persönliches.
 - **Eingabe an die KI:** Begriff, Bedeutung, die 3 Erklärungen (Index 3, 6, 7) als Musterlösungen, die Antwort zwischen `<antwort>`-Marken. Anweisung `AI_RULES`: inhaltlich streng, sprachlich großzügig; nicht richtig sind bloße Übersetzung, fachlich Falsches, zu Vages. Ergebnis `{"ok", "feedback" (1–2 Sätze, du-Form), "fehlt"}`.
@@ -165,19 +196,20 @@ Teil B frühestens am Kalendertag nach Teil A, Teil C frühestens am Tag nach Te
 - Der Service Worker greift bei fremden Adressen nicht ein (`fetch`-Handler nur gleiche Herkunft und Schriften, POST nie); das muss so bleiben.
 
 ### Oberfläche
-- **Kopf:** gelernt-Zahl, gestapelter Balken A/B/C/gelernt, „Fragen heute“ (öffnet den Kalender).
+Bis zum Umbau in Chat 2 des Quiz-Baukastens zeigt die Oberfläche die Stufen als „Teil <short>“ (`teil`) mit den Farben von A/B/C, von hinten zugeordnet (`stageCls`: drei Stufen A/B/C, zwei B/C, weitere vorne wie A). Die Hilfe beschreibt noch den Standardplan (ohne Teil A, wenn das Modul `meaning-to-term` nicht verwendet).
+- **Kopf:** gelernt-Zahl, gestapelter Balken der Stufen/gelernt (`barSegs`), Legende je Stufe, „Fragen heute“ (öffnet den Kalender).
 - **Übersicht:** Quiz-Kachel, „Gerade kein Ton“, Karteikarten, Nachschlagen; Hinweise (nichts zu tun, warten auf Ton, warten auf KI); Themen mit Häkchen zum An-/Abwählen, „A 3 · B 2 · C 1 · ✓ 4 / 41“ und gestapeltem Balken, gekrönte Themen im Krönchen-Design.
-- **Quiz:** Kartenkopf mit Kategorie-Punkt, „· neu“ bzw. „· Teil B/C“, Frage x von y; oben rechts die Häkchen der Runde. Rückmeldung mit „Neu abgehakt“, den Häkchen-Chips (`checksHtml`, `checksHtmlB`) und „Teil … geschafft“. Rundenende: richtig/gefragt, neue Häkchen, neue Krönchen, gelernte Begriffe, Teil B/A geschafft, daneben gegangene Begriffe, Warte-Hinweise.
-- **Nachschlagen:** Stand pro Begriff (`stageTag`: „A 3/7“, „B 5/16“, „C“, „✓ gelernt“) und im aufgeklappten Eintrag Häkchen bzw. Datum („ab morgen“, „Jetzt ist Teil C dran“, „Gelernt am …“).
-- **Karteikarten:** 10 Karten (bis zu 5 aus Teil A), „Nochmal“ legt die Karte nur ans Ende des Stapels.
+- **Quiz:** Kartenkopf mit Kategorie-Punkt, „· neu“ bzw. „· Teil B/C“, Frage x von y; oben rechts die Häkchen der Runde. Rückmeldung mit „Teil … geschafft“ bzw. „Gelernt“ (`doneNote`). Rundenende: richtig/gefragt, neue Häkchen, neue Krönchen, gelernte Begriffe, Teil B/A geschafft, daneben gegangene Begriffe, Warte-Hinweise.
+- **Nachschlagen:** Stand pro Begriff (`stageTag`: „A 3/7“, „B 5/16“, „C“, „✓ gelernt“) und im aufgeklappten Eintrag (`lexState`) Häkchen der aktuellen Stufe (`checksHtml`, eine Zeile pro Frageart) bzw. Datum („ab morgen“, „Jetzt ist Teil C dran“, „Gelernt am …“).
+- **Karteikarten:** 10 Karten (bis zu 5 begonnene Begriffe, deren Stufe `meaning-to-term` oder `term-to-meaning` enthält), „Nochmal“ legt die Karte nur ans Ende des Stapels.
 - **Kalender:** Fragen pro Tag (richtig und falsch, `P.askLog`), Farben 1–9, 10–29, ab 30.
 
 ## Code-Landkarte `app.js`
 
 | Bereich | Funktionen |
 |---|---|
-| Helfer, Begriffe | `buildTerms` (Begriffe aus `raw`, `t.expls` = Index 3/6/7), `esc`, `shuffle`, `dayStr`/`today`, `termRe`, `cloze`, `clozeDe`, `keyLetter`, `highlight`, `markTerm`, `num`, `pickOne`, `arr`, `own` |
-| Lernstand & Speicher | `P_VERSION`, `freshProgress`, `normProgress` (verwirft alles ohne `v:2`), `fixCats`, `save`; Cloud-Funktionen (`pushCloud`, `syncCloud`, `connectCloud`) sind Altlast aus claude.ai und außerhalb inaktiv |
+| Helfer, Begriffe | `buildTerms` (Begriffe aus `raw`, `t.expls` = Index 3/6/7), `esc`, `shuffle`, `dayStr`/`today`, `termRe`, `cloze`, `clozeDe`, `keyLetter`, `highlight`, `markTerm`, `num`, `pickOne`, `arr`, `own`, `listText` |
+| Lernstand & Speicher | `P_VERSION` (3), `freshProgress`, `normProgress` (verwirft alles ohne `v:3`), `fixCats`, `save`; Cloud-Funktionen (`pushCloud`, `syncCloud`, `connectCloud`) sind Altlast aus claude.ai und außerhalb inaktiv |
 | Sprache | `LANG_DEFAULT`, `langOf`, `langName` |
 | Module laden | `CATALOG_ORDER` (alle aus dem Index), `MODULE_ORDER` (nur gewählte), `INDEX`, `loadIndex`, `ensureModule` (merkt laufende Downloads, prüft Format, setzt `extra` und `lang`, Fehler mit `code` `offline`/`missing`/`broken`/`newer`), `needsNewerApp`, `modErrText`, `applyTheme`, `loadModule`, `switchModule` (= `swipeTo`) |
 | Modulauswahl | `initChosen`, `setChosen`, `hasProgress`, `unloadModule`, `dropModuleCache` |
@@ -185,15 +217,15 @@ Teil B frühestens am Kalendertag nach Teil A, Teil C frühestens am Tag nach Te
 | Modulwechsel & Wischen | `renderModbar`, `initSwipe`, `swipeTo`, `snapBack`, `slide`, `settleAnim`; Hinweis einmalig über `lernapp.swipehint` |
 | Übergänge | `transit(fn)`, `goHome` |
 | Zusatzinhalte | `MOD.extra`, `extraOf` (geprüfte Inhalte), `nameVariants`, `maskNames`; `BYID` = Begriffe nach ID |
-| Stand eines Begriffs | `stateOf`, `touch`, `stageOf` (`new`/`a`/`b`/`c`/`done`), `STAGE_W`, `stageCount`, `barSegs`, `stageParts`, `stageAria`, `catTerms`, `crowned`, `crownOf` + `CROWN_DESIGNS`/`CROWN_GENERIC` |
-| Teil A | `A_CHECKS`, `A_TASKS`, `A_MIN`, `A_MIN_M2T`, `outLang`, `autoChecks`, `doable`, `openChecksA`, `partADone`, `checksHtml` |
-| Teil B | `bContent` (Inhalte, Häkchen, Aufgaben; gemerkt in `BCACHE`), `openChecksB`, `checkNameB`, `taskForB`, `autoFinishB`, `confPairs`, `confWrong`, `checksHtmlB` |
-| Teil C & KI | `AI_KEY`, `AI_MODEL`/`AI_MODEL_FALLBACK`, `aiKey`/`setAiKey`, `aiBlock`/`aiReady`, `aiWaitText`, `taskForC`, `crownCheck`, `aiCall` (Fehlercodes `AI_ERR`, `aiErrText`), `aiParse`, `AI_RULES`, `aiJudge`, `aiTest`, `showAiSheet`, `aiNotice`/`wireAiNotice` |
-| Auswahl | `taskFor` (A/B/C), `hasTask`, `waitsForSound`, `waitsForDay`, `waitsForAi`, `pool`, `levelOf`, `catLevel`, `roundLevel`, `quizPool`, `planRound`, `distractors`, `noTasksText` |
+| Stand eines Begriffs | `stateOf`, `touch`, `stData`/`stRec` (Daten einer Stufe), `curIdx`, `isNew`, `learned`, `daysSince`, `waitLeft`, `whenText`, `stageCount`, `stageCls`, `teil`, `barSegs`, `stageParts`, `stageAria`, `stageWeight`, `catTerms`, `crowned`, `crownOf` + `CROWN_DESIGNS`/`CROWN_GENERIC` |
+| Fragearten | `OUTS`, `INPUTS`, `INP_LABEL`, `OUT_LABEL`, `KINDS` + `kind({…})` (Registry, eine Zeile pro Frageart), `optsFor`, `confPairs`, `confWrong` |
+| Einstellung & Stufen | `STAGE_MAX`, `DEFAULT_STAGES`, `clampInt`, `clipStr`, `kindConf`, `stageConf`, `quizConf` (→ `MOD.qz`, `QZ`, `STAGES`), `hasKind`; `termCache`, `kindRefs`, `stageContent` (Häkchen und Aufgaben pro Begriff und Stufe), `autoChecks(st)`, `openChecks`, `minsMet`, `stageComplete`, `doable`, `autoFinish` |
+| KI-Prüfung | `AI_KEY`, `AI_MODEL`/`AI_MODEL_FALLBACK`, `aiKey`/`setAiKey`, `aiBlock`/`aiReady`, `aiWaitText`, `crownCheck`, `aiCall` (Fehlercodes `AI_ERR`, `aiErrText`), `aiParse`, `AI_RULES`, `aiJudge`, `aiTest`, `showAiSheet`, `aiNotice`/`wireAiNotice` |
+| Auswahl | `taskFor`, `hasTask`, `blockOf`, `waitsForSound`, `waitsForDay`, `waitsForAi`, `pool`, `levelOf`, `catLevel`, `roundLevel`, `quizPool`, `planRound`, `distractors`, `noTasksText` |
 | Ton | `quiet`/`setQuiet`, `canHear` (`yes`/`wait`/`no`), `voiceFor`, `speak`, `sayable`, `speakBtn`, `SR`, `listen`/`stopListen` |
-| Quiz | `startQuiz`, `findNext`/`countAhead`/`goQuestion`, `makeQuestion`/`makeQuestionB`, `renderQuiz` (A und B), `renderQuizC`, `answer`, `heard`, `answerInput` → `settle` (A/B: Häkchen, `askLog`, `aDay`/`bDay`); `checkC` → `settleC` (C: `nc`, `cDay`, Krönchen), `crownCard`, `nextQuestion`, `renderQuizDone`; Eintippen `checkTyped`, `typeNorm`, `lev` |
+| Quiz | `startQuiz`, `findNext`/`countAhead`/`goQuestion`, `makeQuestion` (baut über `def.make`), `renderQuiz` (allgemein, nutzt `def.ask`/`body`/`fb`), `renderQuizC` (`explain-ai`), `answer`, `heard`, `answerInput` → `settle`; `checkC` → `settleC`; beide → `record` (Zähler, Häkchen, `askLog`, Abschluss der Stufe, Krönchen), `doneNote`, `checksHtml`, `crownCard`, `nextQuestion`, `renderQuizDone`; Eintippen `checkTyped`, `typeNorm`, `lev` |
 | Karteikarten | `startCards`, `renderCard`, `renderCardsDone` |
-| Nachschlagen | `renderLex`, `lexItem`, `stageTag` |
+| Nachschlagen | `renderLex`, `lexItem`, `stageTag`, `lexState` |
 | Startseite & Kopf | `renderHome`, `renderTop` |
 | Fenster | `sheet`, `openDialog`, `showHelp`, `showCalendar`/`renderCalendar`, `showExport`/`buildExport`, `showImport`, `showAiSheet` |
 | Zurück-Taste | `navPush`, `navEnterScreen`, `popstate`-Handler, `renderHome(fromPop)` |
@@ -203,12 +235,13 @@ Teil B frühestens am Kalendertag nach Teil A, Teil C frühestens am Tag nach Te
 ## Gespeicherter Fortschritt (`P`, pro Modul in `localStorage[ls]`)
 
 ```
-{v:2, terms:{id:{a:[…], na, nm, t, aDay, b:[…], nb, bDay, nc, cDay}}, crowns:{kat:{day}}, cats:[…], askLog:{tag:anzahl}, updatedAt}
+{v:3, terms:{id:{t, n, s:{<stufen-id>:{c:[…], n, x, k:{<frageart>:n}, d}}}}, crowns:{kat:{day}}, cats:[…], askLog:{tag:anzahl}, updatedAt}
 ```
-- `a`/`b` = Häkchen von Teil A/B (Strings wie oben), `na`/`nb` = richtige Antworten in Teil A/B, `nm` = davon Bedeutung → Begriff, `nc` = Versuche in Teil C, `t` = zuletzt gefragt (ms), `aDay`/`bDay`/`cDay` = Tag des Abschlusses (`cDay` = gelernt). `b` wird beim Abschluss von Teil A angelegt.
-- Ein Begriff ohne Eintrag ist neu. Ein gespeicherter Lernstand ohne `v:2` (alte Version mit XP und Boxen) wird verworfen und sofort überschrieben.
+- `t` = zuletzt gefragt (ms), `n` = richtige Antworten insgesamt (Schreiben und Sprechen erst ab 1). Pro Stufe (Schlüssel = Stufen-ID aus `quiz.stages`): `c` = Häkchen, `n` = richtige Antworten, `x` = Antworten (richtig und falsch, z. B. Versuche bei der KI-Prüfung), `k` = richtige Antworten pro Frageart (für `minCorrect` pro Frageart), `d` = Tag des Abschlusses. Ein Stufen-Eintrag entsteht bei der ersten Antwort in der Stufe.
+- Aktuelle Stufe = erste Stufe des Plans ohne `d`; Einträge zu Stufen, die der Plan nicht (mehr) hat, werden ignoriert. Ein Begriff ohne Eintrag ist neu.
+- Ein gespeicherter Lernstand ohne `v:3` (v2 mit Teil A/B/C, davor XP und Boxen) wird verworfen und sofort überschrieben.
 - Tagesformat: `JJJJ-M-T` (ohne führende Nullen, siehe `dayStr`).
-- Export: `{"format":"lernapp-fortschritt","version":2,"modules":{key:P},"summary":…}`. Import mit Version 1 wird mit Meldung abgelehnt, höhere Versionen ebenfalls.
+- Export: `{"format":"lernapp-fortschritt","version":3,"modules":{key:P},"summary":…}` (`summary` je Modul: `started`, bei geladenen Modulen auch `learned`). Import mit älterer Version wird mit Meldung abgelehnt, höhere Versionen ebenfalls.
 - Weitere Schlüssel: `lernapp.aikey` (KI-Schlüssel, nie im Export), `lernapp.quiet` („Gerade kein Ton“), `lernapp.chosen` (Array der gewählten Modul-Keys), `devvokabeln.module` (zuletzt offenes Modul), `lernapp.theme` (Farbschema für den Start), `lernapp.swipehint`.
 - Entfernen eines Moduls löscht nur den `lernapp.chosen`-Eintrag und den Daten-Cache, nie den Lernstand. Der Export enthält alle Module mit Lernstand, auch abgewählte; ein Import nimmt nicht gewählte Module in die Auswahl auf.
 
@@ -338,6 +371,7 @@ Der Lernrahmen (v18–v21, in drei Chats L1–L3 umgesetzt) hat XP, Ränge, Punk
 - **Kein Übergang:** Der alte Lernstand wurde bewusst verworfen. Die `ls`-Schlüssel in `index.json` sind unverändert.
 - **Begründete Abweichungen vom ursprünglichen Plan:** Schreiben und Sprechen in Teil A erst nach einer richtigen Antwort (sonst müsste man einen nie gesehenen Begriff sprechen); Teil A bleibt in genau 5 Antworten schaffbar. Antwortmöglichkeiten immer ganz sichtbar (das Anfangsbuchstaben-Spiel hing an den XP-Abzügen). Teil B ohne eigenes Minimum, es ergibt sich aus den Häkchen. Teil-C-Begriffe kommen nur einmal pro Runde. Die KI-Anfrage nutzt kein `responseSchema`, nur den JSON-Modus.
 - **Tests** (Muster für künftige Änderungen, Playwright mit `python3 -m http.server`, `service_workers="block"`, Google Fonts blockieren): Stimmen (`speechSynthesis.getVoices`) und Spracherkennung (`SpeechRecognition` **und** `webkitSpeechRecognition`, Chromium hat beide) per Init-Skript nachbilden; Lernstand per Init-Skript in `localStorage` setzen; Bremse mit Lernstand von gestern bzw. `page.clock.install` testen; Gemini mit `context.route` auf `generativelanguage.googleapis.com` nachbilden (richtig, falsch, 429, 400 `API_KEY_INVALID`, kaputtes JSON, `route.abort`, 404 fürs Modell); offline mit `context.set_offline`. Erwartet: keine JS-Fehler (Meldungen zu absichtlich nachgebildeten HTTP-Fehlern und blockierten Schriften sind normal).
+- **Stufen testen** (seit v40): Runden im Browser ohne Übergänge durchspielen (`autoFinish`, `planRound`, `findNext`/`goQuestion`/`renderQuiz` in einer Schleife, Antwort über `answer`/`answerInput`/`checkC`), Bremse durch Zurückdatieren aller `d` im Lernstand. Ohne Stimmen wartet die App 3 s, bevor Hören als unmöglich gilt (`VOICES`); Tests ohne Ton also erst danach starten.
 - **Inhalte pro Begriff:** Bedeutung, 3 Erklärungen, Beispielsatz + 2 `ex`, 3 `sit`, 2 `tf`, `conf` optional. IT und Agile haben das für alle 1.812 Begriffe. Neue Module brauchen dasselbe (ohne `levels`).
 
 ## Änderungsprotokoll
@@ -391,3 +425,4 @@ Der Lernrahmen (v18–v21, in drei Chats L1–L3 umgesetzt) hat XP, Ränge, Punk
 | v37 | Quiz: Ablauf nach der Antwort (richtige wächst, übrige verschwinden ganz, Rückmeldung blendet nach Scrollen ein); jeder Begriff nur einmal pro Runde (`planRound`, Runde füllt mit neuen Begriffen auf); Lichtschein über dem Balken; Funken von unten nach oben; Fadenbereich wieder an der Frage, Fäden mit fester Höhe und kurzem Ausblenden beim Wechsel |
 | v38 | Fäden über langen Fragen gleichmäßig ohne leere Zone; Rückmeldung flackert nicht mehr (eigene Einblend-Animation aus); Stimmt/Stimmt nicht springt nicht mehr in die andere Spalte; Lichtschein über dem Balken größer und weich auslaufend |
 | v39 | Moduleinstellung `quiz.parts` (IT ohne Teil A, neue Begriffe starten in Teil B); Stufen im Gleichschritt: gefragt wird nur die niedrigste Ebene der angehakten Themen, am längsten nicht gefragte zuerst; Quiz-Kachel zeigt den aktuellen Teil; Hilfe mit Abschnitt „Alle Begriffe im Gleichschritt“ |
+| v40 | **Quiz-Baukasten, Chat 1 (Fundament):** Fragearten als Registry (`KINDS`), Stufen aus `quiz.stages` des Moduls (Häkchen, `minCorrect` pro Stufe und Frageart, `waitDays`, `perRound`, Gleichschritt ein/aus, `round`, `options`, `typing`), Lernstand v3 pro Stufen-ID (alter Lernstand wird verworfen, Export v3), `MOD_VERSION` 2. IT (`anwenden`, `erklaeren`) und Agile (`bedeutung`, `anwenden`, `erklaeren`) mit Stufenplan wie bisher und `version: 2`. `modules/index.json` bekommt bewusst keine `version`, damit alte App-Versionen beim ersten Start nach dem Update noch das gecachte Modul laden. Oberfläche und Hilfe vorerst wie bisher (Teil A/B/C), Umbau in Chat 2 |

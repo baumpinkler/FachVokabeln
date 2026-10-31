@@ -616,11 +616,9 @@ dialog textarea{width:100%;margin:8px 0;background:var(--board);color:var(--ink)
   *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
 }
 
-/* ---------- Lernrahmen: Teile A, B, C ---------- */
-/* Farben der Teile (Balken im Kopf, Themenzeilen, Legenden) */
-i.sb-a{background:var(--m1)}
-i.sb-b{background:var(--gold)}
-i.sb-c{background:var(--m3)}
+/* ---------- Lernrahmen: Stufen ---------- */
+/* Farben der Stufen (Balken im Kopf, Themenzeilen, Legenden): --st kommt pro Stufe aus app.js (stageColor) */
+i.sb-st{background:var(--st, var(--m1))}
 i.sb-done{background:var(--ok)}
 i.sb-new{background:color-mix(in srgb, var(--line) 90%, transparent)}
 .xpbar.seg,.tbar{display:flex;gap:1px}
@@ -654,10 +652,19 @@ i.sb-new{background:color-mix(in srgb, var(--line) 90%, transparent)}
 .chk i.on::before{content:"✓ "}
 .fb-done{font-size:1.02rem}
 /* Stand im Nachschlagen */
-.st-tag{display:inline-block;font-size:.72rem;font-weight:700;background:var(--m1);color:var(--note-ink);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:middle;white-space:nowrap}
-.st-tag.b{background:var(--gold)}
-.st-tag.c{background:var(--m3)}
-.st-tag.done{background:var(--ok)}
+.st-tag{display:inline-block;font-size:.72rem;font-weight:700;background:var(--st, var(--m1));color:var(--note-ink);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:middle;white-space:nowrap}
+.st-tag.done{--st:var(--ok)}
+/* Stufen eines Begriffs im aufgeklappten Eintrag: eine Zeile pro Stufe, die aktuelle hervorgehoben */
+.ls-dot{display:inline-block;flex:none;width:9px;height:9px;border-radius:50%;background:var(--st, var(--m1));margin-right:8px;vertical-align:1px}
+.lex-stages{margin:6px 0 12px;font-size:.86rem}
+.ls-row{display:flex;align-items:baseline;gap:0 4px;flex-wrap:wrap;padding:4px 0;color:var(--ink-soft)}
+.ls-row b{font-weight:600;margin-right:6px}
+.ls-row span{margin-left:auto;text-align:right}
+.ls-row.on{color:var(--ink)}
+.ls-row.on b{font-weight:700}
+.ls-row.ok span{color:color-mix(in srgb, var(--ok) 75%, var(--ink))}
+.lex-stages .lex-st{margin:2px 0 4px 17px}
+.lex-stages .chk{margin:4px 0 8px 17px}
 details.st-done{border-color:color-mix(in srgb, var(--ok) 70%, transparent)}
 .lex-st{color:var(--ink-soft);font-size:.88rem}
 /* Kalender: Farbe nach Zahl der Fragen */
@@ -815,11 +822,8 @@ details.st-done{border-color:color-mix(in srgb, var(--ok) 70%, transparent)}
 :root[data-mod] .hear-btn{background:color-mix(in srgb, var(--accent) 40%, transparent); color:var(--ink); box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
 :root[data-mod] .ab{background:rgba(255,255,255,.14)}
 :root[data-mod] mark{background:rgba(255,255,255,.18); color:var(--ink)}
-:root[data-mod] .st-tag{background:color-mix(in srgb, var(--m1) 30%, transparent); color:var(--ink); box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--m1) 55%, transparent)}
-:root[data-mod] .st-tag.c{background:color-mix(in srgb, var(--m3) 30%, transparent); box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--m3) 55%, transparent)}
+:root[data-mod] .st-tag{background:color-mix(in srgb, var(--st, var(--m1)) 30%, transparent); color:var(--ink); box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--st, var(--m1)) 55%, transparent)}
 :root[data-mod] .trow[aria-pressed="true"] .tbox::after{border-color:#1C2440}
-:root[data-mod] .st-tag.b{background:color-mix(in srgb, var(--gold) 30%, transparent); box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--gold) 55%, transparent)}
-:root[data-mod] .st-tag.done{background:color-mix(in srgb, var(--ok) 30%, transparent); box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--ok) 55%, transparent)}
 
 /* Glas-Look: Modulleiste. Leiste als Glas, aktives Modul als getöntes, leuchtendes Glas (gleitet beim Wechsel). */
 :root[data-mod] .modbar:not(.pick){
@@ -984,5 +988,12 @@ body.qmode .q-foot .progress i::before{
   mask-composite:intersect;
 }
 
-/* Quiz-Kachel: welcher Teil gerade dran ist (Stufen im Gleichschritt) */
+/* Quiz-Kachel: welche Stufe gerade dran ist (ohne Gleichschritt evtl. mehrere) */
 .q-level{display:block; margin-top:8px; font-weight:700; font-size:.88rem}
+.q-st{display:inline-block; white-space:nowrap; margin-left:6px}
+.q-st::before{content:""; display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; vertical-align:0; background:var(--st); box-shadow:0 0 0 1px rgba(255,255,255,.35)}
+/* Ohne Karteikarten (quiz.flashcards false): Nachschlagen über die ganze Breite */
+.mode.wide{grid-column:1 / -1; min-height:120px}
+/* Hilfe: Farbpunkt der Stufe in der Überschrift; lange Angaben dürfen umbrechen */
+.hp h3 .ls-dot{vertical-align:2px}
+.hp-row b{white-space:normal; max-width:68%}

@@ -134,12 +134,12 @@ Jeder Chat: Repo `baumpinkler/FachVokabeln` klonen, `CLAUDE.md` und dieses Dokum
 
 ### Chat 2: Oberfläche auf Stufen umstellen
 
-- ☐ Übersicht: Stufen-Zähler, Balken und Farben für beliebig viele Stufen (statt fest A/B/C), „Gerade dran: <Stufenname>“.
-- ☐ Nachschlagen: Stand und Häkchen pro Stufe, Sortierung.
-- ☐ Rückmeldung und Rundenende: „<Stufe> geschafft“ statt „Teil A/B geschafft“.
-- ☐ Hilfe „So lernst du hier“ aus der Stufen-Einstellung erzeugen (Stufen, Fragearten, wann geschafft, Abstand in Tagen).
-- ☐ Krönchen: alle Begriffe eines Themas haben alle Stufen geschafft.
-- ☐ Karteikarten über `quiz.flashcards` ein- und ausblendbar.
+- ☑ Übersicht: Stufen-Zähler, Balken und Farben für beliebig viele Stufen (statt fest A/B/C), „Gerade dran: <Stufenname>“.
+- ☑ Nachschlagen: Stand und Häkchen pro Stufe, Sortierung.
+- ☑ Rückmeldung und Rundenende: „<Stufe> geschafft“ statt „Teil A/B geschafft“.
+- ☑ Hilfe „So lernst du hier“ aus der Stufen-Einstellung erzeugen (Stufen, Fragearten, wann geschafft, Abstand in Tagen).
+- ☑ Krönchen: alle Begriffe eines Themas haben alle Stufen geschafft.
+- ☑ Karteikarten über `quiz.flashcards` ein- und ausblendbar.
 
 ### Chat 3: Neue Fragearten zum Auswählen
 
@@ -189,3 +189,12 @@ Jeder Chat: Repo `baumpinkler/FachVokabeln` klonen, `CLAUDE.md` und dieses Dokum
 - Häkchen-Namen bleiben wie bisher (`o:read`, `c0`, `si:say` …) und müssen über alle Fragearten eindeutig sein.
 - `modules/index.json` bekommt **kein** `version: 2`: Alte App-Versionen laden so beim ersten Start nach dem Update noch das gecachte v1-Modul, statt „Module nicht geladen“ zu zeigen; danach ist auch die App aktuell.
 - Stufen-IDs: `bedeutung` (A), `anwenden` (B), `erklaeren` (C), in IT und Agile gleich.
+
+**Chat 2 (v41):**
+- Bezeichnung: „Stufe <short> · <name>“ (`stTitle`) in allen Sätzen, Überschriften und Rückmeldungen; Zähler, Legende und Etiketten nur mit `short`. Das Wort „Teil“ kommt nicht mehr vor.
+- Farben: von hinten zugeordnet, damit Agile (A/B/C) und IT (B/C) aussehen wie bisher; Stufen 4–6 vorne bekommen `--n-sky`, `--n-lime`, `--n-coral` (die naheliegenden `--n-peach`/`--n-rose` sind den `m1`/`m3` von Agile zu ähnlich, Grüntöne zu nah an `--ok`).
+- Ohne Gleichschritt zeigt die Quiz-Kachel alle Stufen, in denen angehakte Themen gerade stehen.
+- Nachschlagen: alle Stufen eines begonnenen Begriffs als Zeilen, Details (Häkchen, fehlende Mindestzahlen, KI-Versuche) nur zur aktuellen Stufe. Neue Begriffe zeigen keinen Stand. Sortierung wie bisher nach Stufe, neu zusätzlich nach Anteil der Häkchen in der Stufe; kein eigener Sortier-Schalter.
+- Hilfe: ganz aus dem Stufenplan erzeugt. Jede Frageart liefert dafür `help()` und optional `each`. „Geschafft“ nennt die häufigste Zahl an Häkchen („meist 18“), weil sie je nach Inhalten schwankt. Modulspezifische Erklärungen gehen über das neue optionale Feld `quiz.help` (bis 400 Zeichen); IT erklärt dort, warum es keine Stufe „Begriff und Bedeutung“ gibt. Der veraltete Abschnitt „Was die App auswählt“ (zweimal pro Runde, neue aus dem weitesten Thema) ist an das Verhalten seit v37/v39 angepasst.
+- Krönchen: `autoFinish` prüft alle Themen, damit auch Begriffe, die durch einen geänderten Stufenplan gelernt sind, zum Krönchen führen (still, ohne Karte). Verdiente Krönchen bleiben, auch wenn ein späterer Plan neue Stufen hat.
+- `quiz.flashcards: false` blendet die Kachel aus (Nachschlagen dann über die ganze Breite) und passt Hinweistexte und Hilfe an.

@@ -578,48 +578,72 @@ async function removeModule(key){
   await dropModuleCache(key);
   return true;
 }
+/* Hilfe „So lernst du hier“: wird aus dem Stufenplan des Moduls erzeugt (Stufen, Fragearten, wann geschafft, Abstand) */
+function kindSpec(kc){
+  const def = KINDS[kc.kind], p = [];
+  if (def.each) p.push(def.each);
+  if (def.ai) p.push("schreiben" + (SR ? " oder diktieren" : "") + ", auf " + langName(MOD.lang[def.lang]));
+  else {
+    if (kc.outs.length > 1 || kc.outs[0] !== "read") p.push(listText(kc.outs.map(o => OUT_LABEL[o].toLowerCase())));
+    if (def.ins.length > 1 || kc.ins[0] !== "pick") p.push(listText(kc.ins.map(i => INP_LABEL[i].toLowerCase())));
+  }
+  if (kc.minCorrect) p.push(`mindestens ${kc.minCorrect} richtige Antworten`);
+  return p.join("; ") || "einmal richtig";
+}
+/* Häufigste Zahl an Häkchen einer Stufe über alle Begriffe mit Inhalten (für „meist N Häkchen“) */
+function typicalChecks(st){
+  const f = {};
+  for (const t of TERMS) { const c = stageContent(t, st); if (c.tasks.length) f[c.checks.length] = (f[c.checks.length] || 0) + 1; }
+  const best = Object.entries(f).sort((a, b) => b[1] - a[1])[0];
+  return best ? +best[0] : 0;
+}
+function stageDone(st){
+  if (st.kinds.every(kc => KINDS[kc.kind].ai)) return "die KI sagt: verstanden";
+  const n = typicalChecks(st), p = [n > 1 ? `alle Häkchen, meist ${n}` : n === 1 ? "eine richtige Antwort" : "alle Häkchen"];
+  if (st.minCorrect > 1) p.push(`mindestens ${st.minCorrect} richtige Antworten`);
+  return p.join(", ");
+}
+function stageWhen(i){
+  const st = STAGES[i];
+  if (!i) return "Neue Begriffe starten hier";
+  const prev = "Stufe " + STAGES[i - 1].short;
+  return !st.waitDays ? `gleich nach ${prev}` : st.waitDays === 1 ? `frühestens am Tag nach ${prev}` : `frühestens ${st.waitDays} Tage nach ${prev}`;
+}
 function showHelp(){
   const dlg = sheet("help");
-  const T = langName(MOD.lang.term);
+  const T = langName(MOD.lang.term), M = langName(MOD.lang.meaning), N = STAGES.length;
   const row = (a, b) => `<div class="hp-row"><span>${a}</span><b>${b}</b></div>`;
-  /* Bis zum Umbau der Hilfe (Chat 2 des Quiz-Baukastens) beschreibt sie den Standardplan A/B/C; ohne Teil A wie in IT */
-  const skipA = !hasKind("meaning-to-term"), ai = STAGES.find(st => st.kinds.some(kc => KINDS[kc.kind].ai)), ty = QZ.typing;
+  const sec = (h, body) => `<section class="hp"><h3>${h}</h3>${body}</section>`;
+  const note = t => `<p class="hp-note">${t}</p>`;
+  const kcs = STAGES.flatMap(st => st.kinds), any = f => kcs.some(f);
+  const typing = any(kc => kc.ins.includes("type")), saying = any(kc => kc.ins.includes("say")), hearing = any(kc => kc.outs.includes("hear"));
+  const ai = aiStages(), ty = QZ.typing, multi = any(kc => kc.ins.length > 1 || kc.outs.length > 1 || KINDS[kc.kind].each);
+  const waits = STAGES.filter((st, i) => i && st.waitDays > 0).length;
+  const stages = STAGES.map((st, i) => sec(`<i class="ls-dot" style="${stStyle(i)}" aria-hidden="true"></i>Stufe ${esc(stTitle(i))}`,
+    st.kinds.map(kc => row(esc(KINDS[kc.kind].name), esc(kindSpec(kc)))).join("")
+    + row("Geschafft", esc(stageDone(st)))
+    + row("Wann", esc(stageWhen(i)))
+    + (st.perRound < QZ.round ? row("Pro Runde", `höchstens ${st.perRound} ${st.perRound === 1 ? "Frage" : "Fragen"}`) : "")
+    + note(st.kinds.map(kc => KINDS[kc.kind].help ? KINDS[kc.kind].help() : "").filter(Boolean).join(" "))
+    + (st.kinds.length > 1 ? note("Die Fragearten kommen gemischt.") : ""))).join("");
   dlg.innerHTML = `<div class="lv-head"><h2>So lernst du hier</h2><button class="back" id="helpClose" aria-label="Schließen">✕</button></div>
-    <p class="lv-sub">${skipA ? "Jeder Begriff durchläuft zwei Teile, B und C. Einen Teil A gibt es in diesem Modul nicht: Begriff und Übersetzung sind sich hier meist zu ähnlich, als dass es etwas bringen würde." : "Jeder Begriff durchläuft drei Teile."} Die App wählt selbst, was als Nächstes dran ist. Fehler haben keine Folgen: Du siehst die Lösung, und es geht weiter. Es zählen nur richtige Antworten.</p>
-    ${skipA ? "" : `<section class="hp"><h3>Teil A: Begriff und Bedeutung</h3>
-      ${row("Bedeutung → Begriff", "lesen und hören; auswählen, schreiben und sprechen")}
-      ${row("Begriff → Bedeutung", "einmal lesen, einmal hören, jeweils auswählen")}
-      ${row("Geschafft", "alle 7 Häkchen, mindestens 5 richtige Antworten")}
-      <p class="hp-note">Eine richtige Antwort kann zwei Häkchen auf einmal bringen: Hörst du die Bedeutung und sprichst den Begriff, sind Hören und Sprechen erledigt. Schreiben und Sprechen kommen erst dran, wenn du den Begriff einmal richtig hattest. Über dem Eingabefeld steht, ob du schreiben ✍️ oder sprechen 🎤 sollst; es gibt immer nur das eine. Welche Häkchen ein Begriff schon hat, siehst du nach jeder Antwort und im Nachschlagen.</p></section>`}
-    <section class="hp"><h3>Schreiben ✍️</h3>
-      <p class="hp-note">Beim Schreiben sind ${ty.caseSensitive ? "" : "Groß- und Kleinschreibung, "}ein „to“ am Anfang, Bindestriche und Leerzeichen egal. Ein Tippfehler je angefangene ${ty.typosPer} Buchstaben zählt als „fast richtig“ und damit als richtig. Tippst du genau einen anderen Begriff, ist es falsch.</p></section>
-    <section class="hp"><h3>Teil B: anwenden</h3>
-      ${row("Lückensatz", "jeder Satz einmal; auswählen, schreiben und sprechen")}
-      ${row("Situation", "jede Situation einmal; lesen und hören; auswählen, schreiben und sprechen")}
-      ${row("Stimmt das?", "beide Aussagen einmal")}
-      ${row("Unterschied", "jeder Unterschied einmal")}
-      ${row("Geschafft", "alle Häkchen, meist 9 bis 10 richtige Antworten")}
-      <p class="hp-note">Die vier Fragearten kommen gemischt. Eine richtige Antwort kann mehrere Häkchen bringen: Hörst du eine Situation und sprichst den Begriff, sind die Situation, Hören und Sprechen erledigt. Situationen werden auf ${esc(langName(MOD.lang.meaning))} vorgelesen; Lückensätze gibt es nur zum Lesen. Beim Unterschied stehen A und B für die beiden Begriffe. Was ein Begriff nicht hat (etwa keinen Unterschied), wird nicht verlangt.</p></section>
-    <section class="hp"><h3>Teil C: in eigenen Worten</h3>
-      ${row("Erklären", "schreiben oder diktieren, auf " + esc(langName(MOD.lang.meaning)))}
-      ${row("Geschafft", "die KI sagt: verstanden")}
-      <p class="hp-note">Du erklärst den Begriff selbst: was er bedeutet und wofür man ihn braucht. Eigene Worte und Beispiele sind gut, Tipp- und Erkennungsfehler egal, die Länge zählt nicht. Nur die Übersetzung zu wiederholen reicht nicht. Diktiertes landet im Textfeld und lässt sich vor dem Abschicken frei bearbeiten. Danach siehst du das Urteil, eine kurze Rückmeldung und eine Musterlösung.</p>
-      <p class="hp-note">Hat es nicht gereicht, kommt Teil C in einer späteren Runde wieder. ${ai && ai.perRound < QZ.round ? `Pro Runde gibt es höchstens ${ai.perRound} solche Fragen.` : ""} Ist Teil C geschafft, ist der Begriff gelernt ✓. Sind alle Begriffe eines Themas gelernt, bekommt das Thema ein Krönchen mit eigenem Design.</p></section>
-    <section class="hp"><h3>KI-Prüfung 🤖</h3>
-      <p class="hp-note">Teil C prüft Gemini, eine KI von Google. Dafür trägst du unter „KI-Prüfung“ (bei Module und Fortschritt) einen eigenen, kostenlosen Schlüssel aus Google AI Studio ein. Er bleibt nur auf diesem Gerät und ist nicht im Export. In der Gratis-Stufe darf Google die Eingaben zum Verbessern seiner Modelle verwenden: Schreib nur Erklärungen, nichts Persönliches.</p>
-      <p class="hp-note">Ohne Schlüssel, ohne Internet oder wenn das Gratis-Limit erreicht ist, warten die Begriffe in Teil C; die Übersicht sagt dir das. Klappt eine Prüfung nicht, wird deine Antwort nicht gewertet und du kannst es nochmal versuchen oder die Frage überspringen.</p></section>
-    <section class="hp"><h3>Ein Tag Abstand zwischen den Teilen</h3>
-      <p class="hp-note">${skipA ? "Teil C kommt frühestens am Tag nach Teil B dran. So lernst du jeden Begriff an mindestens zwei Tagen" : "Teil B kommt frühestens am Tag nach Teil A dran, Teil C frühestens am Tag nach Teil B. So lernst du jeden Begriff an mindestens drei Tagen"} und nicht alles an einem Abend aus dem Kurzzeitgedächtnis.</p></section>
-    <section class="hp"><h3>Alle Begriffe im Gleichschritt</h3>
-      <p class="hp-note">Die Begriffe eines Themas gehen gemeinsam von Teil zu Teil: Der nächste Teil kommt erst dran, wenn alle Begriffe den vorigen geschafft haben. So kommen nach und nach alle Begriffe dran statt immer dieselben. Hast du mehrere Themen angehakt, bestimmt das Thema, das am wenigsten weit ist, welcher Teil dran ist; die anderen warten so lange. Welcher Teil gerade dran ist, steht auf der Quiz-Kachel.</p></section>
-    <section class="hp"><h3>Sprechen 🎤</h3>
-      <p class="hp-note">Steht über dem Feld „Sprich den Begriff“, tippe auf 🎤 und sag ihn auf ${esc(T)}. Was erkannt wurde, landet im Textfeld. Du kannst neu aufnehmen oder korrigieren und schickst mit „Prüfen“ ab. Änderst du den Text von Hand, zählt die Antwort als Schreiben. Die Spracherkennung braucht in Chrome meist Internet.</p></section>
-    <section class="hp"><h3>Gerade kein Ton 🔇</h3>
-      <p class="hp-note">Im Bus oder im Büro? Schalte auf der Übersicht „Gerade kein Ton“ ein. Dann gibt es nichts zu hören und nichts zu sprechen, bis du es wieder ausschaltest. Diese Häkchen holst du später nach; Begriffe, die nur noch Hören oder Sprechen brauchen, warten so lange. Kann dein Gerät gar nicht vorlesen oder keine Sprache erkennen, gelten diese Häkchen als erledigt.</p></section>
-    <section class="hp"><h3>Was die App auswählt</h3>
-      <p class="hp-note">Eine Runde hat bis zu ${QZ.round} Fragen aus den angehakten Themen. Begonnene Begriffe kommen vor neuen, und zwar Begriffe in einem höheren Teil zuerst. Neue kommen aus dem Thema, in dem du am weitesten bist: meist höchstens 3, aber so viele, dass die Runde voll wird. Ein Begriff kommt höchstens zweimal pro Runde und nie zweimal hintereinander. Gibt es weniger zu tun, wird die Runde kürzer.</p></section>
-    <section class="hp"><h3>Und sonst?</h3>
-      <p class="hp-note">Karteikarten und Nachschlagen helfen beim Lernen, ändern den Lernstand aber nicht. Der Kalender zeigt, wie viele Fragen du an jedem Tag beantwortet hast. Der Export enthält den Lernstand aller Module.</p></section>`;
+    <p class="lv-sub">${N === 1 ? `Jeder Begriff durchläuft eine Stufe: ${esc(STAGES[0].name)}.` : `Jeder Begriff durchläuft ${N} Stufen: ${esc(listText(STAGES.map((st, i) => stTitle(i))))}.`}
+      Die App wählt selbst, was als Nächstes dran ist. Fehler haben keine Folgen: Du siehst die Lösung, und es geht weiter. Es zählen nur richtige Antworten.</p>
+    ${QZ.help ? `<p class="lv-sub">${esc(QZ.help)}</p>` : ""}
+    ${stages}
+    ${multi ? sec("Häkchen", note(`In jeder Stufe sammelt ein Begriff Häkchen: für jeden Inhalt (etwa jeden Satz)${hearing ? ", fürs Lesen und Hören" : ""} und für jede Art zu antworten. Eine richtige Antwort kann mehrere Häkchen auf einmal bringen${hearing && saying ? ": Hörst du die Frage und sprichst die Antwort, sind Hören und Sprechen erledigt" : ""}. Was ein Begriff nicht hat (etwa keinen Unterschied), wird nicht verlangt. Welche Häkchen ein Begriff schon hat, siehst du im Nachschlagen.`)
+      + (typing || saying ? note(`${typing && saying ? "Schreiben und Sprechen kommen" : typing ? "Schreiben kommt" : "Sprechen kommt"} erst dran, wenn du den Begriff einmal richtig hattest. Über dem Eingabefeld steht, wie du antworten sollst; es gibt immer nur eine Art.`) : "")) : ""}
+    ${typing ? sec("Schreiben ✍️", note(`Beim Schreiben sind ${ty.caseSensitive ? "" : "Groß- und Kleinschreibung, "}ein „to“ am Anfang, Bindestriche und Leerzeichen egal. Ein Tippfehler je angefangene ${ty.typosPer} Buchstaben zählt als „fast richtig“ und damit als richtig. Tippst du genau einen anderen Begriff, ist es falsch.`)) : ""}
+    ${saying ? sec("Sprechen 🎤", note(`Steht über dem Feld „Sprich den Begriff“, tippe auf 🎤 und sag ihn auf ${esc(T)}. Was erkannt wurde, landet im Textfeld. Du kannst neu aufnehmen oder korrigieren und schickst mit „Prüfen“ ab. Änderst du den Text von Hand, zählt die Antwort als Schreiben. Die Spracherkennung braucht in Chrome meist Internet.`)) : ""}
+    ${hearing || saying ? sec("Gerade kein Ton 🔇", note(`Im Bus oder im Büro? Schalte auf der Übersicht „Gerade kein Ton“ ein. Dann gibt es nichts zu hören und nichts zu sprechen, bis du es wieder ausschaltest. Diese Häkchen holst du später nach; Begriffe, die nur noch Hören oder Sprechen brauchen, warten so lange. Kann dein Gerät gar nicht vorlesen oder keine Sprache erkennen, gelten diese Häkchen als erledigt.`)) : ""}
+    ${ai.length ? sec("KI-Prüfung 🤖", note(`Die Fragen in Stufe ${esc(listText(ai.map(i => STAGES[i].short)))} prüft Gemini, eine KI von Google. Dafür trägst du unter „KI-Prüfung“ (bei Module und Fortschritt) einen eigenen, kostenlosen Schlüssel aus Google AI Studio ein. Er bleibt nur auf diesem Gerät und ist nicht im Export. In der Gratis-Stufe darf Google die Eingaben zum Verbessern seiner Modelle verwenden: Schreib nur Erklärungen, nichts Persönliches.`)
+      + note(`Ohne Schlüssel, ohne Internet oder wenn das Gratis-Limit erreicht ist, warten diese Begriffe; die Übersicht sagt dir das. Klappt eine Prüfung nicht, wird deine Antwort nicht gewertet und du kannst es nochmal versuchen oder die Frage überspringen. Erklärungen schreibst du auf ${esc(M)}.`)) : ""}
+    ${waits ? sec("Abstand zwischen den Stufen", note(`Manche Stufen kommen erst ein paar Tage nach der vorigen dran (siehe „Wann“ oben). So lernst du jeden Begriff an mindestens ${waits + 1} verschiedenen Tagen und nicht alles an einem Abend aus dem Kurzzeitgedächtnis.`)) : ""}
+    ${N > 1 ? (QZ.lockstep ? sec("Alle Begriffe im Gleichschritt", note(`Die Begriffe eines Themas gehen gemeinsam von Stufe zu Stufe: Die nächste Stufe kommt erst dran, wenn alle Begriffe die vorige geschafft haben. So kommen nach und nach alle Begriffe dran statt immer dieselben. Hast du mehrere Themen angehakt, bestimmt das Thema, das am wenigsten weit ist, welche Stufe dran ist; die anderen warten so lange. Welche Stufe gerade dran ist, steht auf der Quiz-Kachel.`))
+      : sec("Jedes Thema für sich", note(`Die Begriffe eines Themas gehen gemeinsam von Stufe zu Stufe: Die nächste Stufe kommt erst dran, wenn alle Begriffe des Themas die vorige geschafft haben. Jedes angehakte Thema ist dabei in seiner eigenen Stufe; eine Runde mischt die Themen. Was gerade dran ist, steht auf der Quiz-Kachel.`))) : ""}
+    ${sec("Was die App auswählt", note(`Eine Runde hat bis zu ${QZ.round} Fragen aus den angehakten Themen. Begriffe, die am längsten nicht dran waren, kommen zuerst; noch nie gefragte zählen als die ältesten. So kommen nach und nach alle Begriffe dran. Jeder Begriff kommt höchstens einmal pro Runde. Gibt es weniger zu tun, wird die Runde kürzer.`))}
+    ${sec("Gelernt und Krönchen 👑", note(`Hat ein Begriff ${N > 1 ? "alle Stufen" : "die Stufe"} geschafft, ist er gelernt ✓. Sind alle Begriffe eines Themas gelernt, bekommt das Thema ein Krönchen mit eigenem Design.`))}
+    ${sec("Und sonst?", note(`${QZ.flashcards ? "Karteikarten und Nachschlagen helfen" : "Das Nachschlagen hilft"} beim Lernen, ${QZ.flashcards ? "ändern" : "ändert"} den Lernstand aber nicht. Der Kalender zeigt, wie viele Fragen du an jedem Tag beantwortet hast. Der Export enthält den Lernstand aller Module.`))}`;
   dlg.querySelector("#helpClose").onclick = () => dlg.close();
   openDialog(dlg); dlg.scrollTop = 0;
 }
@@ -662,17 +686,31 @@ function stageCount(ts){
   for (const t of ts) { if (isNew(t)) { n.new++; continue; } const i = curIdx(t); if (i >= STAGES.length) n.done++; else n.by[i]++; }
   return n;
 }
-/* Farbe einer Stufe (style.css: sb-a/b/c, st-tag b/c). Bis zum Umbau der Oberfläche (Chat 2) von hinten zugeordnet:
-   bei drei Stufen A/B/C, bei zwei B/C wie bisher in IT; weitere Stufen vorne bekommen die Farbe von A. */
-const stageCls = i => "abc"[Math.max(0, 3 - STAGES.length + i)];
-const teil = i => "Teil " + STAGES[i].short;
+/* Farbe einer Stufe (CSS-Variable --st, style.css: i.sb-st, .st-tag, .ls-dot): von hinten zugeordnet, damit A/B/C und B/C
+   (IT) aussehen wie gewohnt: letzte Stufe --m3, vorletzte --gold, davor --m1, weitere Stufen vorne Pastelltöne,
+   die sich von --m1/--m3 beider Module und von --ok (gelernt) abheben. */
+const STAGE_COLORS = ["var(--m3)", "var(--gold)", "var(--m1)", "var(--n-sky)", "var(--n-lime)", "var(--n-coral)"];
+const stageColor = i => STAGE_COLORS[Math.min(STAGE_COLORS.length - 1, Math.max(0, STAGES.length - 1 - i))];
+const stStyle = i => `--st:${stageColor(i)}`;
+/* Bezeichnung einer Stufe in Texten: „B · Anwenden“ */
+const stTitle = i => STAGES[i].short + " · " + STAGES[i].name;
 /* Balken: gelernt, dann die Stufen von hinten nach vorne (Rest = neu) */
 const barSegs = (n, all) => !all ? "" : (n.done ? `<i class="sb-done" style="width:${(n.done / all * 100).toFixed(2)}%"></i>` : "")
-  + STAGES.map((st, i) => i).reverse().map(i => n.by[i] ? `<i class="sb-${stageCls(i)}" style="width:${(n.by[i] / all * 100).toFixed(2)}%"></i>` : "").join("");
+  + STAGES.map((st, i) => i).reverse().map(i => n.by[i] ? `<i class="sb-st" style="${stStyle(i)};width:${(n.by[i] / all * 100).toFixed(2)}%"></i>` : "").join("");
 const stageParts = n => STAGES.map((st, i) => n.by[i] ? st.short + " " + num(n.by[i]) : "").filter(Boolean).concat(n.done ? ["✓ " + num(n.done)] : []);
-const stageAria = (n, all) => `${num(n.done)} von ${num(all)} gelernt, ` + STAGES.map((st, i) => i).reverse().map(i => `${num(n.by[i])} in ${teil(i)}`).join(", ") + `, ${num(n.new)} neu`;
-/* Sortierung im Nachschlagen: gelernt zuerst, dann weiter fortgeschrittene, neue zuletzt */
-const stageWeight = t => isNew(t) ? 0 : curIdx(t) + 1;
+const stageAria = (n, all) => `${num(n.done)} von ${num(all)} gelernt, ` + STAGES.map((st, i) => i).reverse().map(i => `${num(n.by[i])} in Stufe ${stTitle(i)}`).join(", ") + `, ${num(n.new)} neu`;
+/* Häkchen der aktuellen Stufe: erledigt und alle (ohne Inhalte 0/0) */
+function stageProgress(t, i){
+  const st = STAGES[i], all = stageContent(t, st).checks.length;
+  return {all, n:all - openChecks(t, stateOf(t), st).length};
+}
+/* Sortierung im Nachschlagen: gelernt zuerst, dann weiter fortgeschrittene (Stufe, darin Anteil der Häkchen), neue zuletzt */
+function stageWeight(t){
+  if (isNew(t)) return 0;
+  const i = curIdx(t); if (i >= STAGES.length) return STAGES.length + 1;
+  const p = waitLeft(t, i) > 0 ? {all:0} : stageProgress(t, i);
+  return i + 1 + (p.all ? p.n / p.all * .99 : 0);
+}
 const catTerms = k => TERMS.filter(t => t.cat === k);
 const crowned = k => !!(P.crowns && own(P.crowns, k));
 /* Gekrönte Themen: jedes hat ein eigenes Design (CSS: .crown[data-crown=…]). Unbekannte Themen bekommen eines der allgemeinen. */
@@ -704,7 +742,8 @@ function setFocus(on){ document.body.classList.toggle("focus", on); }
    outCk(out) / inpCk(inp): Häkchen für eine Ausgabe- bzw. Eingabeart (oder null),
    make(q): Frage bauen (prompt, opts, answer …), ask(q): Fragezeile, body(q, a): Inhalt unter der Frage (Standard: prompt),
    fb(q): zusätzliche Zeilen der Rückmeldung, big: Schriftgröße des prompt, long: lange Antworttexte, side: Antworten nebeneinander,
-   render: ganz eigene Darstellung.
+   render: ganz eigene Darstellung,
+   help(): ein, zwei Sätze für die Hilfe (was die Frage ist), each: Häkchen je Inhalt in der Hilfe („jeder Satz einmal“).
    Häkchen-Namen sind über alle Fragearten eindeutig (gespeichert wird pro Stufe, nicht pro Frageart). */
 const OUTS = ["read", "hear"], INPUTS = ["pick", "type", "say"];
 const INP_LABEL = {pick:"Auswählen", type:"Schreiben", say:"Sprechen", free:"Schreiben oder diktieren"}, OUT_LABEL = {read:"Lesen", hear:"Hören"};
@@ -714,14 +753,17 @@ const kind = def => { KINDS[def.id] = Object.assign({lang:"term", outs:["read"],
 function optsFor(q, field){ q.opts = shuffle([q.t].concat(distractors(q.t, field, q.n - 1))).map(o => ({id:o.id, label:o[field]})); q.answer = q.t.id; }
 kind({id:"meaning-to-term", name:"Bedeutung → Begriff", lang:"meaning", outs:OUTS, ins:INPUTS, big:"q-big",
   refs:() => [{}], outCk:o => "o:" + o, inpCk:i => "i:" + i,
+  help:() => `Du liest oder hörst die Bedeutung und antwortest mit dem Begriff auf ${esc(langName(MOD.lang.term))}.`,
   make:q => { q.prompt = q.t.de; if (q.inp === "pick") optsFor(q, "en"); },
   ask:() => `Wie heißt das auf ${esc(langName(MOD.lang.term))}?`});
 kind({id:"term-to-meaning", name:"Begriff → Bedeutung", outs:OUTS, big:"q-big", long:true,
   refs:() => [{}], outCk:o => "r:" + o,
+  help:() => "Du liest oder hörst den Begriff und wählst die passende Bedeutung.",
   make:q => { q.prompt = q.t.en; optsFor(q, "de"); },
   ask:() => "Was bedeutet das?"});
 /* Lückensatz: c0 = Beispielsatz (nur wenn termRe passt), c1/c2 = Zusatzsätze; Hilfe „Satz auf Deutsch zeigen“ */
-kind({id:"gap", name:"Lückensatz", refName:"Satz", ins:INPUTS,
+kind({id:"gap", name:"Lückensatz", refName:"Satz", ins:INPUTS, each:"jeder Satz einmal",
+  help:() => `In einem Beispielsatz fehlt der Begriff. Als Hilfe kannst du den Satz auf ${esc(langName(MOD.lang.meaning))} anzeigen.`,
   refs:t => {
     const out = [];
     if (termRe(t).test(t.exEn)) out.push({ck:"c0", en:t.exEn, de:t.exDe, hint:clozeDe(t)});
@@ -734,12 +776,14 @@ kind({id:"gap", name:"Lückensatz", refName:"Satz", ins:INPUTS,
   body:(q, a) => `<div class="q-mid" lang="${esc(MOD.lang.term)}">${esc(q.prompt)}</div>
       <div class="q-hint">${a ? "" : Q.hint ? esc(q.sent.hint) : `<button id="hint">Satz auf ${esc(langName(MOD.lang.meaning))} zeigen</button>`}</div>`});
 /* Situation → Begriff: vorgelesen in der Bedeutungs-Sprache */
-kind({id:"situation", name:"Situation", refName:"Situation", lang:"meaning", outs:OUTS, ins:INPUTS,
+kind({id:"situation", name:"Situation", refName:"Situation", lang:"meaning", outs:OUTS, ins:INPUTS, each:"jede Situation einmal",
+  help:() => `Eine kurze Situation aus dem Arbeitsalltag: Welcher Begriff passt? Situationen werden auf ${esc(langName(MOD.lang.meaning))} vorgelesen.`,
   refs:t => extraOf(t).sit.slice(0, 3).map((text, i) => ({ck:"s" + i, text})),
   outCk:o => "so:" + o, inpCk:i => "si:" + i,
   make:q => { q.prompt = q.task.ref.text; if (q.inp === "pick") optsFor(q, "en"); },
   ask:() => "Welcher Begriff passt?"});
-kind({id:"truefalse", name:"Stimmt das?", refName:"Aussage", side:true,
+kind({id:"truefalse", name:"Stimmt das?", refName:"Aussage", side:true, each:"jede Aussage einmal",
+  help:() => "Eine Aussage zum Begriff: Stimmt sie oder nicht? Danach siehst du die Begründung.",
   refs:t => extraOf(t).tf.slice(0, 2).map((f, i) => ({ck:"t" + i, f})),
   make:q => { q.tf = q.task.ref.f; q.prompt = q.tf[1]; q.answer = String(q.tf[0]); q.opts = [{id:"true", label:"Stimmt"}, {id:"false", label:"Stimmt nicht"}]; },
   ask:q => `Stimmt das? <span class="q-term">${esc(q.t.en)}</span>`,
@@ -771,7 +815,8 @@ function confWrong(t, p, own){
   return wrong;
 }
 /* Unterschied: maskierte Sätze (A = Begriff, B = Partner); nur mit mindestens 3 verschiedenen falschen Sätzen (confWrong) */
-kind({id:"difference", name:"Unterschied", refName:"Satz", long:true,
+kind({id:"difference", name:"Unterschied", refName:"Satz", long:true, each:"jeder Unterschied einmal",
+  help:() => "Zwei leicht verwechselbare Begriffe, A und B: Welcher Satz beschreibt den Unterschied? In den Sätzen stehen A und B für die Begriffe.",
   refs:t => {
     const out = [];
     extraOf(t).conf.slice(0, 2).forEach((cf, i) => {
@@ -787,6 +832,7 @@ kind({id:"difference", name:"Unterschied", refName:"Satz", long:true,
   fb:q => `<p><b>Unterschied:</b> ${esc(q.conf)}</p><p><b>${esc(q.partner.en)}</b> = ${esc(q.partner.de)}</p>`});
 /* In eigenen Worten: schreiben oder diktieren, Gemini prüft (aiJudge); Musterlösungen = Erklärungen 1–3 */
 kind({id:"explain-ai", name:"In eigenen Worten", refName:"Erklärung", lang:"meaning", ins:["free"], ai:true,
+  help:() => "Du erklärst den Begriff selbst: was er bedeutet und wofür man ihn braucht. Eigene Worte und Beispiele sind gut, Tipp- und Erkennungsfehler egal, die Länge zählt nicht. Nur die Übersetzung zu wiederholen reicht nicht. Diktiertes landet im Textfeld und lässt sich vor dem Abschicken bearbeiten. Danach siehst du das Urteil, eine kurze Rückmeldung und eine Musterlösung. Hat es nicht gereicht, kommt die Frage in einer späteren Runde wieder.",
   refs:t => t.expls.length ? [{ck:"c"}] : [],
   make:q => { q.prompt = q.t.en; },
   render:() => renderQuizC()});
@@ -828,7 +874,7 @@ function quizConf(raw){
   const ty = o.typing && typeof o.typing === "object" ? o.typing : {};
   const q = {round:clampInt(o.round, 3, 20, 10), lockstep:o.lockstep !== false, options:clampInt(o.options, 2, 6, 5),
     flashcards:o.flashcards !== false, typing:{typosPer:clampInt(ty.typosPer, 3, 20, 6), caseSensitive:ty.caseSensitive === true},
-    ai:{rubric:clipStr(o.ai && o.ai.rubric, 600)}};
+    ai:{rubric:clipStr(o.ai && o.ai.rubric, 600)}, help:clipStr(o.help, 400)};
   let list = Array.isArray(o.stages) ? o.stages : null;
   if (!list && Array.isArray(o.parts)) list = DEFAULT_STAGES.filter(s => o.parts.includes(s.part));
   let stages = arr(list).map((s, i) => stageConf(s, i, q)).filter(Boolean);
@@ -900,16 +946,16 @@ function doable(task, s){
 /* Stufen ohne offene Häkchen (keine Inhalte oder nur, was das Gerät nicht kann): nach der Bremse gleich abschließen.
    Läuft beim Öffnen der Übersicht und vor jeder Runde; schließt auch mehrere Stufen nacheinander ab (waitDays 0). */
 function autoFinish(){
-  const cats = new Set(); let n = 0;
+  let n = 0;
   for (const t of TERMS) {
     for (;;) {
       const i = curIdx(t);
       if (i >= STAGES.length || waitLeft(t, i) > 0 || !stageComplete(t, stateOf(t), STAGES[i])) break;
       stRec(touch(t), STAGES[i]).d = today(); n++;
-      if (learned(t)) cats.add(t.cat);
     }
   }
-  cats.forEach(crownCheck);
+  /* Krönchen für alle Themen, deren Begriffe gelernt sind (auch wenn das ohne Antwort passiert, z. B. nach einer Änderung des Stufenplans) */
+  for (const k of Object.keys(CATS)) if (crownCheck(k)) n++;
   if (n) save();
 }
 
@@ -929,6 +975,8 @@ const online = () => navigator.onLine !== false;
 /* Warum gerade keine KI-Prüfung möglich ist: "" = geht, sonst nokey / offline / limit */
 const aiBlock = () => !aiKey() ? "nokey" : !online() ? "offline" : Date.now() < aiPauseUntil ? "limit" : "";
 const aiReady = () => !aiBlock();
+/* Stufen (Index) mit einer KI-Frageart */
+const aiStages = () => STAGES.map((st, i) => st.kinds.some(kc => KINDS[kc.kind].ai) ? i : -1).filter(i => i >= 0);
 function aiWaitText(n){
   const b = aiBlock();
   return `${num(n)} ${n === 1 ? "Begriff wartet" : "Begriffe warten"} auf die KI-Prüfung. ` + (b === "offline" ? "Sie braucht Internet."
@@ -944,7 +992,7 @@ function crownCheck(k){
 }
 function aiErr(code){ const e = new Error(code); e.code = code; return e; }
 const AI_ERR = {
-  nokey:"Für Teil C brauchst du einen eigenen KI-Schlüssel. Trag ihn unter „KI-Prüfung“ ein.",
+  nokey:"Für die KI-Prüfung brauchst du einen eigenen Schlüssel. Trag ihn unter „KI-Prüfung“ ein.",
   offline:"Keine Internetverbindung. Die KI-Prüfung braucht Internet.",
   timeout:"Die KI hat nicht rechtzeitig geantwortet. Versuch es gleich noch einmal.",
   limit:"Das Gratis-Limit von Google ist gerade erreicht. Versuch es in ein paar Minuten noch einmal; das Tageslimit gilt bis zum nächsten Morgen.",
@@ -1031,7 +1079,7 @@ function showAiSheet(onDone){
   const draw = msg => {
     const k = aiKey();
     dlg.innerHTML = `<div class="lv-head"><h2>KI-Prüfung</h2><button class="back" data-x aria-label="Schließen">✕</button></div>
-      <p class="lv-sub">In Teil C erklärst du einen Begriff in eigenen Worten. Ob du ihn verstanden hast, beurteilt Gemini, eine KI von Google. Dafür brauchst du einen eigenen, kostenlosen Schlüssel.</p>
+      <p class="lv-sub">Fragen mit KI-Prüfung${aiStages().length ? ` (in diesem Modul: ${esc(listText(aiStages().map(i => "Stufe " + stTitle(i))))})` : ""} beurteilt Gemini, eine KI von Google. Dafür brauchst du einen eigenen, kostenlosen Schlüssel. Er gilt für alle Module.</p>
       <ol class="ai-steps">
         <li>Öffne <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> und melde dich mit deinem Google-Konto an.</li>
         <li>Tippe auf „Create API key“ und kopiere den Schlüssel. Ein Abo oder eine Kreditkarte brauchst du nicht.</li>
@@ -1041,7 +1089,7 @@ function showAiSheet(onDone){
       <div class="backup-row"><button class="btn primary" id="aiSave">Speichern und testen</button>${k ? `<button class="btn" id="aiTest">Testen</button><button class="btn" id="aiDel">Entfernen</button>` : ""}</div>
       <p class="exp-status" role="status">${esc(msg || "")}</p>
       <p class="hp-note"><b>Wichtig:</b> In der Gratis-Stufe darf Google deine Eingaben verwenden, um seine Modelle zu verbessern. Gib nur Erklärungen zu Fachbegriffen ein, nichts Persönliches.</p>
-      <p class="hp-note">Der Schlüssel wird nur in diesem Browser gespeichert. Er ist nicht im Export enthalten. Die Gratis-Stufe hat Grenzen pro Minute und pro Tag; ist eine erreicht, wartet Teil C einfach ein wenig.</p>`;
+      <p class="hp-note">Der Schlüssel wird nur in diesem Browser gespeichert. Er ist nicht im Export enthalten. Die Gratis-Stufe hat Grenzen pro Minute und pro Tag; ist eine erreicht, warten die Fragen mit KI-Prüfung einfach ein wenig.</p>`;
     const status = t => { dlg.querySelector(".exp-status").textContent = t; };
     const lock = on => { busy = on; dlg.querySelectorAll(".backup-row .btn").forEach(b => b.disabled = on); };
     const run = async (key, save) => {
@@ -1294,7 +1342,7 @@ function renderTop(){
     <div class="rank" role="img" aria-label="${stageAria(N, all)}">
       <div class="rank-name">${num(N.done)} von ${num(all)} gelernt</div>
       <div class="xpbar seg" aria-hidden="true">${barSegs(N, all)}</div>
-      <div class="stand-legend" aria-hidden="true">${STAGES.map((st, i) => `<span><i class="sb-${stageCls(i)}"></i>${esc(st.short)} ${num(N.by[i])}</span>`).join("")}<span><i class="sb-new"></i>${num(N.new)} neu</span></div>
+      <div class="stand-legend" aria-hidden="true">${STAGES.map((st, i) => `<span title="Stufe ${esc(stTitle(i))}"><i class="sb-st" style="${stStyle(i)}"></i>${esc(st.short)} ${num(N.by[i])}</span>`).join("")}<span><i class="sb-new"></i>${num(N.new)} neu</span></div>
     </div>
     <button class="badge" id="calBtn" aria-haspopup="dialog" title="Kalender öffnen" aria-label="${fragen(n)} heute, Kalender öffnen"><div class="ring" style="--p:${n ? 100 : 0}"><span>${n > 999 ? "999+" : n}</span></div>Fragen heute</button>`;
   $("#helpBtn").onclick = showHelp;
@@ -1367,6 +1415,9 @@ function renderHome(fromPop){
       ${cr ? `<span class="tcrown">${cr.icon} ${esc(cr.name)} · gekrönt</span>` : `<span class="tbar" aria-hidden="true">${barSegs(n, ts.length)}</span>`}</button>`;
   }).join("");
   const allOn = P.cats.length === Object.keys(CATS).length;
+  /* Gerade dran: im Gleichschritt die Stufe der Runde, sonst die Stufen der angehakten Themen */
+  const now = QZ.lockstep ? [roundLevel()].filter(i => i < STAGES.length)
+    : [...new Set(P.cats.filter(k => CATS[k]).map(catLevel))].filter(i => i < STAGES.length).sort((a, b) => a - b);
   const idle = !quizPool().some(hasTask), wait = quiet ? p.filter(waitsForSound).length : 0, aiW = p.filter(waitsForAi).length;
   const notice = idle ? noTasksText(aiW > 0) : wait ? `🔇 ${num(wait)} ${wait === 1 ? "Begriff wartet" : "Begriffe warten"} auf eine Runde mit Ton.` : "";
   app.innerHTML = `
@@ -1374,15 +1425,15 @@ function renderHome(fromPop){
     ${aiW ? aiNotice(aiW, "notice") : ""}
     ${notice ? `<div class="notice" role="status">${esc(notice)}</div>` : ""}
     <div class="modes">
-      <button class="note mode mode-main" style="--c:var(--m2)" data-go="quiz"><span class="emoji" aria-hidden="true">⚡</span><h2>Quiz</h2><p>Bis zu ${QZ.round} Fragen. Die App wählt selbst, was als Nächstes dran ist.${QZ.lockstep && roundLevel() < STAGES.length ? ` <b class="q-level">Gerade dran: ${esc(teil(roundLevel()))}</b>` : ""}</p></button>
+      <button class="note mode mode-main" style="--c:var(--m2)" data-go="quiz"><span class="emoji" aria-hidden="true">⚡</span><h2>Quiz</h2><p>Bis zu ${QZ.round} Fragen. Die App wählt selbst, was als Nächstes dran ist.${now.length ? ` <b class="q-level">Gerade dran: ${now.map(i => `<span class="q-st" style="${stStyle(i)}">${esc(stTitle(i))}</span>`).join(" ")}</b>` : ""}</p></button>
       <button class="quiet" id="quietBtn" aria-pressed="${quiet}"><span class="q-ic" aria-hidden="true">${quiet ? "🔇" : "🔊"}</span>
         <span><b>Gerade kein Ton</b><small>${quiet ? "An: nichts hören, nichts sprechen" : "Aus: Fragen mit Hören und Sprechen"}</small></span><span class="switch" aria-hidden="true"></span></button>
-      <button class="note mode" style="--c:var(--m1)" data-go="cards"><span class="emoji" aria-hidden="true">🗂️</span><h2>Karteikarten</h2><p>Umdrehen und selbst einschätzen.</p></button>
-      <button class="note mode" style="--c:var(--m3)" data-go="lex"><span class="emoji" aria-hidden="true">📖</span><h2>Nachschlagen</h2><p>Alle ${num(all)} Begriffe mit Beispielen.</p></button>
+      ${QZ.flashcards ? `<button class="note mode" style="--c:var(--m1)" data-go="cards"><span class="emoji" aria-hidden="true">🗂️</span><h2>Karteikarten</h2><p>Umdrehen und selbst einschätzen.</p></button>` : ""}
+      <button class="note mode${QZ.flashcards ? "" : " wide"}" style="--c:var(--m3)" data-go="lex"><span class="emoji" aria-hidden="true">📖</span><h2>Nachschlagen</h2><p>Alle ${num(all)} Begriffe mit Beispielen.</p></button>
     </div>
     <div class="sec-head"><div class="section-title">Themen</div>
       <button class="chip-all" id="allcats">${allOn ? "Nur eines wählen" : "Alle auswählen"}</button></div>
-    <p class="sec-sub">Angehakte Themen kommen in Quiz und Karteikarten dran (${num(active)} Begriffe). Neue Begriffe kommen aus dem Thema, in dem du am weitesten bist. ${esc(listText(STAGES.map(st => st.short)))} ${STAGES.length === 1 ? "zeigt" : "zeigen"}, wie viele Begriffe in welchem Teil stecken, ✓ wie viele gelernt sind.</p>
+    <p class="sec-sub">Angehakte Themen kommen ${QZ.flashcards ? "in Quiz und Karteikarten" : "im Quiz"} dran (${num(active)} Begriffe). ${STAGES.length === 1 ? "Der Buchstabe zählt die Begriffe in der Stufe" : "Die Buchstaben zählen die Begriffe je Stufe"} (${esc(STAGES.map((st, i) => stTitle(i)).join(", "))}), ✓ die gelernten.</p>
     <div class="topics">${rows}</div>
     <div class="section-title">Module und Fortschritt</div>
     <div class="backup-row"><button class="btn" id="catBtn">🧩 Module verwalten</button><button class="btn" id="aiBtn">🤖 KI-Prüfung</button></div>
@@ -1410,6 +1461,7 @@ function renderHome(fromPop){
 /* ---------- Karteikarten (ändern den Lernstand nicht) ---------- */
 let F = null;
 function startCards(){
+  if (!QZ.flashcards) return renderHome();
   const meaning = t => { const i = curIdx(t); return i < STAGES.length && STAGES[i].kinds.some(kc => kc.kind === "meaning-to-term" || kc.kind === "term-to-meaning"); };
   const p = pool(), busy = shuffle(p.filter(t => !isNew(t) && meaning(t))).slice(0, 5);
   const ts = shuffle(busy.concat(shuffle(p.filter(t => !busy.includes(t))).slice(0, 10 - busy.length)));
@@ -1747,7 +1799,7 @@ function renderQuizC(){
       <h3>${a.ok ? "Verstanden!" : a.typed === null ? "Kein Problem." : "Noch nicht ganz."}</h3>
       ${ai && ai.feedback ? `<p>${esc(ai.feedback)}</p>` : ""}
       ${ai && ai.fehlt && !a.ok ? `<p><b>Was gefehlt hat:</b> ${esc(ai.fehlt)}</p>` : ""}
-      ${a.ok ? doneNote(q, a) : `<p class="hp-note">${esc(teil(q.stage))} kommt in einer späteren Runde wieder dran.</p>`}
+      ${a.ok ? doneNote(q, a) : `<p class="hp-note">Die Frage kommt in einer späteren Runde wieder dran.</p>`}
       ${a.crown ? crownCard(a.crown) : ""}
       <p class="fb-ex"><b>So kann man es erklären:</b> ${esc(a.muster)}</p>
       <p><b>${esc(t.en)}</b> = ${esc(t.de)}</p>
@@ -1832,15 +1884,15 @@ function checksHtml(t, s, st){
     if (list.length) h += `<span aria-hidden="true">${esc(def.name)}</span><div aria-hidden="true">${list.map(([g, l]) => chip(g, l)).join("")}</div>`;
   }
   const all = stageContent(t, st).checks, n = all.filter(on).length;
-  return h ? `<div class="chk" role="img" aria-label="${esc(teil(STAGES.indexOf(st)))}: ${n} von ${all.length} Häkchen">${h}</div>` : "";
+  return h ? `<div class="chk" role="img" aria-label="Stufe ${esc(stTitle(STAGES.indexOf(st)))}: ${n} von ${all.length} Häkchen">${h}</div>` : "";
 }
-/* „Teil X geschafft“ bzw. „Gelernt“ in der Rückmeldung */
+/* „Stufe X geschafft“ bzw. „Gelernt“ in der Rückmeldung */
+const nextText = i => { const w = STAGES[i].waitDays; return (w ? (w === 1 ? "Ab morgen" : `In ${w} Tagen`) : "Jetzt") + " kommt Stufe " + stTitle(i) + "."; };
 function doneNote(q, a){
   if (!a.done) return "";
-  const i = q.stage, nx = STAGES[i + 1];
-  if (a.learned) return `<p class="fb-done"><b>Gelernt! 🎉</b> ${esc(q.t.en)} hat ${STAGES.length > 1 ? "alle Teile" : "alles"} geschafft.</p>`;
-  const w = nx.waitDays;
-  return `<p class="fb-done"><b>${esc(teil(i))} geschafft! 🎉</b> ${w ? (w === 1 ? "Ab morgen" : `In ${w} Tagen`) + " kommt " + esc(teil(i + 1)) : "Jetzt kommt " + esc(teil(i + 1))}.</p>`;
+  const i = q.stage;
+  if (a.learned) return `<p class="fb-done"><b>Gelernt! 🎉</b> ${esc(q.t.en)} hat ${STAGES.length > 1 ? "alle Stufen" : "alles"} geschafft.</p>`;
+  return `<p class="fb-done"><b>Stufe ${esc(stTitle(i))} geschafft! 🎉</b> ${esc(nextText(i + 1))}</p>`;
 }
 function answer(k){ const q = Q.q; settle(q.opts[k].id === q.answer, {pick:k, inp:"pick"}); }
 /* Gesprochen: die beste erkannte Variante kommt ins Textfeld (richtig vor fast richtig vor Verwechslung vor falsch) */
@@ -1910,8 +1962,8 @@ function renderQuizDone(){
       <div>richtig · ${Q.checks} ${Q.checks === 1 ? "neues Häkchen" : "neue Häkchen"}</div></div>
     ${Q.crowned.map(k => crownCard(k)).join("")}
     ${Q.done.map((ts, i) => i).reverse().map(i => { const ts = Q.done[i], nx = STAGES[i + 1]; if (!ts.length) return "";
-      return !nx ? `<div class="missed"><strong>Gelernt 🎉</strong>${list(ts)}<p class="hp-note">Diese Begriffe haben ${STAGES.length > 1 ? "alle Teile" : "alles"} geschafft.</p></div>`
-        : `<div class="missed"><strong>${esc(teil(i))} geschafft 🎉</strong>${list(ts)}<p class="hp-note">${esc(teil(i + 1))} (${esc(nx.name)}) kommt ${nx.waitDays ? whenText(nx.waitDays) : "als Nächstes"} dran.</p></div>`; }).join("")}
+      return !nx ? `<div class="missed"><strong>Gelernt 🎉</strong>${list(ts)}<p class="hp-note">Diese Begriffe haben ${STAGES.length > 1 ? "alle Stufen" : "alles"} geschafft.</p></div>`
+        : `<div class="missed"><strong>Stufe ${esc(stTitle(i))} geschafft 🎉</strong>${list(ts)}<p class="hp-note">${esc(nextText(i + 1))}</p></div>`; }).join("")}
     ${Q.missed.length ? `<div class="missed"><strong>Daneben, kommt wieder dran:</strong>${list(Q.missed)}</div>` : ""}
     ${wait ? `<div class="missed">🔇 ${num(wait)} ${wait === 1 ? "Begriff wartet" : "Begriffe warten"} auf eine Runde mit Ton.</div>` : ""}
     ${aiW ? aiNotice(aiW, "missed") : ""}
@@ -1923,31 +1975,54 @@ function renderQuizDone(){
 }
 
 /* ---------- Nachschlagen ---------- */
+/* Etikett hinter dem Begriff: aktuelle Stufe mit Häkchen („B 5/16“) bzw. ✓ gelernt */
 function stageTag(t){
   if (isNew(t)) return "";
   const i = curIdx(t);
   if (i >= STAGES.length) return `<span class="st-tag done">✓ gelernt</span>`;
-  const st = STAGES[i], cl = stageCls(i) === "a" ? "" : " " + stageCls(i), left = waitLeft(t, i);
-  if (left > 0) return `<span class="st-tag${cl}" title="${esc(teil(i - 1))} geschafft, ${esc(teil(i))} ${whenText(left)}">${esc(st.short)}</span>`;
-  const all = stageContent(t, st).checks.length, n = all - openChecks(t, stateOf(t), st).length;
-  return all > 1 ? `<span class="st-tag${cl}" title="${esc(teil(i))}: ${n} von ${all} Häkchen">${esc(st.short)} ${n}/${all}</span>`
-    : `<span class="st-tag${cl}" title="${esc(teil(i))}: ${esc(st.name)}">${esc(st.short)}</span>`;
+  const st = STAGES[i], left = waitLeft(t, i), sty = `style="${stStyle(i)}"`;
+  if (left > 0) return `<span class="st-tag" ${sty} title="Stufe ${esc(stTitle(i))} ${whenText(left)}">${esc(st.short)}</span>`;
+  const p = stageProgress(t, i);
+  return p.all > 1 ? `<span class="st-tag" ${sty} title="Stufe ${esc(stTitle(i))}: ${p.n} von ${p.all} Häkchen">${esc(st.short)} ${p.n}/${p.all}</span>`
+    : `<span class="st-tag" ${sty} title="Stufe ${esc(stTitle(i))}">${esc(st.short)}</span>`;
 }
-/* Stand im aufgeklappten Eintrag: Häkchen der aktuellen Stufe bzw. Datum */
+/* Richtige Antworten, die der Stufe noch fehlen (minCorrect der Stufe und der Fragearten) */
+function minsText(t, s, st){
+  const d = stData(s, st), k = (d && d.k) || {}, out = [];
+  if (st.minCorrect > 1) out.push(`${Math.min(d ? d.n || 0 : 0, st.minCorrect)} von ${st.minCorrect} richtigen Antworten`);
+  for (const kc of st.kinds) if (kc.minCorrect > 1 && kindRefs(t, kc.kind).length)
+    out.push(`${KINDS[kc.kind].name}: ${Math.min(k[kc.kind] || 0, kc.minCorrect)} von ${kc.minCorrect}`);
+  return out.join(" · ");
+}
+/* Stand im aufgeklappten Eintrag: eine Zeile pro Stufe (geschafft am …, jetzt dran, ab morgen, noch nicht),
+   darunter die Häkchen der aktuellen Stufe */
 function lexState(t){
   const s = stateOf(t); if (!s) return "";
-  const i = curIdx(t), date = st => esc(parseDay(stData(s, st).d).toLocaleDateString("de-AT"));
-  if (i >= STAGES.length) return `<p class="lex-st">Gelernt am ${date(STAGES[STAGES.length - 1])}.</p>`;
-  const st = STAGES[i], left = waitLeft(t, i), prev = i ? `${esc(teil(i - 1))} geschafft am ${date(STAGES[i - 1])}. ` : "";
-  if (left > 0) return `<p class="lex-st">${prev}${esc(teil(i))} kommt ${whenText(left)} dran.</p>`;
-  if (st.kinds.every(kc => KINDS[kc.kind].ai)) {
-    const d = stData(s, st), x = d ? d.x || 0 : 0;
-    return `<p class="lex-st">${prev}Jetzt ist ${esc(teil(i))} dran: Im Quiz erklärst du den Begriff in eigenen Worten.${x ? ` Bisher ${num(x)} ${x === 1 ? "Versuch" : "Versuche"}.` : ""}</p>`;
-  }
-  return checksHtml(t, s, st);
+  const cur = curIdx(t), date = st => esc(parseDay(stData(s, st).d).toLocaleDateString("de-AT"));
+  const rows = STAGES.map((st, i) => {
+    const d = stData(s, st), none = !stageContent(t, st).tasks.length;
+    let state, extra = "";
+    if (d && d.d) state = none ? "✓ nichts zu tun" : `✓ geschafft am ${date(st)}`;
+    else if (i > cur) state = none ? "nichts zu tun" : "noch nicht dran";
+    else if (waitLeft(t, i) > 0) state = `kommt ${whenText(waitLeft(t, i))} dran`;
+    else {
+      const p = stageProgress(t, i), mins = minsText(t, s, st);
+      if (st.kinds.every(kc => KINDS[kc.kind].ai)) {
+        const x = d ? d.x || 0 : 0;
+        state = "jetzt dran";
+        extra = `<p class="lex-st">Im Quiz erklärst du den Begriff in eigenen Worten.${x ? ` Bisher ${num(x)} ${x === 1 ? "Versuch" : "Versuche"}.` : ""}</p>`;
+      } else {
+        state = `jetzt dran · ${p.n} von ${p.all} Häkchen`;
+        extra = (mins ? `<p class="lex-st">${esc(mins)}</p>` : "") + checksHtml(t, s, st);
+      }
+    }
+    const on = i === cur;
+    return `<div class="ls-row${on ? " on" : ""}${d && d.d ? " ok" : ""}"><i class="ls-dot" style="${stStyle(i)}" aria-hidden="true"></i><b>${esc(stTitle(i))}</b><span>${state}</span></div>${on ? extra : ""}`;
+  }).join("");
+  return `<div class="lex-stages">${rows}</div>`;
 }
 const lexItem = t => `
-  <details class="st-${learned(t) ? "done" : isNew(t) ? "new" : stageCls(curIdx(t))}"><summary><span class="s-en">${esc(t.en)}${stageTag(t)}</span><span class="s-de">${esc(t.de)}</span></summary>
+  <details class="${learned(t) ? "st-done" : ""}"><summary><span class="s-en">${esc(t.en)}${stageTag(t)}</span><span class="s-de">${esc(t.de)}</span></summary>
   <div class="lex-body">${lexState(t)}
   ${t.expls.length > 1 ? `<ol class="expls">${t.expls.map(e => `<li>${esc(e)}</li>`).join("")}</ol>` : `<p>${esc(t.expl)}</p>`}
   <div class="ex"><div class="en">${highlight(t)}</div><div class="tr">${esc(t.exDe)}</div>${speakBtn(t.exEn, langName(MOD.lang.term))} ${speakBtn(t.exDe, langName(MOD.lang.meaning), MOD.lang.meaning)}</div></div></details>`;

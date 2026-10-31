@@ -82,6 +82,7 @@ Reihenfolge in `index.json` = Reihenfolge in Katalog, Modulleiste und beim Wisch
 { format:"fachvokabeln-modul", version:1, key, name, short, icon,
   cats:   { "net": {"name":"Netzwerk","c":"var(--n-sky)"}, … },
   lang:   { term:"en-US", meaning:"de-AT" },          // optional, Standard genau diese Werte
+  quiz:   { parts:["b","c"] },                        // optional, Standard ["a","b","c"]
   theme:  { board, board-dot, ink, ink-soft, surface, line, ok, bad, accent, m1, m2, m3 },
   raw:    [ Eintrag, Eintrag, … ],
   extra:  { "<begriffs-id>": {ex, sit, conf, tf}, … } }
@@ -90,6 +91,7 @@ Kompakt gespeichert (`separators=(",",":")`, `ensure_ascii=False`, ohne Zeilenum
 `extra` (optional, seit v16, direkt nach `raw`): Zusatzinhalte für schwere Fragearten, Schlüssel = Begriffs-ID (Format und Regeln unter „Zusatzinhalte“). Fehlt das Feld oder fehlt ein Inhalt, entfallen die betreffenden Fragearten und Häkchen in Teil B. Ändern immer per Skript: JSON laden, `extra[id]` setzen, kompakt zurückschreiben.
 `theme`: `board` Hintergrund (fast schwarz), `surface` Flächen, `accent` Modul-Schalter, `m1`/`m2`/`m3` die drei Startseiten-Kärtchen (Karteikarten/Quiz/Nachschlagen).
 `lang` (optional, seit v18): Sprache der Begriffe (`term`, Vorlesen und Sprechen des Begriffs) und der Bedeutung (`meaning`, Vorlesen der Bedeutung und Situationen, Diktat in Teil C). Ein deutschsprachiges Schulmodul hat beide auf `de-AT`. Situationen und Stimmt-das-Aussagen sind in `meaning`-Sprache. `version` bleibt 1.
+`quiz` (optional, seit v39): `parts` = welche Teile das Modul hat. Fehlt `"a"`, gibt es keinen Teil A (sinnvoll, wenn Begriff und Übersetzung fast gleich sind, wie in IT: „integer“ → „der Integer“); neue Begriffe starten dann direkt in Teil B ohne Bremse. IT hat `{"parts":["b","c"]}`, Agile den Standard. Ein Vokabelmodul (echte Übersetzungen) lässt das Feld weg. `version` bleibt 1.
 `levels` (XP-Ränge) gibt es seit dem Lernrahmen nicht mehr; aus IT und Agile entfernt, die App ignoriert das Feld, falls es noch irgendwo steht.
 
 ### Ein Begriff (`raw`-Eintrag, Array)
@@ -112,6 +114,7 @@ Grundsätze: Fehler haben **keine Folgen** (richtige Lösung zeigen, weiter), es
 **Begriffe:** Ausgabearten Lesen (Text steht da) und Hören (wird vorgelesen, steht nicht da, 🔊 zum Wiederholen). Eingabearten Auswählen (5 Antworten), Schreiben (`checkTyped`), Sprechen (🎤). Bedeutung = deutsche Übersetzung (Index 2), beim Vorlesen wird „ / “ zum Komma (`sayable`).
 
 ### Teil A: Begriff und Bedeutung
+Nur in Modulen mit `"a"` in `quiz.parts` (Standard). Ohne Teil A (`skipA()`): gespeicherte Begriffe ohne `aDay` bekommen beim Laden `A_SKIP_DAY` (`normSkipA`), neue beim ersten Antworten (`touch`); nie beantwortete gelten in `taskFor` als Teil B ohne Bremse; `autoFinishB` schließt auch sie ab, wenn Teil B keine Inhalte hat. Schreiben und Sprechen sind nach einer richtigen Antwort in Teil A **oder** B erlaubt (`doable`: `na || nb`). Hilfe und Übersicht nennen Teil A dann nicht.
 - **Bedeutung → Begriff** (`m2t`): jede Ausgabeart (`o:read`, `o:hear`) und jede Eingabeart (`i:pick`, `i:type`, `i:say`) mindestens einmal richtig; eine Antwort hakt beides zugleich ab.
 - **Begriff → Bedeutung** (`t2m`): einmal Lesen + Auswählen (`r:read`), einmal Hören + Auswählen (`r:hear`). Kein Schreiben/Sprechen in dieser Richtung (deutsche Übersetzungen nicht zuverlässig prüfbar).
 - Fertig (`partADone`): alle 7 Häkchen (`A_CHECKS`), mindestens 5 richtige Antworten (`A_MIN`), davon 3 in Richtung Bedeutung → Begriff (`A_MIN_M2T`). Schreiben und Sprechen erst, wenn der Begriff einmal richtig beantwortet wurde (`doable`).
@@ -133,8 +136,8 @@ Teil B frühestens am Kalendertag nach Teil A, Teil C frühestens am Tag nach Te
 
 ### Auswahl der Fragen (`planRound`)
 - Runde = bis zu 10 Fragen (`QUIZ_LEN`) aus den angehakten Themen (`P.cats`). Pro Begriff wählt `taskFor` die Aufgabe mit den meisten offenen Häkchen (Gleichstand zufällig), unter Beachtung von Bremse, „Gerade kein Ton“ und KI-Verfügbarkeit.
-- Begonnene Begriffe vor neuen, höherer Teil vor niedrigerem, dann am längsten nicht gefragt (`t`). Neue Begriffe aus dem angehakten Thema, das am weitesten ist (`catScore`, Gleichstand: Reihenfolge in `cats`): so viele, wie zum Auffüllen der Runde nötig sind.
-- Jeder Begriff nur einmal pro Runde. Reichen die begonnenen Begriffe nicht für 10 Fragen, füllen neue Begriffe die Runde auf. Teil C: höchstens 2 Begriffe (`C_PER_ROUND`).
+- **Gleichschritt** (seit v39): Ebene eines Begriffs (`levelOf`) 0 = Teil A (neu oder läuft), 1 = B, 2 = C, 3 = gelernt; ohne Teil A sind neue Begriffe Ebene 1. Ein Thema steht auf der niedrigsten Ebene seiner Begriffe (`catLevel`), gefragt wird nur auf der niedrigsten Ebene aller angehakten Themen (`roundLevel`, `quizPool`). Themen weiter vorne und Begriffe, die ihrem Thema voraus sind, pausieren (ihr Fortschritt bleibt). Die Quiz-Kachel zeigt „Gerade dran: Teil X“.
+- In der Ebene: am längsten nicht gefragt zuerst (`t`, nie gefragte zuerst), so kommen nach und nach alle Begriffe dran. Jeder Begriff nur einmal pro Runde. Teil C: höchstens 2 Begriffe (`C_PER_ROUND`), eine C-Runde hat also höchstens 2 Fragen. Ohne KI-Schlüssel warten auf Ebene 2 alle angehakten Themen (`noTasksText` sagt das).
 - Frage und Aufgabe werden erst beim Erreichen gebaut (`findNext`/`goQuestion`), damit der Lernstand aktuell ist. Gibt es weniger Aufgaben, wird die Runde kürzer; gibt es keine, sagt `noTasksText` warum („Heute alles erledigt, morgen geht's weiter mit X Begriffen“, warten auf Ton, warten auf die KI-Prüfung, alles gelernt).
 - Antwortmöglichkeiten: 5, unterschiedliche Anfangsbuchstaben (`keyLetter`, Artikel/„to“ zählen nicht), Ablenker zuerst aus derselben Kategorie (`distractors`), immer ganz sichtbar.
 
@@ -179,7 +182,7 @@ Teil B frühestens am Kalendertag nach Teil A, Teil C frühestens am Tag nach Te
 | Teil A | `A_CHECKS`, `A_TASKS`, `A_MIN`, `A_MIN_M2T`, `outLang`, `autoChecks`, `doable`, `openChecksA`, `partADone`, `checksHtml` |
 | Teil B | `bContent` (Inhalte, Häkchen, Aufgaben; gemerkt in `BCACHE`), `openChecksB`, `checkNameB`, `taskForB`, `autoFinishB`, `confPairs`, `confWrong`, `checksHtmlB` |
 | Teil C & KI | `AI_KEY`, `AI_MODEL`/`AI_MODEL_FALLBACK`, `aiKey`/`setAiKey`, `aiBlock`/`aiReady`, `aiWaitText`, `taskForC`, `crownCheck`, `aiCall` (Fehlercodes `AI_ERR`, `aiErrText`), `aiParse`, `AI_RULES`, `aiJudge`, `aiTest`, `showAiSheet`, `aiNotice`/`wireAiNotice` |
-| Auswahl | `taskFor` (A/B/C), `hasTask`, `waitsForSound`, `waitsForDay`, `waitsForAi`, `pool`, `catScore`, `freshTerms`, `planRound`, `distractors`, `noTasksText` |
+| Auswahl | `taskFor` (A/B/C), `hasTask`, `waitsForSound`, `waitsForDay`, `waitsForAi`, `pool`, `levelOf`, `catLevel`, `roundLevel`, `quizPool`, `planRound`, `distractors`, `noTasksText` |
 | Ton | `quiet`/`setQuiet`, `canHear` (`yes`/`wait`/`no`), `voiceFor`, `speak`, `sayable`, `speakBtn`, `SR`, `listen`/`stopListen` |
 | Quiz | `startQuiz`, `findNext`/`countAhead`/`goQuestion`, `makeQuestion`/`makeQuestionB`, `renderQuiz` (A und B), `renderQuizC`, `answer`, `heard`, `answerInput` → `settle` (A/B: Häkchen, `askLog`, `aDay`/`bDay`); `checkC` → `settleC` (C: `nc`, `cDay`, Krönchen), `crownCard`, `nextQuestion`, `renderQuizDone`; Eintippen `checkTyped`, `typeNorm`, `lev` |
 | Karteikarten | `startCards`, `renderCard`, `renderCardsDone` |
@@ -380,3 +383,4 @@ Der Lernrahmen (v18–v21, in drei Chats L1–L3 umgesetzt) hat XP, Ränge, Punk
 | v36 | Quiz: nach der Antwort führt ein Tipp irgendwo auf dem Bildschirm weiter (außer auf Lautsprecher), statt nur auf Frage, Antworten und Rückmeldung |
 | v37 | Quiz: Ablauf nach der Antwort (richtige wächst, übrige verschwinden ganz, Rückmeldung blendet nach Scrollen ein); jeder Begriff nur einmal pro Runde (`planRound`, Runde füllt mit neuen Begriffen auf); Lichtschein über dem Balken; Funken von unten nach oben; Fadenbereich wieder an der Frage, Fäden mit fester Höhe und kurzem Ausblenden beim Wechsel |
 | v38 | Fäden über langen Fragen gleichmäßig ohne leere Zone; Rückmeldung flackert nicht mehr (eigene Einblend-Animation aus); Stimmt/Stimmt nicht springt nicht mehr in die andere Spalte; Lichtschein über dem Balken größer und weich auslaufend |
+| v39 | Moduleinstellung `quiz.parts` (IT ohne Teil A, neue Begriffe starten in Teil B); Stufen im Gleichschritt: gefragt wird nur die niedrigste Ebene der angehakten Themen, am längsten nicht gefragte zuerst; Quiz-Kachel zeigt den aktuellen Teil; Hilfe mit Abschnitt „Alle Begriffe im Gleichschritt“ |

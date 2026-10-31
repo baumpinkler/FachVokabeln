@@ -983,3 +983,6 @@ body.qmode .q-foot .progress i::before{
   mask:linear-gradient(to top, #000, transparent), linear-gradient(to right, #000 calc(100% - 34px), transparent);
   mask-composite:intersect;
 }
+
+/* Quiz-Kachel: welcher Teil gerade dran ist (Stufen im Gleichschritt) */
+.q-level{display:block; margin-top:8px; font-weight:700; font-size:.88rem}

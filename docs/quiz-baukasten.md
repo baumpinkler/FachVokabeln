@@ -1,0 +1,181 @@
+# Quiz-Baukasten: Plan
+
+> **Für Claude:** Dieses Dokument ist der Arbeitsplan für den Umbau der Quiz-Logik. Lies zuerst `CLAUDE.md`, dann dieses Dokument ganz. Arbeite nur den Chat-Abschnitt ab, den der Nutzer nennt. Am Ende eines Chats: erledigte Punkte hier abhaken (☐ → ☑), getroffene Entscheidungen unter „Entscheidungen“ eintragen, Ergebnisse in die passenden Abschnitte von `CLAUDE.md` übernehmen, Änderungsprotokoll und `VERSION` in `sw.js` nachziehen. Ist alles erledigt, wird dieses Dokument gelöscht und der Punkt in „Nächste Schritte“ abgehakt.
+
+## Ziel
+
+Die App ist ein **Baukasten**: Sie kennt alle Fragearten (Darstellung, Eingabe, Prüfung, Häkchen) und die Stufen-Mechanik. Das **Modul** legt per Einstellung in `module.json` fest, welche Stufen es gibt und welche Fragearten in welcher Stufe vorkommen, mit welchen Ein- und Ausgabearten, wie schnell es vorangeht und wann eine Stufe geschafft ist.
+
+Kein ausführbarer Code in Moduldateien. Ein Modul kann nur Fragearten verwenden, die die App kennt.
+
+**Der Lernstand wird nicht übernommen.** Der Nutzer fängt neu an. Neues Format des Lernstands (`P_VERSION` 3), alter Stand wird beim Laden verworfen (wie schon bei v1 → v2), alte Exporte lassen sich nicht importieren (Meldung wie bisher).
+
+## Was die App fest vorgibt (nicht im Modul einstellbar)
+
+- **Grundsätze:** Fehler haben keine Folgen, es zählen nur richtige Antworten, „fast richtig“ zählt als richtig. Was ein Begriff an Inhalten nicht hat, wird nicht verlangt. Was ein Gerät nicht kann (keine Stimme, keine Spracherkennung), gilt als erfüllt (`autoChecks`).
+- **Feste Abhängigkeiten jeder Frageart**, egal in welcher Stufe: Schreiben und Sprechen erst nach einer richtigen Antwort zu diesem Begriff; Hören nur mit Ton („Gerade kein Ton“ beachten); KI-Fragearten nur mit Schlüssel, Netz und ohne Limit.
+- **Darstellung und Ablauf:** Glas-Design, schwebende Frage und Antworten, Lichtfäden, Ablauf nach der Antwort (`qReveal`), Weiter per Tipp irgendwo, Fortschrittsbalken. Jede neue Frageart muss sich darin einfügen (siehe „Gestaltung neuer Fragearten“).
+- **KI-Gerüst:** Aufruf, JSON-Antwort, Fehlerbehandlung, Schutz vor Manipulation durch die Antwort. Das Modul liefert höchstens einen zusätzlichen Bewertungshinweis.
+- **Sicherheitsgrenzen:** Jede Moduleinstellung wird auf einen erlaubten Bereich zurechtgestutzt (z. B. Runde 3–20 Fragen, 2–6 Antwortmöglichkeiten, höchstens 6 Stufen). Unbekannte Fragearten werden ignoriert, eine Stufe ohne bekannte Fragearten wird übersprungen.
+
+## Was das Modul einstellt (Feld `quiz` in `module.json`)
+
+Entwurf, im Chat 1 endgültig festlegen und in `CLAUDE.md` unter „Moduldatei“ dokumentieren:
+
+```json
+"quiz": {
+  "round": 10,                 // Fragen pro Runde
+  "lockstep": true,            // Gleichschritt (wie seit v39); false = jedes Thema in seiner Stufe, gemischt
+  "options": 5,                // Antwortmöglichkeiten (Standard für alle Stufen)
+  "flashcards": true,          // Karteikarten auf der Übersicht anbieten
+  "typing": { "typosPer": 6, "caseSensitive": false },
+  "ai": { "rubric": "zusätzlicher Bewertungshinweis für alle KI-Fragearten" },
+  "stages": [
+    { "id": "verstehen", "name": "Verstehen", "short": "V",
+      "kinds": [
+        "explain-to-term",
+        { "kind": "gap", "inputs": ["pick", "type"] },          // Frageart mit Einschränkung
+        { "kind": "situation", "outputs": ["read"], "inputs": ["pick"] }
+      ],
+      "waitDays": 0,            // Tage Abstand zur vorigen Stufe (Bremse)
+      "perRound": 10,           // höchstens so viele Fragen dieser Stufe pro Runde
+      "minCorrect": 0,          // zusätzlich zu allen Häkchen: Mindestzahl richtiger Antworten
+      "options": 3,             // Variante „weniger Antwortmöglichkeiten“
+      "timeLimit": 0            // Variante „Zeitlimit“: Sekunden pro Frage, 0 = aus
+    }
+  ]
+}
+```
+
+- Fehlt `quiz` oder `stages`, nimmt die App einen **Standard-Stufenplan**, der dem heutigen A/B/C entspricht. So funktionieren Module ohne Einstellung weiter.
+- Eine Frageart darf in mehreren Stufen vorkommen (z. B. Situation erst mit Auswählen, später mit Schreiben). Ihre Häkchen gehören dann jeweils zur Stufe.
+- Module mit `stages` bekommen `version: 2` (`MOD_VERSION` auf 2 heben). Ältere App-Versionen melden dann „braucht eine neuere App-Version“, statt Unsinn zu fragen.
+- Das Feld `quiz.parts` aus v39 entfällt (wird durch `stages` ersetzt).
+
+## Katalog der Fragearten
+
+Jede Frageart ist in der App ein eigener Eintrag in einer Registry mit: `id`, welche Inhalte sie braucht (`available(t)`), welche Häkchen sie für einen Begriff erzeugt (`checks(t, conf)`), welche Ein-/Ausgabearten sie kann, was sie technisch braucht (Ton, Spracherkennung, KI), Aufbau der Frage, Darstellung und Auswertung.
+
+Spalte „Daten“: vorhandene Felder eines Begriffs (`raw`-Index bzw. `extra`).
+
+### Vorhanden (aus der heutigen Teil-A/B/C-Logik herauslösen)
+
+| id | Frageart | Daten | Ein-/Ausgabe | Häkchen heute |
+|---|---|---|---|---|
+| `meaning-to-term` | Bedeutung → Begriff | [2] | lesen/hören; auswählen/schreiben/sprechen | `o:read/hear`, `i:pick/type/say` |
+| `term-to-meaning` | Begriff → Bedeutung | [2] | lesen/hören; auswählen | `r:read/hear` |
+| `gap` | Lückensatz | [4] (wenn `termRe` passt), `ex` | lesen; auswählen/schreiben/sprechen; Hilfe „Satz auf Deutsch zeigen“ | `c0–c2`, `ci:*` |
+| `situation` | Situation → Begriff | `sit` | lesen/hören; auswählen/schreiben/sprechen | `s0–s2`, `so:*`, `si:*` |
+| `truefalse` | Stimmt das? | `tf` | lesen; Stimmt/Stimmt nicht | `t0`, `t1` |
+| `difference` | Unterschied (A/B) | `conf` (`confWrong` ≥ 3) | lesen; auswählen | `u0`, `u1` |
+| `explain-ai` | In eigenen Worten (KI) | [3], [6], [7] als Musterlösung | lesen; schreiben/diktieren | `c` |
+
+Karteikarten bleiben eine eigene Übungsform außerhalb der Stufen (`quiz.flashcards`).
+
+### Neu, mit vorhandenen Daten
+
+| id | Frageart | Daten | Ein-/Ausgabe | Hinweise |
+|---|---|---|---|---|
+| `explain-to-term` | Erklärung → Begriff | [3], [6], [7] | lesen/hören; auswählen/schreiben/sprechen | Häkchen je Erklärung. Erklärungen enthalten den Begriff laut Regel nicht. |
+| `term-to-explain` | Begriff → Erklärung | [3] des Begriffs, [3] der Ablenker | lesen/hören; auswählen | Ablenker aus derselben Kategorie (`distractors`). |
+| `which-situation` | Welche Situation passt? | `sit` des Begriffs und der Ablenker | lesen; auswählen | Umkehrung von `situation`. Lange Antworttexte: Darstellung prüfen. |
+| `wrong-term` | Falscher Begriff im Satz | [4]/`ex` + Ablenker | lesen; Ja/Nein, bei Nein den richtigen auswählen | Mal richtiger, mal ersetzter Begriff. Ersetzen mit `termRe`, nur Ablenker gleicher Wortart sinnvoll (Verben „to …“ nur mit Verben). |
+| `translate-sentence` | Satz übersetzen | [4]/[5], `ex`-Paare | lesen; auswählen | Beide Richtungen möglich (einstellbar). Ablenker: Sätze anderer Begriffe derselben Kategorie. |
+| `build-sentence` | Satz bauen | [4], `ex` (englisch) | lesen; Wörter antippen | Wörter durcheinander, in Reihenfolge antippen, Rückgängig möglich. Nur Sätze bis ca. 12 Wörter. |
+| `dictation` | Diktat | [1] | hören; schreiben | Braucht Stimme für `MOD.lang.term`. |
+| `pronounce` | Nachsprechen | [1] | lesen; sprechen | Braucht Spracherkennung. Prüfung mit derselben Toleranz wie Schreiben. |
+| `letter-gaps` | Buchstabenlücken | [1] | lesen; schreiben | Z. B. „f _ n c t _ o n“, ca. 40 % der Buchstaben verdeckt, Leerzeichen und Bindestriche sichtbar. Leichte Vorstufe zu Schreiben. |
+| `multi-truefalse` | Mehrere Aussagen | `tf` des Begriffs + `tf` anderer Begriffe | lesen; Mehrfachauswahl | Vorher prüfen, ob die `tf`-Aussagen für sich allein verständlich sind (nennen sie ihren Begriff?). Häkchen nur für die Aussagen des gefragten Begriffs. |
+
+### Neu, mit KI-Prüfung
+
+Jede KI-Frageart braucht eigene Bewertungsregeln (Erweiterung von `AI_RULES`) und eigene Testfälle in `tools/ki-test.html`.
+
+| id | Frageart | Daten | Hinweise |
+|---|---|---|---|
+| `own-sentence` | Eigener Satz | [1], [4] als Muster | Sprache des Satzes einstellbar (Begriffs- oder Bedeutungssprache). KI prüft: Begriff vorhanden und sinnvoll verwendet. |
+| `difference-ai` | Unterschied erklären | `conf` | „Was ist der Unterschied zwischen X und Y?“ Musterlösung = `conf`-Satz. |
+| `simple-explain` | Einfach erklärt | [3], [6], [7] | Für Laien bzw. ein Kind erklären; Fachwörter vermeiden ist Teil der Bewertung. |
+| `use-case` | Anwendungsfall | [3], [6], [7], `sit` | „Wann würdest du X einsetzen, wann nicht?“ |
+
+### Neu, braucht zusätzliche Inhalte
+
+| id | Frageart | Neues Feld | Hinweise |
+|---|---|---|---|
+| `abbreviation` | Abkürzung ausschreiben | `extra[id].abbr`: `["API","Application Programming Interface"]` | Beide Richtungen (Kurz → Lang schreiben/auswählen, Lang → Kurz). Nur Begriffe mit Abkürzung. |
+| `related` | Gegenteil oder verwandter Begriff | `extra[id].rel`: `{"opp":[ids],"syn":[ids],"rel":[ids]}` | „Was ist das Gegenteil von X?“ / „Was gehört eng zu X?“; IDs müssen im Modul existieren. |
+
+Inhalte für beide Felder per Skript erzeugen und prüfen (Muster: „Zusatzinhalte“ in `CLAUDE.md`), IT und Agile.
+
+### Varianten (Einstellungen pro Stufe, keine eigenen Fragearten)
+
+- **Zeitlimit** (`timeLimit`): Countdown, sichtbar im Neon-Fortschrittsbalken oder als eigene dünne Linie. Abgelaufen = Lösung zeigen wie bei falsch, ohne Folgen, zählt nicht. Bei Schreiben/Sprechen großzügig oder aus.
+- **Weniger Antwortmöglichkeiten** (`options` pro Stufe oder pro Frageart).
+
+## Gestaltung neuer Fragearten
+
+- Frage oben fest (`.note.qc`), Antworten frei schwebend ohne Kästchen (`.opt`), Rückmeldung als getöntes Glas (`.feedback`).
+- `qReveal` muss für jede Frageart funktionieren: Was nach der Antwort nicht mehr gebraucht wird, verschwindet; die Rückmeldung blendet nach dem Scrollen ein.
+- Mehrfachauswahl, Ja/Nein mit Folgefrage, Satz bauen und Buchstabenlücken brauchen eigene Bedienelemente im selben Stil (schwebend, Neon-Akzente, keine Pastellflächen).
+- Weiter per Tipp irgendwo gilt erst nach der endgültigen Auswertung (z. B. bei Ja/Nein mit Folgefrage erst nach der Folgefrage).
+
+## Aufteilung in Chats
+
+Jeder Chat: Repo `baumpinkler/FachVokabeln` klonen, `CLAUDE.md` und dieses Dokument lesen, umsetzen, mit Playwright testen (Muster unter „Lernrahmen: Hintergrund und Entscheidungen → Tests“), am Ende die geänderten Dateien zum Hochladen ausgeben.
+
+### Chat 1: Fundament (Registry, Stufen-Mechanik, Lernstand v3)
+
+- ☐ Registry der Fragearten anlegen; die 7 vorhandenen Fragearten aus der Teil-A/B/C-Logik herauslösen (`A_TASKS`, `taskForB`, `bContent`, `openChecksA/B`, `partADone`, `taskForC` usw.).
+- ☐ Allgemeine Stufen-Mechanik: Stufen aus `quiz.stages`, Häkchen pro Stufe aus den Fragearten, geschafft = alle Häkchen (+ `minCorrect`), `waitDays`, `perRound`, Gleichschritt (`lockstep`), Rundenplanung, `autoFinish` für Stufen ohne offene Häkchen.
+- ☐ Lernstand v3 (`P_VERSION` 3): pro Begriff Stufen-Index, Häkchen und Datum je Stufe, Zähler, `t`. Alter Stand wird verworfen. Export-Version erhöhen.
+- ☐ Moduleinstellung `quiz` lesen, prüfen, zurechtstutzen; Standard-Stufenplan = heutiges A/B/C; `MOD_VERSION` 2.
+- ☐ Stufenpläne für IT und Agile zunächst so, dass sie sich wie v39 verhalten (IT ohne „Bedeutung“-Stufe). Feinschliff kommt in Chat 6.
+- ☐ Test: Verhalten wie v39 (Runden, Gleichschritt, Bremse, Teil C mit nachgebildeter KI).
+
+### Chat 2: Oberfläche auf Stufen umstellen
+
+- ☐ Übersicht: Stufen-Zähler, Balken und Farben für beliebig viele Stufen (statt fest A/B/C), „Gerade dran: <Stufenname>“.
+- ☐ Nachschlagen: Stand und Häkchen pro Stufe, Sortierung.
+- ☐ Rückmeldung und Rundenende: „<Stufe> geschafft“ statt „Teil A/B geschafft“.
+- ☐ Hilfe „So lernst du hier“ aus der Stufen-Einstellung erzeugen (Stufen, Fragearten, wann geschafft, Abstand in Tagen).
+- ☐ Krönchen: alle Begriffe eines Themas haben alle Stufen geschafft.
+- ☐ Karteikarten über `quiz.flashcards` ein- und ausblendbar.
+
+### Chat 3: Neue Fragearten zum Auswählen
+
+- ☐ `explain-to-term`, `term-to-explain`, `which-situation`, `translate-sentence`
+- ☐ `wrong-term` (Ja/Nein mit Folgefrage)
+- ☐ `multi-truefalse` (Mehrfachauswahl; vorher Inhalte prüfen)
+- ☐ Variante `options` (weniger Antwortmöglichkeiten)
+
+### Chat 4: Neue Fragearten zum Tippen, Hören, Sprechen
+
+- ☐ `build-sentence` (eigenes Bedienelement)
+- ☐ `letter-gaps`, `dictation`, `pronounce`
+- ☐ Variante `timeLimit`
+
+### Chat 5: KI-Fragearten
+
+- ☐ `own-sentence`, `difference-ai`, `simple-explain`, `use-case` mit eigenen Bewertungsregeln
+- ☐ `quiz.ai.rubric` aus dem Modul in die Bewertung einbauen (ohne die Schutzregeln aufzuweichen)
+- ☐ `tools/ki-test.html` um Testfälle je Frageart erweitern und echt durchlaufen lassen (braucht den Schlüssel des Nutzers)
+
+### Chat 6: Inhalte für Abkürzungen und Verwandte, Feinschliff
+
+- ☐ App-Seite: `abbreviation`, `related`
+- ☐ Inhalte `abbr` und `rel` für IT und Agile per Skript erzeugen und prüfen (bei 1.812 Begriffen eventuell auf mehrere Chats verteilen, je Modul oder je Themengruppe)
+- ☐ Endgültige Stufenpläne für IT und Agile mit dem Nutzer festlegen und eintragen
+- ☐ `CLAUDE.md` vollständig nachziehen, dieses Dokument löschen
+
+## Offene Entscheidungen (im jeweiligen Chat mit dem Nutzer klären)
+
+- Chat 1: Wie heißen und kürzen sich Stufen auf der Übersicht ab (Buchstaben wie heute oder Namen)? Höchstzahl der Stufen?
+- Chat 3: Bleibt die Hilfe „Satz auf Deutsch zeigen“ im Lückensatz? (Die Variante „Hinweis auf Abruf“ wurde nicht gewählt.)
+- Chat 3: `translate-sentence` in beide Richtungen oder nur Englisch → Deutsch?
+- Chat 4: Verhalten bei abgelaufenem Zeitlimit; Zeitlimit auch bei Schreiben/Sprechen?
+- Chat 5: Sprache bei `own-sentence` (englischer Satz oder deutscher Satz mit englischem Begriff)?
+- Chat 6: Stufenpläne für IT und Agile (welche Fragearten in welcher Stufe, Abstände, Optionen).
+
+## Entscheidungen
+
+(Hier jeweils festhalten, was in den Chats entschieden wurde.)

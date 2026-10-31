@@ -14,6 +14,13 @@
 3. ☑ **CLAUDE.md nachgezogen**: alle Abschnitte auf dem Stand des Lernrahmens.
 4. ☑ **Echter Test der KI-Prüfung** (mit `tools/ki-test.html`): alle 16 Testfälle mit dem erwarteten Urteil, `AI_RULES` bleibt unverändert. Bei späteren Änderungen an `AI_RULES` oder `AI_MODEL` die Testseite erneut laufen lassen.
 5. ☑ **`levels` aus den Moduldateien gestrichen** (per Skript, beide Module).
+6. ☐ **Quiz-Baukasten** (Plan: `docs/quiz-baukasten.md`): Fragearten als Bausteine der App, Stufen und ihre Fragearten pro Modul in `module.json`. Lernstand startet neu. In sechs Chats:
+   - ☐ Chat 1: Fundament (Registry der Fragearten, Stufen-Mechanik, Lernstand v3)
+   - ☐ Chat 2: Oberfläche auf Stufen umstellen (Übersicht, Nachschlagen, Hilfe, Krönchen)
+   - ☐ Chat 3: neue Fragearten zum Auswählen
+   - ☐ Chat 4: neue Fragearten zum Tippen, Hören, Sprechen
+   - ☐ Chat 5: KI-Fragearten
+   - ☐ Chat 6: Abkürzungen und Verwandte, Inhalte, endgültige Stufenpläne
 
 ## Was die App ist
 

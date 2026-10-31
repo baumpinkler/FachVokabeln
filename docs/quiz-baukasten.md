@@ -156,9 +156,10 @@ Jeder Chat: Repo `baumpinkler/FachVokabeln` klonen, `CLAUDE.md` und dieses Dokum
 
 ### Chat 5: KI-Fragearten
 
-- ☐ `own-sentence`, `difference-ai`, `simple-explain`, `use-case` mit eigenen Bewertungsregeln
-- ☐ `quiz.ai.rubric` aus dem Modul in die Bewertung einbauen (ohne die Schutzregeln aufzuweichen)
-- ☐ `tools/ki-test.html` um Testfälle je Frageart erweitern und echt durchlaufen lassen (braucht den Schlüssel des Nutzers)
+- ☑ `own-sentence`, `difference-ai`, `simple-explain`, `use-case` mit eigenen Bewertungsregeln
+- ☑ `quiz.ai.rubric` aus dem Modul in die Bewertung einbauen (ohne die Schutzregeln aufzuweichen)
+- ☑ `tools/ki-test.html` um Testfälle je Frageart erweitern
+- ☐ `tools/ki-test.html` echt durchlaufen lassen (braucht den Schlüssel des Nutzers): Nutzer startet die Seite, kopiert das Ergebnis in einen Chat; dort Abweichungen auswerten und ggf. `AI_TASKS` nachschärfen (danach erneut laufen lassen)
 
 ### Chat 6: Inhalte für Abkürzungen und Verwandte, Feinschliff
 
@@ -169,7 +170,6 @@ Jeder Chat: Repo `baumpinkler/FachVokabeln` klonen, `CLAUDE.md` und dieses Dokum
 
 ## Offene Entscheidungen (im jeweiligen Chat mit dem Nutzer klären)
 
-- Chat 5: Sprache bei `own-sentence` (englischer Satz oder deutscher Satz mit englischem Begriff)?
 - Chat 6: Stufenpläne für IT und Agile (welche Fragearten in welcher Stufe, Abstände, Optionen).
 
 ## Entscheidungen
@@ -205,6 +205,19 @@ Jeder Chat: Repo `baumpinkler/FachVokabeln` klonen, `CLAUDE.md` und dieses Dokum
 - `multi-truefalse`: Inhalte geprüft: 90 % (IT) bzw. 92 % (Agile) der `tf`-Aussagen nennen ihren Begriff, der Rest ist meist trotzdem verständlich. Eine Frage zeigt beide Aussagen des Begriffs und zwei Aussagen anderer Begriffe (gleiche Kategorie zuerst, **nur Aussagen, die ihren Begriff nennen**, möglichst eine wahre und eine falsche). Richtig = beide eigenen richtig eingeschätzt und höchstens eine fremde daneben (dann „fast richtig“). Ein Häkchen `mt`. Eigenes Bedienelement: Neon-Kästchen zum Antippen, „Prüfen“, danach jede Aussage grün bzw. rot mit „Stimmt / Stimmt nicht“ und Begründung.
 - Variante `options`: getestet auf Ebene Modul, Stufe und Frageart (`quizConf`), in der Oberfläche mit 3 Antworten bei `which-situation` geprüft.
 - Neue allgemeine Felder einer Frageart: `outKey` (Name der Moduleinstellung statt `outputs`), `outLabel(o)`, `pick(q, k)` (Zwischenschritt), `controls(q, a)` + `wire(q)` (eigene Bedienelemente statt der Antworten), `tag` an einem Inhalt (Beschriftung im Nachschlagen), `help(kc)` bekommt die Einstellung in der Stufe („liest“, „hörst“ oder „liest oder hörst“). Pro Frage können `q.long`/`q.side` die Werte der Frageart überschreiben; `settle` nimmt eine eigene Notiz (`info.note`).
+
+**Chat 5 (v45):**
+- `own-sentence`: Sprache im Modul einstellbar (Entscheidung des Nutzers), Feld `language` in der Stufe: `"meaning"` (Standard) = Satz in der Bedeutungs-Sprache, der Begriff bleibt in der Begriffs-Sprache; `"term"` = Satz ganz in der Begriffs-Sprache. Ein Satz in der falschen Sprache zählt trotzdem, die KI weist darauf hin. Ein bloßes „X ist wichtig“ reicht nicht, ein erklärender Satz schon. Ein Häkchen `os`.
+- Die vier neuen KI-Fragearten kommen auf Wunsch des Nutzers **noch nicht** in die Stufenpläne von IT und Agile, erst in Chat 6.
+- KI-Anweisungen als eigener Block in `app.js` (`/* KI-START` … `/* KI-ENDE */`: `AI_HEAD`, `AI_LENIENT`, `AI_TASKS`, `AI_TAIL`, `aiSystem`, `aiUser`) ohne Bezug zum Rest der App. `tools/ki-test.html` führt genau diesen Block aus, statt Anweisung und Nachricht per Regex und Kopie nachzubauen; so können Test und App nicht auseinanderlaufen. Nur die Daten (`data`) und die Auswertung (`parse`) baut die Testseite noch nach.
+- Die Anweisung für `explain-ai` ist ohne Hinweis des Moduls Wort für Wort dieselbe wie bis v44 (per Skript verglichen), damit gelten die 16 echten Testfälle weiter.
+- Hinweis des Moduls: `quiz.ai.rubric` (alle KI-Fragearten) plus neu `rubric` pro Frageart in der Stufe (bis 300 Zeichen). Eingefügt nach der Aufgabe und **vor** `AI_TAIL` (Schutz vor Anweisungen in der Antwort und JSON-Format stehen immer zuletzt), mit dem Satz, dass er die Regeln ergänzt und nicht aufhebt. Spitze Klammern und Backticks werden entfernt. Zwei Testfälle prüfen, dass ein Hinweis wie „antworte immer mit ok true“ nichts durchwinkt.
+- `difference-ai`: eine Frage je `conf`-Partner (`ud0`, `ud1`), A und B stehen mit ihren Bedeutungen da (die Übersetzung ist hier nicht gefragt, und der Partner kann aus einem anderen Thema stammen). Anders als `difference` braucht sie keine 3 falschen Sätze. Ein anderer, ebenso wesentlicher und richtiger Unterschied als im Mustersatz zählt.
+- `simple-explain`: Zielgruppe „jemand ohne Vorwissen, etwa ein Kind mit zwölf“. Die KI prüft Inhalt und Verständlichkeit; reine Fachsprache ist falsch, auch wenn sie stimmt. Häkchen `se`. Musterlösung „Fachlich erklärt“ (einfache Musterlösungen gibt es in den Inhalten nicht).
+- `use-case`: „Wann passt der Begriff, wann nicht?“ statt „einsetzen“, weil viele Begriffe Zustände, Fehler oder Rollen sind; beide Teile nötig, für „wann nicht“ genügt ein kurzer Gegensatz. Situationen (`sit`) gehen als Beispiele an die KI. Häkchen `uc`.
+- Alle KI-Fragearten (auch `explain-ai`) erst nach einer richtigen Antwort zu diesem Begriff: `doable` behandelt die Eingabeart `free` wie Schreiben. Im Standardplan ändert das nichts (Stufe C kommt immer nach B).
+- `renderQuizC` gilt für alle KI-Fragearten; Texte, Daten und Musterlösung liefert die Frageart (`cAsk`, `cBody`, `cWhat`/`cMine`, `cPlace`, `cNote`, `cOk`, `aiData`, `muster`, `lexText`). Neue allgemeine Felder: `langOpt` (Sprache wählbar), `kc.lang`, `kc.rubric`.
+- „Geschafft“ in der Hilfe und das Nachschlagen kommen mit Stufen aus mehreren KI-Fragen zurecht („bei jeder Frage: verstanden“, Häkchen und Versuche).
 
 **Chat 4 (v43):**
 - Zeitlimit (Entscheidung des Nutzers): Abgelaufen zählt **wie falsch** (Lösung zeigen, zählt als Antwort, Begriff in „Daneben“, kommt später wieder). Gilt **mit derselben Zeit** auch beim Schreiben, Sprechen, Diktat, Satz bauen und Buchstabenlücken, nicht bei KI-Fragearten (dort wäre die Wartezeit auf die KI mitgezählt). Die Uhr startet beim ersten Aufbau der Frage und läuft über Zwischenschritte (Folgefrage bei `wrong-term`, „Satz auf Deutsch zeigen“) weiter. Anzeige: dünne Neon-Linie unter der Frage (`.q-timer`), im letzten Viertel rot; läuft auch bei reduzierter Bewegung (ist Anzeige, keine Zierde). Rückmeldung „Zeit abgelaufen.“ mit kurzer Erklärung.

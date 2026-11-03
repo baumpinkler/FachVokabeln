@@ -2084,22 +2084,122 @@ function startQuiz(){
 }
 /* Lichtfäden hinter der Quiz-Frage (style.css, #qfx): eigenes Element in <body>, damit es beim Fragenwechsel
    nicht mit #pager ausgeblendet wird. Nur im Quiz sichtbar. Nach der Antwort grün/rot (is-ok/is-bad, Übergang
-   in CSS) und ein Schub: --qc-b zählt die Antworten hoch. qfxOff blendet den Effekt aus. */
-let qfx = null, qfxN = 0;
+   von --qa in CSS, bleibt bis zur nächsten Frage). qfxOff blendet den Effekt aus.
+   Fäden und Nebel zeichnet qfxPaint in ein Canvas: vier Lagen (QFX_LAYERS: Breite W in px, Richtung, Sekunden
+   für eine Breite), jeder Faden eine Summe aus drei Sinuswellen. Deren Höhe und Verschiebung pendeln langsam mit
+   eigenen Perioden, so ändert jeder Faden laufend leicht seine Form. Farbe --qa liest qfxPaint pro Bild aus CSS.
+   Einstellungen (in einer Vorschau im Chat abgestimmt): QFX_MORPH Stärke der Formänderung (0 = feste Form),
+   QFX_MORPH_SPEED und QFX_SPEED Tempo der Formänderung bzw. des Wanderns, QFX_OP Deckkraft in Ruhe,
+   QFX_FPS höchstens so viele Bilder/s.
+   Rückmeldung nach der Antwort (QFX_FX, kurzer Effekt über dur Sekunden: schnell auf, kurz halten, weich zurück,
+   qfxEnv): falsch = Wellen höher (amp), darüber kurze, schnell laufende Wellen (rip), schneller (speed);
+   richtig = flacher (amp negativ). Dabei leuchten Fäden und Nebel kräftiger (bis QFX_OP_FX). */
+const QFX_MORPH = 1, QFX_MORPH_SPEED = .5, QFX_SPEED = .5, QFX_OP = .2, QFX_OP_FX = .5, QFX_FPS = 30;
+const QFX_FX = {bad:{dur:.7, amp:4, rip:2, speed:8}, ok:{dur:1.5, amp:-.75, rip:0, speed:0}};
+const QFX_T = 420;   /* Höhe der Fäden in px, hängen am unteren Rand: eine längere Frage zeigt oben mehr Fäden */
+const QFX_LAYERS = [[700,-1,70,1],[1000,1,70,2],[1300,-1,70,3],[900,1,55,4,true]].map(([W,dir,d,seed,acc]) => {
+  let s = seed * 7919; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  const n = acc ? 5 : 8, th = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    th.push({y:16 + Math.pow(t, 1.25) * 170 + (r() - .5) * 10, a:r() < .25 ? .5 : .14 + r() * .22, glow:r() < .3, rp:r() * 6.28,
+      c:[1, 2, 3].map(j => ({n:j < 3 ? j : 3 + Math.floor(r() * 2), A:[10, 6, 3][j - 1] * (.6 + r() * .8), p:r() * 6.28,
+        f1:.6 + r() * .9, f2:.5 + r() * .9, q1:r() * 6.28, q2:r() * 6.28}))});
+  }
+  return {W, dir, d, th, acc:!!acc};
+});
+let qfx = null, qfxCv = null, qfxCx = null, qfxRaf = 0, qfxLast = 0, qfxTl = 0, qfxTm = 0, qfxTr = 0, qfxW = 0, qfxH = 0, qfxDpr = 1;
+let qfxFx = null;   /* laufende Rückmeldung: {c:QFX_FX.bad|ok, t:Startzeit in ms} */
 function qfxEl(){
   if (!qfx) {
     qfx = document.createElement("div"); qfx.id = "qfx"; qfx.setAttribute("aria-hidden", "true");
-    qfx.innerHTML = '<i class="qfx-l n1 l"></i><i class="qfx-l n2 r"></i><i class="qfx-l n3 l"></i><i class="qfx-l a r"></i>';
+    qfxCv = document.createElement("canvas"); qfx.append(qfxCv); qfxCx = qfxCv.getContext("2d");
     document.body.prepend(qfx);
     addEventListener("resize", qfxFit);
   }
   return qfx;
+}
+/* Canvas an die Größe von #qfx anpassen (höchstens doppelte Pixeldichte, schont den Akku) */
+function qfxSize(){
+  if (!qfxCv) return;
+  const w = qfx.clientWidth, h = qfx.clientHeight, dpr = Math.min(2, devicePixelRatio || 1);
+  if (w === qfxW && h === qfxH && dpr === qfxDpr) return;
+  qfxW = w; qfxH = h; qfxDpr = dpr; qfxCv.width = Math.round(w * dpr); qfxCv.height = Math.round(h * dpr);
+  if (reduced()) qfxPaint();
+}
+/* Farbe aus getComputedStyle als [r,g,b] (Chrome liefert rgb(...) oder color(srgb 0–1 ...)) */
+function qfxRgb(s){
+  const v = (s.match(/[\d.]+/g) || []).map(Number);
+  if (v.length < 3) return [136, 136, 136];
+  return /color\(/.test(s) ? v.slice(0, 3).map(x => Math.round(x * 255)) : v.slice(0, 3).map(Math.round);
+}
+/* Verlauf der Rückmeldung: 0 → 1 in den ersten 15 % der Dauer, ab 45 % weich zurück auf 0 */
+function qfxEnv(t, d){
+  if (t < 0 || t > d) return 0;
+  const ss = x => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
+  return ss(t / (d * .15)) * (1 - ss((t - d * .45) / (d * .55)));
+}
+function qfxFxNow(now){
+  if (!qfxFx) return 0;
+  const e = qfxEnv((now - qfxFx.t) / 1000, qfxFx.c.dur);
+  if (!e && now - qfxFx.t > qfxFx.c.dur * 1000) qfxFx = null;
+  return e;
+}
+function qfxPaint(now){
+  const cx = qfxCx, w = qfxW, h = qfxH;
+  if (!cx || !w || !h) return;
+  const fx = qfxFx ? qfxFx.c : null, e = now === undefined ? 0 : qfxFxNow(now);
+  const qa = qfxRgb(getComputedStyle(qfx).getPropertyValue("--qa")), c = qa.join(","), ac = qa.map(v => Math.round(v * .7 + 255 * .3)).join(",");
+  const op = QFX_OP + (QFX_OP_FX - QFX_OP) * e, ampF = 1 + (fx ? fx.amp : 0) * e, rip = (fx ? fx.rip : 0) * e * 7;
+  const sy = QFX_T / 200, m = QFX_MORPH, step = rip ? 4 : 6;
+  cx.setTransform(qfxDpr, 0, 0, qfxDpr, 0, 0); cx.clearRect(0, 0, w, h);
+  /* Nebel in der Akzentfarbe */
+  for (const [x, y, rx, ry, a] of [[.3, 76, .42, 60, .45], [.75, 80, .32, 45, .25], [.55, 139, .5, 50, .22]]) {
+    const r = rx * w; cx.save(); cx.translate(x * w, h - y); cx.scale(1, ry / r);
+    const g = cx.createRadialGradient(0, 0, 0, 0, 0, r);
+    g.addColorStop(0, `rgba(${c},${Math.min(1, a * (1 + e * .4))})`); g.addColorStop(1, `rgba(${c},0)`);
+    cx.fillStyle = g; cx.beginPath(); cx.arc(0, 0, r, 0, 6.29); cx.fill(); cx.restore();
+  }
+  cx.globalCompositeOperation = "lighter"; cx.lineCap = "round";
+  for (const L of QFX_LAYERS) {
+    const off = L.dir * L.W * qfxTl / L.d, rgb = L.acc ? ac : "255,255,255";
+    for (const T of L.th) {
+      if (h - T.y * sy < -80) continue;   /* Faden liegt über dem sichtbaren Bereich */
+      const cs3 = T.c.map(k => ({n:k.n, A:k.A * (1 + m * .7 * Math.sin(qfxTm * .21 * k.f1 + k.q1)) * sy * ampF, p:k.p + m * 1.6 * Math.sin(qfxTm * .13 * k.f2 + k.q2)}));
+      cx.beginPath();
+      for (let x = -4; x <= w + 4; x += step) {
+        const u = (x - off) / L.W * 6.2832; let y = h - T.y * sy;
+        for (const k of cs3) y += k.A * Math.sin(k.n * u + k.p);
+        if (rip) y += rip * sy * Math.sin(u * 9 + T.rp + qfxTr * L.dir);
+        if (x < 0) cx.moveTo(x, y); else cx.lineTo(x, y);
+      }
+      if (T.glow) { cx.strokeStyle = `rgba(${rgb},${Math.min(1, .07 * op / .28 * .9)})`; cx.lineWidth = 6; cx.stroke(); }
+      cx.strokeStyle = `rgba(${rgb},${Math.min(1, T.a * op * 2.4)})`; cx.lineWidth = 1.1; cx.stroke();
+    }
+  }
+  cx.globalCompositeOperation = "source-over";
+}
+function qfxDraw(now){
+  qfxRaf = 0;
+  if (!qfx || !qfx.classList.contains("on")) return;
+  qfxRaf = requestAnimationFrame(qfxDraw);
+  if (now - qfxLast < 1000 / QFX_FPS - 4) return;
+  const dt = Math.min(.1, (now - qfxLast) / 1000); qfxLast = now;
+  const e = qfxFx ? qfxEnv((now - qfxFx.t) / 1000, qfxFx.c.dur) : 0, boost = e * (qfxFx ? qfxFx.c.speed : 0);
+  qfxTl += dt * QFX_SPEED * (1 + boost); qfxTm += dt * QFX_MORPH_SPEED * (1 + boost * .5); qfxTr += dt * (1 + boost) * 3;
+  qfxPaint(now);
+}
+function qfxStart(){
+  qfxSize();
+  if (reduced()) { qfxFx = null; qfxPaint(); setTimeout(qfxPaint, 60); return; }   /* reduzierte Bewegung: stehendes Bild */
+  if (!qfxRaf) { qfxLast = performance.now(); qfxRaf = requestAnimationFrame(qfxDraw); }
 }
 /* Bereich der Fäden: vom Seitenanfang bis knapp unter die Frage (#qcard) */
 function qfxFit(){
   const c = $("#qcard");
   if (!qfx || !c || !document.body.classList.contains("qmode")) return;
   qfx.style.setProperty("--qfx-h", Math.round(Math.min(420, Math.max(140, c.getBoundingClientRect().bottom + 34))) + "px");
+  qfxSize();
 }
 /* Beim Fragenwechsel blenden die Fäden kurz aus, damit man nicht sieht, wie sich ihr Bereich verschiebt */
 let qfxFade = null;
@@ -2135,12 +2235,15 @@ function qfxShow(a){
   if (qfxFade) { qfxFade.cancel(); qfxFade = null; el.animate([{opacity:0}, {opacity:1}], {duration:360, easing:"ease-out"}); }
   el.classList.toggle("is-ok", !!a && a.ok === true);
   el.classList.toggle("is-bad", !!a && a.ok === false);
-  if (a && !a.fx) { a.fx = true; el.style.setProperty("--qc-b", ++qfxN); }
+  if (a && !a.fx) { a.fx = true; if (a.ok === true || a.ok === false) qfxFx = {c:QFX_FX[a.ok ? "ok" : "bad"], t:performance.now()}; }
+  qfxStart();
 }
 function qfxOff(){
   document.body.classList.remove("qmode");
   if (qfxFade) { qfxFade.cancel(); qfxFade = null; }
   if (qfx) qfx.classList.remove("on", "is-ok", "is-bad");
+  if (qfxRaf) { cancelAnimationFrame(qfxRaf); qfxRaf = 0; }
+  qfxFx = null;
 }
 /* Fußzeile im Quiz (style.css, .q-foot): nur der Fortschrittsbalken, fest ganz unten am Bildrand. */
 function qFoot(total){

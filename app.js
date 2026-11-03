@@ -2093,9 +2093,9 @@ function startQuiz(){
    QFX_FPS höchstens so viele Bilder/s.
    Rückmeldung nach der Antwort (QFX_FX, kurzer Effekt über dur Sekunden: schnell auf, kurz halten, weich zurück,
    qfxEnv): falsch = Wellen höher (amp), darüber kurze, schnell laufende Wellen (rip), schneller (speed);
-   richtig = flacher (amp negativ). Dabei leuchten Fäden und Nebel kräftiger (bis QFX_OP_FX). */
+   richtig = flacher (amp negativ) und schneller. Dabei leuchten Fäden und Nebel kräftiger (bis QFX_OP_FX). */
 const QFX_MORPH = 1, QFX_MORPH_SPEED = .5, QFX_SPEED = .5, QFX_OP = .2, QFX_OP_FX = .5, QFX_FPS = 30;
-const QFX_FX = {bad:{dur:.7, amp:4, rip:2, speed:8}, ok:{dur:1.5, amp:-.75, rip:0, speed:0}};
+const QFX_FX = {bad:{dur:.5, amp:4, rip:2, speed:1}, ok:{dur:.8, amp:-.6, rip:0, speed:4}};
 const QFX_T = 420;   /* Höhe der Fäden in px, hängen am unteren Rand: eine längere Frage zeigt oben mehr Fäden */
 const QFX_LAYERS = [[700,-1,70,1],[1000,1,70,2],[1300,-1,70,3],[900,1,55,4,true]].map(([W,dir,d,seed,acc]) => {
   let s = seed * 7919; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
